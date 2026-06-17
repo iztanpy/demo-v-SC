@@ -4,3 +4,4 @@ user-feedback-screenshots/
 *.local.*
 node_modules/
 briefing/
+react-app/
