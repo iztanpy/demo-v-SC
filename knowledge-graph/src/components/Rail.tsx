@@ -1,11 +1,16 @@
 import { STEPS, TOTAL_STEPS } from '../data/steps'
+import { useP2 } from '../store'
 
 export function Rail({ step }: { step: number }) {
   const copy = STEPS[step - 1]
+  const toggleLeft = useP2((s) => s.toggleLeft)
   return (
     <aside id="p2-rail">
       <div>
-        <div className="p2-rail-label">The story</div>
+        <div className="p2-rail-label">
+          The story
+          <button className="p2-drawer-btn" onClick={toggleLeft} title="Collapse">‹</button>
+        </div>
         <div id="p2-step-narration">
           <span className="p2-step-num">STEP {copy.n} / {TOTAL_STEPS}</span>
           <h2 className="p2-step-title">{copy.title}</h2>

@@ -56,7 +56,7 @@ export type NodeLabel = 'AssetClass' | 'Symptom' | 'DiagnosticTest' | 'RootCause
 // Two-layer diagnostic model, root causes LAST (clearer than the cypher's THEN_IF chaining):
 //   Symptom -TRIGGERS-> triage test -FOLLOW_UP-> (sometimes) confirmatory test -CONFIRMS/RULES_OUT-> RootCause
 // 1 layer when a triage test is decisive; 2 layers when it escalates via a single FOLLOW_UP hop.
-export type RelType = 'OCCURS_IN' | 'TRIGGERS' | 'FOLLOW_UP' | 'CONFIRMS' | 'RULES_OUT' | 'INCONCLUSIVE'
+export type RelType = 'OCCURS_IN' | 'TRIGGERS' | 'FOLLOW_UP' | 'CONFIRMS' | 'RULES_OUT' | 'INCONCLUSIVE' | 'SHORTCUT'
 
 export type PropVal = string | number | boolean | string[]
 
@@ -76,10 +76,16 @@ export interface GraphNode {
   y: number
   /** for DiagnosticTest nodes: triage (first-line) vs follow-up (confirmatory, smaller) */
   tier?: TestTier
+  /** true = decorative "rest of the KG" backdrop (other symptoms) — dense on slide 1, dimmed on zoom-in */
+  context?: boolean
+  /** explicit circle radius override (used to vary sizes in the dense backdrop) */
+  size?: number
   /** committed = part of the current graph; proposed = a pending edit (default committed) */
   state?: NodeState
   /** for proposed nodes: step its dashed `PROPOSED · not applied` preview appears */
   proposeStep?: number
+  /** which approval batch applies this proposed node (1 or 2) */
+  batch?: number
 }
 
 export interface GraphEdge {
@@ -92,10 +98,14 @@ export interface GraphEdge {
   probability?: number
   /** routing condition on a FOLLOW_UP edge (e.g. "1×RPM dominant") */
   result?: string
+  /** true = part of the decorative context backdrop */
+  context?: boolean
   /** committed | proposed (default committed) */
   state?: NodeState
   /** for proposed edges: step its preview appears */
   proposeStep?: number
+  /** which approval batch applies this proposed element (1 or 2) */
+  batch?: number
   // re-weight metadata (for an existing CONFIRMS edge whose probability the week revises)
   oldProbability?: number
   newProbability?: number
@@ -104,7 +114,7 @@ export interface GraphEdge {
 }
 
 // ── Changeset (the "Proposed KG changes" review panel) ──
-export type ChangeKind = 'add-node' | 'add-edge' | 'reweight'
+export type ChangeKind = 'add-node' | 'add-edge' | 'reweight' | 'shortcut'
 
 export interface ProposedChange {
   id: string
@@ -115,6 +125,12 @@ export interface ProposedChange {
   detail: string
   /** step at which this line enters the changeset */
   proposeStep: number
+  /** which approval batch this change belongs to (1 or 2) */
+  batch: number
   /** incident ids that justify this edit (Evidence Audit cites these) */
   cites: string[]
+  /** punchy evidence stat for the dossier, e.g. "3 / 3 incidents" */
+  evidence: string
+  /** one representative quote (the dossier shows just this, not every incident) */
+  quote: string
 }

@@ -8,6 +8,7 @@ import { useStepTimeline } from '../useStepTimeline'
 // card lights when any of its skills is pulsing or done this step.
 export function AgentSidebar() {
   const step = useP2((s) => s.step)
+  const toggleRight = useP2((s) => s.toggleRight)
   const { pulsing, done } = useStepTimeline(step)
   const live = STEPS[step - 1]?.live ?? ''
 
@@ -19,7 +20,10 @@ export function AgentSidebar() {
 
   return (
     <aside id="p2-agent-panel">
-      <div className="p2-panel-label">Agent Orchestration</div>
+      <div className="p2-panel-label">
+        Agent Orchestration
+        <button className="p2-drawer-btn" onClick={toggleRight} title="Collapse">›</button>
+      </div>
 
       <div className="p2-agent-list">
         {TEAMS.map((agent) => {

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NODES, EDGES, VIEWBOX, NODE_COLORS, NODE_LABELS, COL_HEADERS } from '../data/graph'
+import { NODES, EDGES, VIEWBOX, NODE_COLORS, NODE_LABELS, COL_HEADERS, DENSE_TRANSFORM } from '../data/graph'
 import type { GraphNode, GraphEdge, PropVal } from '../types'
 import { INCIDENTS, DOC_LABEL, PATTERN_ROWS, GAPS, CHANGES, APPROVE_STEP } from '../data/incidents'
 import type { DocKind } from '../data/incidents'
@@ -16,7 +16,7 @@ const skillName = (id: string) => SKILLS.find((s) => s.id === id)?.name ?? id
 
 // edge-type → chip colour for the edge inspector
 const EDGE_COLOR: Record<string, string> = {
-  CONFIRMS: '#00A651', RULES_OUT: '#64748B', FOLLOW_UP: '#2563EB', TRIGGERS: '#F59E0B', OCCURS_IN: '#64748B', INCONCLUSIVE: '#7C3AED',
+  CONFIRMS: '#00A651', RULES_OUT: '#64748B', FOLLOW_UP: '#2563EB', TRIGGERS: '#F59E0B', OCCURS_IN: '#64748B', INCONCLUSIVE: '#7C3AED', SHORTCUT: '#00A5A8',
 }
 
 function formatVal(v: PropVal): string {
@@ -32,17 +32,23 @@ function edgeLabel(e: GraphEdge, prob: number | undefined): string {
     case 'TRIGGERS': return `▸ ${e.order}`
     case 'FOLLOW_UP': return e.result ?? 'if inconclusive'
     case 'INCONCLUSIVE': return 'inconclusive'
+    case 'SHORTCUT': return 'shortcut ⤳'
     default: return '' // OCCURS_IN
   }
 }
 
 export function KGHero() {
   const step = useP2((s) => s.step)
-  const next = useP2((s) => s.next)
+  const focusGraph = useP2((s) => s.focusGraph)
+  const approvedBatches = useP2((s) => s.approvedBatches)
   const [selectedId, setSelected] = useState<string | null>(null)
   const [selEdgeKey, setSelEdgeKey] = useState<string | null>(null)
   const selected = selectedId ? byId[selectedId] : null
-  const approved = step >= APPROVE_STEP
+  // a proposed element's batch is applied once we're past the approval step, OR at the
+  // approval step and the reviewer has run that many batches in the dossier.
+  const batchApplied = (b?: number) =>
+    step > APPROVE_STEP ? true : step < APPROVE_STEP ? false : approvedBatches >= (b ?? 1)
+  const allApplied = batchApplied(2)
 
   const edgeKey = (e: GraphEdge) => `${e.source}__${e.target}__${e.type}`
   const selEdge = selEdgeKey ? EDGES.find((e) => edgeKey(e) === selEdgeKey) ?? null : null
@@ -54,27 +60,32 @@ export function KGHero() {
   const visEdges = EDGES.filter(edgeVisible)
 
   function nodeStateAttr(n: GraphNode): string {
-    if (n.state === 'proposed') return approved ? 'applied' : 'proposed'
+    if (n.state === 'proposed') return batchApplied(n.batch) ? 'applied' : 'proposed'
     return 'committed'
   }
 
   function renderNode(n: GraphNode) {
-    const r = n.tier === 'followup' ? 22 : R
+    const r = n.size ?? (n.tier === 'followup' ? 22 : R)
     return (
       <g
         key={n.id}
         className="g-node"
         data-label={n.label}
         data-tier={n.tier ?? ''}
+        data-context={n.context ? 'true' : undefined}
         data-state={nodeStateAttr(n)}
         data-selected={selectedId === n.id}
         transform={`translate(${n.x},${n.y})`}
-        onClick={(e) => { e.stopPropagation(); setSelected(n.id); setSelEdgeKey(null) }}
+        onClick={(e) => { e.stopPropagation(); if (!n.context) { setSelected(n.id); setSelEdgeKey(null) } }}
       >
         <circle className="g-node-dot" r={r} fill={NODE_COLORS[n.label]} />
-        <text className="g-node-label" y={r + 16} textAnchor="middle">{n.title}</text>
-        <text className="g-node-type" y={r + 30} textAnchor="middle">{n.tier === 'followup' ? 'follow-up test' : n.label}</text>
-        {n.state === 'proposed' && !approved && (
+        {!n.context && (
+          <>
+            <text className="g-node-label" y={r + 16} textAnchor="middle">{n.title}</text>
+            <text className="g-node-type" y={r + 30} textAnchor="middle">{n.tier === 'followup' ? 'follow-up test' : n.label}</text>
+          </>
+        )}
+        {n.state === 'proposed' && !batchApplied(n.batch) && (
           <text className="g-node-proposed" y={-r - 10} textAnchor="middle">PROPOSED · not applied</text>
         )}
       </g>
@@ -83,8 +94,8 @@ export function KGHero() {
 
   function renderEdge(e: GraphEdge) {
     const s = byId[e.source], t = byId[e.target]
-    // INCONCLUSIVE edges curve (quadratic) so the long ones to the bottom sink bow clear
-    const curved = e.type === 'INCONCLUSIVE'
+    // INCONCLUSIVE + SHORTCUT edges curve (quadratic) so they bow clear of the straight lines
+    const curved = e.type === 'INCONCLUSIVE' || e.type === 'SHORTCUT'
     let d: string, mx: number, my: number
     if (curved) {
       const dx = t.x - s.x, dy = t.y - s.y, len = Math.hypot(dx, dy) || 1
@@ -101,16 +112,17 @@ export function KGHero() {
     }
     const isReweight = e.reweightProposeStep != null
     const reweightState = isReweight
-      ? approved ? 'applied' : step >= (e.reweightProposeStep ?? 99) ? 'pending' : ''
+      ? batchApplied(e.batch) ? 'applied' : step >= (e.reweightProposeStep ?? 99) ? 'pending' : ''
       : ''
-    const prob = isReweight && approved && e.newProbability != null ? e.newProbability : e.probability
-    const eState = e.state === 'proposed' ? (approved ? 'applied' : 'proposed') : 'committed'
+    const prob = isReweight && batchApplied(e.batch) && e.newProbability != null ? e.newProbability : e.probability
+    const eState = e.state === 'proposed' ? (batchApplied(e.batch) ? 'applied' : 'proposed') : 'committed'
     const label = edgeLabel(e, prob)
     return (
       <g
         key={edgeKey(e)}
         className="g-edge"
         data-type={e.type}
+        data-context={e.context ? 'true' : undefined}
         data-state={eState}
         data-reweight={reweightState}
         data-selected={selEdgeKey === edgeKey(e)}
@@ -118,14 +130,14 @@ export function KGHero() {
       >
         <path className="g-edge-hit" d={d} />
         <path className="g-edge-line" d={d} />
-        {label && <text className="g-edge-label" x={mx} y={my} textAnchor="middle" dominantBaseline="middle">{label}</text>}
+        {label && !e.context && <text className="g-edge-label" x={mx} y={my} textAnchor="middle" dominantBaseline="middle">{label}</text>}
       </g>
     )
   }
 
   // Gap callouts (step 4) — pin the two gaps onto the graph.
   function renderGaps() {
-    if (step !== 4) return null
+    if (step !== 5) return null
     const casing = byId['RC-CASING-CRACK']
     const phase = byId['DT-PHASE'], bent = byId['RC-BENT-SHAFT']
     const emx = (phase.x + bent.x) / 2, emy = (phase.y + bent.y) / 2
@@ -146,7 +158,7 @@ export function KGHero() {
 
   // Contextual panel (top-right): pattern stack · gaps · changeset, by step.
   function renderContext() {
-    if (step === 3) {
+    if (step === 4) {
       return (
         <div className="kg-context">
           <div className="kg-context-title">Pattern · 3 incidents</div>
@@ -166,7 +178,7 @@ export function KGHero() {
         </div>
       )
     }
-    if (step === 4) {
+    if (step === 5) {
       return (
         <div className="kg-context">
           <div className="kg-context-title">Gaps found</div>
@@ -179,36 +191,45 @@ export function KGHero() {
         </div>
       )
     }
-    if (step >= 5 && step <= APPROVE_STEP) {
+    if (step >= 6 && step <= APPROVE_STEP) {
       const lines = CHANGES.filter((c) => step >= c.proposeStep)
       const validated = step >= 7
+      const batchLabel: Record<number, string> = { 1: 'Batch 1 · new knowledge', 2: 'Batch 2 · efficiency' }
+      const title = allApplied ? 'Changes applied ✓' : step === APPROVE_STEP ? 'Approving…' : 'Proposed KG changes'
       return (
-        <div className="kg-context kg-changeset" data-applied={approved}>
-          <div className="kg-context-title">{approved ? 'Changes applied ✓' : 'Proposed KG changes'}</div>
-          {lines.map((c) => (
-            <div className="kg-change-row" key={c.id} data-validated={validated}>
-              <div className="kg-change-head">
-                <span className="kg-change-kind" data-kind={c.kind}>{c.kind === 'reweight' ? '~' : '+'}</span>
-                <span className="kg-change-label">{c.label}</span>
-                {validated && <span className="kg-change-ok">✓</span>}
+        <div className="kg-context kg-changeset" data-applied={allApplied}>
+          <div className="kg-context-title">{title}</div>
+          {[1, 2].map((b) => {
+            const bl = lines.filter((c) => c.batch === b)
+            if (!bl.length) return null
+            const bApplied = batchApplied(b)
+            return (
+              <div className="kg-batch" key={b} data-applied={bApplied}>
+                <div className="kg-batch-label">{batchLabel[b]}{bApplied ? ' · applied ✓' : ''}</div>
+                {bl.map((c) => (
+                  <div className="kg-change-row" key={c.id} data-validated={validated} data-applied={bApplied}>
+                    <div className="kg-change-head">
+                      <span className="kg-change-kind" data-kind={c.kind}>{c.kind === 'reweight' ? '~' : c.kind === 'shortcut' ? '⤳' : '+'}</span>
+                      <span className="kg-change-label">{c.label}</span>
+                      {(bApplied || validated) && <span className="kg-change-ok">✓</span>}
+                    </div>
+                    <div className="kg-change-detail">{c.detail}</div>
+                    <div className="kg-change-cites">cites {c.cites.length} incident{c.cites.length > 1 ? 's' : ''}</div>
+                  </div>
+                ))}
               </div>
-              <div className="kg-change-detail">{c.detail}</div>
-              <div className="kg-change-cites">cites {c.cites.length} incidents</div>
-            </div>
-          ))}
-          {!approved && (
-            <button className="kg-approve-btn" disabled={!validated} onClick={next}>
-              {validated ? 'Approve & run changes ▸' : 'Awaiting validation…'}
-            </button>
-          )}
-          {approved && <div className="kg-applied-note">Reliability engineer approved · graph updated in place</div>}
+            )
+          })}
+          {step === APPROVE_STEP && !allApplied && <div className="kg-applied-note">Review &amp; approve in the dossier →</div>}
+          {allApplied && <div className="kg-applied-note">Reliability engineer approved · graph updated in place</div>}
         </div>
       )
     }
     return null
   }
 
-  const inboxState = step < 2 ? 'queued' : approved ? 'archived' : 'parsed'
+  const inboxState = step < 3 ? 'queued' : allApplied ? 'archived' : 'parsed'
+  const parsed = step >= 3
 
   return (
     <div className="kg-wrap">
@@ -228,21 +249,34 @@ export function KGHero() {
 
         <svg
           className="kg-svg"
-          viewBox={`0 0 ${VIEWBOX.w} ${VIEWBOX.h}`}
+          viewBox={`${VIEWBOX.x} ${VIEWBOX.y} ${VIEWBOX.w} ${VIEWBOX.h}`}
           preserveAspectRatio="xMidYMid meet"
           onClick={clearSel}
         >
-          <g className="kg-col-headers">
-            {COL_HEADERS.map((h) => (
-              <text key={h.label} className="kg-col-header" x={h.x} y={70} textAnchor="middle">{h.label}</text>
-            ))}
+          <g
+            className="kg-zoom"
+            data-zoomed={step >= 2}
+            style={{
+              transform: step === 1 ? DENSE_TRANSFORM : 'none',
+              transformBox: 'view-box',
+              transformOrigin: '0 0',
+              transition: 'transform 700ms ease',
+            }}
+          >
+            {step >= 2 && (
+              <g className="kg-col-headers">
+                {COL_HEADERS.map((h) => (
+                  <text key={h.label} className="kg-col-header" x={h.x} y={170} textAnchor="middle">{h.label}</text>
+                ))}
+              </g>
+            )}
+            <g className="kg-edges">{visEdges.map(renderEdge)}</g>
+            <g className="kg-nodes">{visNodes.map(renderNode)}</g>
+            {renderGaps()}
           </g>
-          <g className="kg-edges">{visEdges.map(renderEdge)}</g>
-          <g className="kg-nodes">{visNodes.map(renderNode)}</g>
-          {renderGaps()}
         </svg>
 
-        {renderContext()}
+        {!focusGraph && renderContext()}
 
         {selected && (
           <div className="kg-inspector">
@@ -268,7 +302,7 @@ export function KGHero() {
         {selEdge && (() => {
           const s = byId[selEdge.source], t = byId[selEdge.target]
           const isRw = selEdge.reweightProposeStep != null
-          const prob = isRw && approved && selEdge.newProbability != null ? selEdge.newProbability : selEdge.probability
+          const prob = isRw && batchApplied(selEdge.batch) && selEdge.newProbability != null ? selEdge.newProbability : selEdge.probability
           return (
             <div className="kg-inspector kg-edge-inspector">
               <div className="kg-inspector-head">
@@ -283,7 +317,7 @@ export function KGHero() {
                 {prob != null && (
                   <div className="kg-inspector-prop"><dt>{selEdge.type === 'RULES_OUT' ? 'Rules out · confidence' : 'Confirms · confidence'}</dt><dd>{prob.toFixed(2)} ({selEdge.band})</dd></div>
                 )}
-                {isRw && !approved && (
+                {isRw && !batchApplied(selEdge.batch) && (
                   <div className="kg-inspector-prop"><dt>Pending re-weight</dt><dd>{selEdge.oldProbability?.toFixed(2)} → {selEdge.newProbability?.toFixed(2)} · awaiting approval</dd></div>
                 )}
                 {selEdge.order != null && (
@@ -295,23 +329,24 @@ export function KGHero() {
         })()}
       </div>
 
+      {!focusGraph && step >= 2 && (
       <div className="kg-inbox" data-state={inboxState}>
         <div className="kg-inbox-label">
           Incident inbox · documents, <em>not</em> graph nodes
           <span className="kg-inbox-state">{inboxState}</span>
         </div>
         <div className="kg-inbox-cards">
-          {INCIDENTS.map((inc) => (
+          {INCIDENTS.map((inc, ii) => (
             <div className="kg-inc-card" data-state={inboxState} key={inc.id}>
               <div className="kg-inc-head">{inc.id} · {inc.plant} · {inc.asset}</div>
               <div className="kg-inc-docs">
-                {DOCS.map((doc) => {
+                {DOCS.map((doc, di) => {
                   const chip = inc.chips.find((c) => c.doc === doc)
                   return (
-                    <div className="kg-inc-doc" key={doc} data-parsed={step >= 2}>
+                    <div className="kg-inc-doc" key={doc} data-parsed={parsed}>
                       <span className="kg-inc-doc-name">{DOC_LABEL[doc]}</span>
-                      {step >= 2 && chip && (
-                        <div className="kg-inc-chip">
+                      {parsed && chip && (
+                        <div className="kg-inc-chip" style={{ animationDelay: `${(ii * 3 + di) * 0.16}s` }}>
                           <span className="kg-inc-chip-skill">{skillName(chip.skill)}</span>
                           <span className="kg-inc-chip-text">{chip.text}</span>
                         </div>
@@ -324,6 +359,7 @@ export function KGHero() {
           ))}
         </div>
       </div>
+      )}
     </div>
   )
 }

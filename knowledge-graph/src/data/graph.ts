@@ -9,10 +9,11 @@ import type { GraphNode, GraphEdge, NodeLabel } from '../types'
 //
 // Only the single L1→L2 hop is a test→test edge (FOLLOW_UP); no long chains. Layer-2
 // (confirmatory) tests render smaller. DT-THERMOGRAPHY dropped for legibility.
-export const VIEWBOX = { w: 1600, h: 1100 }
+// viewBox frame around the SYM-001 focus cluster (slide ≥2 lands here, on the RIGHT of canvas).
+export const VIEWBOX = { x: 1030, y: 120, w: 1490, h: 1010 }
 
-// Column x positions (used for node coords + column headers).
-export const COLS = { asset: 110, symptom: 320, l1: 600, l2: 880, cause: 1230 }
+// Column x positions — the focus cluster sits to the RIGHT of the central AssetClass hub.
+export const COLS = { asset: 1150, symptom: 1430, l1: 1710, l2: 2000, cause: 2350 }
 
 export const NODE_COLORS: Record<NodeLabel, string> = {
   AssetClass: '#64748B',     // slate — the equipment class
@@ -32,7 +33,7 @@ export const COL_HEADERS: { x: number; label: string }[] = [
   { x: COLS.cause, label: 'Root causes' },
 ]
 
-export const NODES: GraphNode[] = [
+const FOCUS_NODES: GraphNode[] = [
   // ── asset class + symptom ──
   { id: 'AC-BFP', label: 'AssetClass', title: 'Boiler feed pump', x: COLS.asset, y: 500, props: { name: 'Boiler feed pump (BFP)', description: 'High-pressure multistage boiler feed pump class' } },
   {
@@ -56,16 +57,16 @@ export const NODES: GraphNode[] = [
   { id: 'RC-LUBE-FAIL', label: 'RootCause', title: 'Lube failure', x: COLS.cause, y: 780, props: { name: 'Lubrication failure', description: 'Oil starvation / contamination degrading the NDE bearing', solution: 'Flush & replace lubricant; correct oil supply / cooler; fit breather' } },
 
   // ── inconclusive sink — the second outcome of every confirmatory test ──
-  { id: 'NEEDS-INFO', label: 'Inconclusive', title: 'More info needed', x: 1050, y: 1020, props: { name: 'More information needed', description: 'Confirmatory test inconclusive — escalate for expert review / further data before committing a repair' } },
+  { id: 'NEEDS-INFO', label: 'Inconclusive', title: 'More info needed', x: 1850, y: 1050, props: { name: 'More information needed', description: 'Confirmatory test inconclusive — escalate for expert review / further data before committing a repair' } },
 
   // ── PROPOSED nodes (the week's recommended add — dashed/ghost until approval at step 8) ──
-  { id: 'DT-WELD-NDT', label: 'DiagnosticTest', title: 'Weld NDT', x: COLS.l2, y: 940, tier: 'followup', state: 'proposed', proposeStep: 5, props: { name: 'Weld NDT / dye-penetrant inspection (volute, near discharge)', layer: 'follow-up (confirmatory)', method: 'PT/MT of casing volute & discharge-weld region', cost_band: 'med', required_certs: ['NDT Level 2 (PT/MT)'] } },
-  { id: 'RC-CASING-CRACK', label: 'RootCause', title: 'Casing crack', x: COLS.cause, y: 970, state: 'proposed', proposeStep: 5, props: { name: 'Pump casing crack / weld fatigue', description: 'Volute / discharge weld-toe crack; casing fatigue mimicking 1×RPM shaft signatures', solution: 'Weld repair + PWHT of volute / discharge weld; MPI re-check; review casing fatigue life' } },
+  { id: 'DT-WELD-NDT', label: 'DiagnosticTest', title: 'Weld NDT', x: COLS.l2, y: 940, tier: 'followup', state: 'proposed', proposeStep: 6, batch: 1, props: { name: 'Weld NDT / dye-penetrant inspection (volute, near discharge)', layer: 'follow-up (confirmatory)', method: 'PT/MT of casing volute & discharge-weld region', cost_band: 'med', required_certs: ['NDT Level 2 (PT/MT)'] } },
+  { id: 'RC-CASING-CRACK', label: 'RootCause', title: 'Casing crack', x: COLS.cause, y: 970, state: 'proposed', proposeStep: 6, batch: 1, props: { name: 'Pump casing crack / weld fatigue', description: 'Volute / discharge weld-toe crack; casing fatigue mimicking 1×RPM shaft signatures', solution: 'Weld repair + PWHT of volute / discharge weld; MPI re-check; review casing fatigue life' } },
 ]
 
 // `result` on every test edge = the observed test finding that drives it (shown when the
 // edge is clicked). On FOLLOW_UP it's the triage outcome that escalates to the next test.
-export const EDGES: GraphEdge[] = [
+const FOCUS_EDGES: GraphEdge[] = [
   // symptom scoped to asset class
   { source: 'SYM-001', target: 'AC-BFP', type: 'OCCURS_IN' },
 
@@ -80,7 +81,7 @@ export const EDGES: GraphEdge[] = [
 
   // test → root cause (probability = how diagnostic). 1-layer (triage confirms) + 2-layer (follow-up confirms).
   // ⭐ re-weight target: phase over-confirms bent shaft at 0.88 today; week proposes 0.70
-  { source: 'DT-PHASE', target: 'RC-BENT-SHAFT', type: 'CONFIRMS', band: 'high', probability: 0.88, oldProbability: 0.88, newProbability: 0.70, reweightProposeStep: 6, result: '1×RPM-dominant with ~180° NDE–DE phase shift' },
+  { source: 'DT-PHASE', target: 'RC-BENT-SHAFT', type: 'CONFIRMS', band: 'high', probability: 0.88, oldProbability: 0.88, newProbability: 0.70, reweightProposeStep: 6, batch: 1, result: '1×RPM-dominant with ~180° NDE–DE phase shift' },
   { source: 'DT-PHASE', target: 'RC-MISALIGN', type: 'CONFIRMS', band: 'med', probability: 0.7, result: '2×RPM component elevated relative to 1×RPM' },
   { source: 'DT-HOUSING-INSPECT', target: 'RC-BEARING-SPALL', type: 'CONFIRMS', band: 'high', probability: 0.95, result: 'Visible race spalling / pitting on NDE bearing' },
   { source: 'DT-HOUSING-INSPECT', target: 'RC-BENT-SHAFT', type: 'RULES_OUT', band: 'med', probability: 0.6, result: 'Bearing housing intact — bow unlikely the primary' },
@@ -96,7 +97,86 @@ export const EDGES: GraphEdge[] = [
   { source: 'DT-OIL-ANALYSIS', target: 'NEEDS-INFO', type: 'INCONCLUSIVE', result: 'Oil clean → lube failure / spalling not confirmed; gather more data' },
 
   // ── PROPOSED edges (wiring for the new cause — dashed until approval) ──
-  { source: 'DT-PHASE', target: 'DT-WELD-NDT', type: 'FOLLOW_UP', result: 'Harmonics near discharge weld → run weld NDT', state: 'proposed', proposeStep: 5 },
-  { source: 'DT-WELD-NDT', target: 'RC-CASING-CRACK', type: 'CONFIRMS', band: 'high', probability: 0.9, result: 'PT/MT indication at volute weld toe', state: 'proposed', proposeStep: 5 },
-  { source: 'DT-WELD-NDT', target: 'NEEDS-INFO', type: 'INCONCLUSIVE', result: 'No weld indication → casing crack not confirmed; gather more data', state: 'proposed', proposeStep: 5 },
+  { source: 'DT-PHASE', target: 'DT-WELD-NDT', type: 'FOLLOW_UP', result: 'Harmonics near discharge weld → run weld NDT', state: 'proposed', proposeStep: 6, batch: 1 },
+  { source: 'DT-WELD-NDT', target: 'RC-CASING-CRACK', type: 'CONFIRMS', band: 'high', probability: 0.9, result: 'PT/MT indication at volute weld toe', state: 'proposed', proposeStep: 6, batch: 1 },
+  { source: 'DT-WELD-NDT', target: 'NEEDS-INFO', type: 'INCONCLUSIVE', result: 'No weld indication → casing crack not confirmed; gather more data', state: 'proposed', proposeStep: 6, batch: 1 },
+
+  // ── PROPOSED shortcut (batch 2) — captured from a call: skip triage, go straight to runout ──
+  { source: 'SYM-001', target: 'DT-RUNOUT', type: 'SHORTCUT', result: 'Captured call: “1×RPM is obvious — skip phase, go straight to the runout”', state: 'proposed', proposeStep: 6, batch: 2 },
 ]
+
+// ── Decorative "rest of the KG" — a dense RADIAL field: other BFP symptoms ringing the
+// centre, with their tests / causes radiating outward, and varied node sizes for an organic,
+// non-uniform look. Dense on slide 1; dimmed + clipped once we zoom into SYM-001 on slide 2.
+// Coordinates are generated deterministically (seeded) so the layout is stable across renders.
+const CTX_CENTER = { x: COLS.asset, y: 500 } // the AssetClass hub
+const seeded = (n: number) => { const x = Math.sin(n * 12.9898) * 43758.5453; return x - Math.floor(x) }
+
+// Each chain mirrors the real structure radiating outward: Symptom → triage test →
+// (sometimes) follow-up test → root cause. Some chains are 3-tier (no follow-up).
+type CtxChain = { triage: string; followup?: string; cause: string }
+const CTX_DEFS: { id: string; title: string; chains: CtxChain[] }[] = [
+  { id: 'SYM-002', title: 'DE bearing temp high', chains: [{ triage: 'Thermography', followup: 'Lube sample', cause: 'Bearing overheating' }, { triage: 'IR scan', cause: 'Cooler fouling' }] },
+  { id: 'SYM-003', title: 'Mech seal leakage', chains: [{ triage: 'Seal face inspect', cause: 'Seal face wear' }, { triage: 'Flush check', followup: 'Pressure test', cause: 'Flush failure' }] },
+  { id: 'SYM-004', title: 'Low discharge head', chains: [{ triage: 'Performance test', followup: 'Clearance check', cause: 'Impeller wear' }, { triage: 'Flow trend', cause: 'Recirculation' }] },
+  { id: 'SYM-005', title: 'Motor current high', chains: [{ triage: 'Current spectrum', followup: 'Insulation test', cause: 'Winding fault' }, { triage: 'Rotor scan', cause: 'Rotor bar fault' }] },
+  { id: 'SYM-006', title: 'Suction press low', chains: [{ triage: 'NPSH check', cause: 'Cavitation' }, { triage: 'Strainer inspect', cause: 'Strainer blockage' }] },
+  { id: 'SYM-007', title: 'Casing vib broadband', chains: [{ triage: 'Spectrum scan', followup: 'Foundation check', cause: 'Soft foot' }, { triage: 'Bolt torque check', cause: 'Looseness' }] },
+  { id: 'SYM-008', title: 'Thrust bearing wear', chains: [{ triage: 'Axial probe', followup: 'Pad temp check', cause: 'Thrust pad wear' }] },
+  { id: 'SYM-009', title: 'Gland steam leak', chains: [{ triage: 'Visual inspect', cause: 'Gland wear' }] },
+  { id: 'SYM-010', title: 'Coupling vibration', chains: [{ triage: 'Alignment check', cause: 'Coupling wear' }, { triage: 'Spacer inspect', cause: 'Spacer fault' }] },
+  { id: 'SYM-011', title: 'Discharge temp high', chains: [{ triage: 'Flow trend', followup: 'Valve check', cause: 'Min-flow valve' }, { triage: 'Thermal scan', cause: 'Dead-head' }] },
+]
+
+const CONTEXT_NODES: GraphNode[] = []
+const CONTEXT_EDGES: GraphEdge[] = []
+CTX_DEFS.forEach((def, i) => {
+  const seed = i + 1
+  // ring the hub through the left / top / bottom arc (avoid the right, where the focus lives)
+  const ang = Math.PI * 0.30 + (i / (CTX_DEFS.length - 1)) * Math.PI * 1.40 + (seeded(seed) - 0.5) * 0.10
+  const symR = 320 + seeded(seed * 2) * 160
+  CONTEXT_NODES.push({ id: def.id, label: 'Symptom', title: def.title, x: CTX_CENTER.x + Math.cos(ang) * symR, y: CTX_CENTER.y + Math.sin(ang) * symR, context: true, size: 30 + seeded(seed * 3) * 16, props: { name: def.title } })
+  CONTEXT_EDGES.push({ source: def.id, target: 'AC-BFP', type: 'OCCURS_IN', context: true }) // yellow spoke into the hub
+  const m = def.chains.length
+  def.chains.forEach((ch, k) => {
+    const chAng = ang + (k - (m - 1) / 2) * 0.44 + (seeded(seed * 5 + k) - 0.5) * 0.06
+    const pt = (radius: number) => ({ x: CTX_CENTER.x + Math.cos(chAng) * radius, y: CTX_CENTER.y + Math.sin(chAng) * radius })
+    // tiers radiate outward: triage (blue) → optional follow-up (blue) → cause (red)
+    const rTriage = symR + 200 + seeded(seed * 7 + k) * 50
+    const triageId = `${def.id}-T${k}`
+    CONTEXT_NODES.push({ id: triageId, label: 'DiagnosticTest', title: ch.triage, tier: 'triage', context: true, ...pt(rTriage), size: 18 + seeded(seed * 8 + k) * 10, props: { name: ch.triage } })
+    CONTEXT_EDGES.push({ source: def.id, target: triageId, type: 'TRIGGERS', context: true })
+    let lastId = triageId
+    let rCause = rTriage + 210
+    if (ch.followup) {
+      const rFu = rTriage + 200
+      const fuId = `${def.id}-F${k}`
+      CONTEXT_NODES.push({ id: fuId, label: 'DiagnosticTest', title: ch.followup, tier: 'followup', context: true, ...pt(rFu), size: 14 + seeded(seed * 9 + k) * 8, props: { name: ch.followup } })
+      CONTEXT_EDGES.push({ source: triageId, target: fuId, type: 'FOLLOW_UP', context: true })
+      lastId = fuId
+      rCause = rFu + 200
+    }
+    const causeId = `${def.id}-C${k}`
+    CONTEXT_NODES.push({ id: causeId, label: 'RootCause', title: ch.cause, context: true, ...pt(rCause), size: 22 + seeded(seed * 10 + k) * 10, props: { name: ch.cause } })
+    CONTEXT_EDGES.push({ source: lastId, target: causeId, type: 'CONFIRMS', context: true })
+  })
+})
+
+// Full canvas = the SYM-001 focus cluster + the dense radial backdrop.
+export const NODES: GraphNode[] = [...FOCUS_NODES, ...CONTEXT_NODES]
+export const EDGES: GraphEdge[] = [...FOCUS_EDGES, ...CONTEXT_EDGES]
+
+// Fit the whole dense canvas into the focus viewBox frame (slide 1, zoomed out). On slide ≥2
+// the zoom group returns to identity → the viewBox lands on the SYM-001 focus on the right.
+function fitTransform(nodes: GraphNode[], vb: { x: number; y: number; w: number; h: number }): string {
+  const pad = 90
+  const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y)
+  const minX = Math.min(...xs) - pad, maxX = Math.max(...xs) + pad
+  const minY = Math.min(...ys) - pad, maxY = Math.max(...ys) + pad
+  const ew = maxX - minX, eh = maxY - minY
+  const s = Math.min(vb.w / ew, vb.h / eh)
+  const tx = vb.x + (vb.w - s * ew) / 2 - s * minX
+  const ty = vb.y + (vb.h - s * eh) / 2 - s * minY
+  return `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) scale(${s.toFixed(4)})`
+}
+export const DENSE_TRANSFORM = fitTransform(NODES, VIEWBOX)
