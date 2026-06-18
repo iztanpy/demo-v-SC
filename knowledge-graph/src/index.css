@@ -212,6 +212,28 @@ body {
 }
 .g-edge[data-type="CORRECTED_BY"] .g-edge-label { fill: var(--red-vivid); font-weight: 700; opacity: 1; }
 
+/* historical graph recede — faint memory bank once the live build starts (R4) */
+.kg-historical[data-recede="true"] { opacity: 0.32; }
+
+/* live node enter — scale + fade pop (R4) */
+.g-enter {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: g-node-enter 450ms cubic-bezier(0.2, 0.85, 0.25, 1) 320ms both;
+}
+@keyframes g-node-enter {
+  0%   { opacity: 0; transform: scale(0.3); }
+  70%  { opacity: 1; transform: scale(1.12); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* live edge draw-in — relationship line draws first, then the node pops (R4) */
+.kg-live .g-edge-line { stroke-dasharray: 1400; animation: g-edge-draw 460ms ease-out both; }
+@keyframes g-edge-draw {
+  from { stroke-dashoffset: 1400; }
+  to   { stroke-dashoffset: 0; }
+}
+
 /* nodes — type-coloured circles */
 .g-node { cursor: pointer; }
 .g-node-dot { stroke: #FFFFFF; stroke-width: 2.5; filter: drop-shadow(0 2px 5px rgba(15, 27, 61, 0.18)); transition: stroke 0.15s; }

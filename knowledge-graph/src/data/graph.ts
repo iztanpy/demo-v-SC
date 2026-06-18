@@ -84,6 +84,19 @@ export const NODES: GraphNode[] = [
   { id: 'OUT-301', label: 'Outcome', title: 'Success', x: 570, y: 810, step: 1, props: { status: 'Success' } },
   { id: 'TECH-003', label: 'Technician', title: 'P. Subramaniam', x: 110, y: 750, step: 1, props: { name: 'P. Subramaniam', certifications: ['Sulzer BFP Maintenance'] } },
   { id: 'WORK-301', label: 'WorkOrder', title: 'WO · bearing replace', x: 130, y: 900, step: 1, props: { description: 'Bearing replacement' } },
+
+  // ── LIVE incident · JRG-CCGT-1 · BFP-3A — generated during the step-through (R4). ──
+  // Built full-size in the freed centre/right as history recedes. `step` = step it appears.
+  { id: 'LIVE-INC', label: 'Incident', title: 'JRG-CCGT-1 · Blk 2', x: 720, y: 470, step: 2, live: true, props: { location: 'Jurong-CCGT-1 · Block 2', datetime: '2026-05-27T02:47 SGT', asset: 'BFP-3A', status: 'Open' } },
+  { id: 'LIVE-DIA1', label: 'Diagnosis', title: 'Bearing race spalling', x: 940, y: 330, step: 2, live: true, props: { name: 'Bearing race spalling', confidence: 0.78, status: 'Incorrect', created_at: '2026-05-27T03:05 SGT', rationale: 'NDE vibration signature matched fleet bearing-spalling precedents' } },
+  { id: 'LIVE-WO1', label: 'WorkOrder', title: 'WO · bearing inspect', x: 1160, y: 250, step: 3, live: true, props: { description: 'Bearing inspection / replace' } },
+  { id: 'LIVE-TECH', label: 'Technician', title: 'Lim Wei Jie', x: 760, y: 250, step: 3, live: true, props: { name: 'Lim Wei Jie', certifications: ['Sulzer BFP Maintenance', 'ISO 10816-7 Vibration Analysis'] } },
+  { id: 'LIVE-CHK', label: 'ChecklistItem', title: 'Runout test', x: 1180, y: 400, step: 4, live: true, props: { task: 'Dial-indicator shaft runout test', completed: true, result: 'Runout 0.2 mm — out of tolerance' } },
+  { id: 'LIVE-CONV', label: 'Conversation', title: 'Lim ↔ Dr. Ismail', x: 960, y: 180, step: 4, live: true, props: { participants: ['Lim Wei Jie', 'Dr. A. Ismail'], summary: 'Bearing hypothesis challenged after runout finding; remote phase analysis confirms bent shaft', extracted_finding: '1×RPM-dominant + ~180° NDE-DE phase shift = bent shaft' } },
+  { id: 'LIVE-DIA2', label: 'Diagnosis', title: 'Bent shaft', x: 1000, y: 620, step: 6, live: true, props: { name: 'Bent shaft', confidence: 0.96, status: 'Confirmed', created_at: '2026-05-27T05:10 SGT', rationale: 'Dial-indicator runout + 1×RPM-dominant vibration with ~180° NDE-DE phase shift' } },
+  { id: 'LIVE-WO2', label: 'WorkOrder', title: 'WO · shaft replace', x: 1240, y: 660, step: 6, live: true, props: { description: 'Shaft straighten / replace', comments: 'NDE vibration dropped to 6.1 mm/s after replacement' } },
+  { id: 'LIVE-ROOT', label: 'RootCause', title: 'Bent shaft', x: 760, y: 700, step: 8, live: true, props: { description: 'Bent BFP-3A shaft causing elevated NDE vibration' } },
+  { id: 'LIVE-OUT', label: 'Outcome', title: 'Success · 6.1 mm/s', x: 1020, y: 820, step: 8, live: true, props: { status: 'Success', verification: 'NDE vibration stable at 6.1 mm/s over 24 h' } },
 ]
 
 export const EDGES: GraphEdge[] = [
@@ -119,4 +132,17 @@ export const EDGES: GraphEdge[] = [
   { source: 'INC-103', target: 'OUT-301', type: 'HAS_OUTCOME', step: 1 },
   { source: 'DIA-301', target: 'TECH-003', type: 'ASSIGNED_TO', step: 1 },
   { source: 'DIA-301', target: 'WORK-301', type: 'HAS_WORK_ORDER', step: 1 },
+
+  // ── LIVE incident edges (R4) — revealed at the later endpoint's step ──
+  { source: 'SYM-001', target: 'LIVE-INC', type: 'HAS_INCIDENT', step: 2, live: true },
+  { source: 'LIVE-INC', target: 'LIVE-DIA1', type: 'HAS_DIAGNOSIS', step: 2, live: true },
+  { source: 'LIVE-DIA1', target: 'LIVE-WO1', type: 'HAS_WORK_ORDER', step: 3, live: true },
+  { source: 'LIVE-DIA1', target: 'LIVE-TECH', type: 'ASSIGNED_TO', step: 3, live: true },
+  { source: 'LIVE-DIA1', target: 'LIVE-CHK', type: 'HAS_CHECKLIST_ITEM', step: 4, live: true },
+  { source: 'LIVE-DIA1', target: 'LIVE-CONV', type: 'HAS_CONVERSATION', step: 4, live: true },
+  { source: 'LIVE-INC', target: 'LIVE-DIA2', type: 'HAS_DIAGNOSIS', step: 6, live: true },
+  { source: 'LIVE-DIA2', target: 'LIVE-WO2', type: 'HAS_WORK_ORDER', step: 6, live: true },
+  { source: 'LIVE-DIA1', target: 'LIVE-DIA2', type: 'CORRECTED_BY', step: 7, live: true },
+  { source: 'LIVE-INC', target: 'LIVE-ROOT', type: 'HAS_ROOT_CAUSE', step: 8, live: true },
+  { source: 'LIVE-INC', target: 'LIVE-OUT', type: 'HAS_OUTCOME', step: 8, live: true },
 ]

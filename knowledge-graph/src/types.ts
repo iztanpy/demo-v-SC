@@ -75,6 +75,8 @@ export interface GraphNode {
   y: number
   /** first step at which this node is visible (W3 gating; ignored by static render) */
   step: number
+  /** true = part of the live incident generated during the step-through (R4) */
+  live?: boolean
 }
 
 export interface GraphEdge {
@@ -83,4 +85,6 @@ export interface GraphEdge {
   type: RelType
   /** first step at which this edge is visible */
   step: number
+  /** true = part of the live incident generated during the step-through (R4) */
+  live?: boolean
 }
