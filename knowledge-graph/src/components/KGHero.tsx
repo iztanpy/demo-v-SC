@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { NODES, EDGES, VIEWBOX, NODE_COLORS, NODE_LABELS, COL_HEADERS, DENSE_TRANSFORM } from '../data/graph'
 import type { GraphNode, GraphEdge, PropVal } from '../types'
 import { INCIDENTS, PATTERN_ROWS, GAPS, CHANGES, APPROVE_STEP } from '../data/incidents'
+import { STEPS } from '../data/steps'
+import { useStepTimeline } from '../useStepTimeline'
 import { useP2 } from '../store'
 
 // One bounded knowledge graph (no incident nodes). Proposed nodes/edges show as dashed
@@ -39,7 +41,15 @@ export function KGHero() {
   const approvedBatches = useP2((s) => s.approvedBatches)
   const [selectedId, setSelected] = useState<string | null>(null)
   const [selEdgeKey, setSelEdgeKey] = useState<string | null>(null)
+  const [ctxExpanded, setCtxExpanded] = useState<Record<string, boolean>>({})
   const selected = selectedId ? byId[selectedId] : null
+
+  // "agents working" gate for the centre panel (steps 4–6): while the step's skill(s) still
+  // pulse, show the reveal-dots theater; reveal the result once they're done.
+  const { done } = useStepTimeline(step)
+  const stepSkills = (STEPS[step - 1]?.sequence ?? []).flatMap((b) => b.skills.map((s) => s.id))
+  const panelWorking = step >= 4 && step <= 6 && stepSkills.length > 0 && !stepSkills.every((id) => done.has(id))
+  const toggleCtx = (id: string) => setCtxExpanded((p) => ({ ...p, [id]: !p[id] }))
   // a proposed element's batch is applied once we're past the approval step, OR at the
   // approval step and the reviewer has run that many batches in the dossier.
   const batchApplied = (b?: number) =>
@@ -50,8 +60,12 @@ export function KGHero() {
   const selEdge = selEdgeKey ? EDGES.find((e) => edgeKey(e) === selEdgeKey) ?? null : null
   const clearSel = () => { setSelected(null); setSelEdgeKey(null) }
 
-  const nodeVisible = (n: GraphNode) => n.state !== 'proposed' || step >= (n.proposeStep ?? 99)
-  const edgeVisible = (e: GraphEdge) => e.state !== 'proposed' || step >= (e.proposeStep ?? 99)
+  // A proposed element appears at its proposeStep — but on the proposeStep itself it waits for
+  // the "Drafting changes…" theater to finish, so it mounts (and draws/pops in) AFTER the agent
+  // drafts, not the instant the page opens. Fresh mount = the CSS draw-on / create animation fires.
+  const proposedReady = (ps?: number) => step > (ps ?? 99) || (step === (ps ?? 99) && !panelWorking)
+  const nodeVisible = (n: GraphNode) => n.state !== 'proposed' || proposedReady(n.proposeStep)
+  const edgeVisible = (e: GraphEdge) => e.state !== 'proposed' || proposedReady(e.proposeStep)
   const visNodes = NODES.filter(nodeVisible)
   const visEdges = EDGES.filter(edgeVisible)
 
@@ -113,6 +127,9 @@ export function KGHero() {
     const prob = isReweight && batchApplied(e.batch) && e.newProbability != null ? e.newProbability : e.probability
     const eState = e.state === 'proposed' ? (batchApplied(e.batch) ? 'applied' : 'proposed') : 'committed'
     const label = edgeLabel(e, prob)
+    // proposed edges draw on dotted via a per-edge mask (solid wipe reveals the dotted line)
+    const drawing = eState === 'proposed'
+    const maskId = `draw-${edgeKey(e)}`
     return (
       <g
         key={edgeKey(e)}
@@ -124,19 +141,36 @@ export function KGHero() {
         data-selected={selEdgeKey === edgeKey(e)}
         onClick={(ev) => { ev.stopPropagation(); setSelEdgeKey(edgeKey(e)); setSelected(null) }}
       >
+        {drawing && (
+          <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width="3000" height="2000">
+            <path className="kg-draw-wipe" d={d} />
+          </mask>
+        )}
         <path className="g-edge-hit" d={d} />
-        <path className="g-edge-line" d={d} />
+        <path className="g-edge-line" d={d} mask={drawing ? `url(#${maskId})` : undefined} />
         {label && !e.context && <text className="g-edge-label" x={mx} y={my} textAnchor="middle" dominantBaseline="middle">{label}</text>}
       </g>
     )
   }
 
-  // Gap callouts (step 4) — pin the two gaps onto the graph.
+  // Gap callouts (step 5) — pin the findings onto the graph: 2 knowledge gaps + 1 shortcut.
+  // Gated on the step-5 theater finishing (panelWorking) so the markers only land AFTER the
+  // agent "scan" completes, not the instant the page opens.
   function renderGaps() {
-    if (step !== 5) return null
+    if (step !== 5 || panelWorking) return null
     const casing = byId['RC-CASING-CRACK']
     const phase = byId['DT-PHASE'], bent = byId['RC-BENT-SHAFT']
+    const sym = byId['SYM-001'], runout = byId['DT-RUNOUT']
     const emx = (phase.x + bent.x) / 2, emy = (phase.y + bent.y) / 2
+    // shortcut preview: a dashed teal curve SYM-001 → DT-RUNOUT (mirrors the SHORTCUT edge that
+    // formally draws at step 6) so the "faster path" reads as an actual route, not a floating pill.
+    const dx = runout.x - sym.x, dy = runout.y - sym.y, len = Math.hypot(dx, dy) || 1
+    const K = 80
+    const cx = (sym.x + runout.x) / 2 + (dy / len) * K
+    const cy = (sym.y + runout.y) / 2 + (-dx / len) * K
+    const scd = `M ${sym.x} ${sym.y} Q ${cx} ${cy} ${runout.x} ${runout.y}`
+    const smx = 0.25 * sym.x + 0.5 * cx + 0.25 * runout.x
+    const smy = 0.25 * sym.y + 0.5 * cy + 0.25 * runout.y
     return (
       <g className="kg-gaps">
         <g transform={`translate(${casing.x},${casing.y})`}>
@@ -148,15 +182,34 @@ export function KGHero() {
           <rect className="kg-gap-pill" x={-92} y={-16} width={184} height={32} rx={16} />
           <text className="kg-gap-pill-text" textAnchor="middle" dominantBaseline="central">0.88 · contradicted 3/3</text>
         </g>
+        <path className="kg-gap-shortcut-line" d={scd} markerEnd="url(#kg-gap-arrow)" />
+        <g className="kg-gap-shortcut" transform={`translate(${smx},${smy})`}>
+          <rect className="kg-gap-pill" data-kind="shortcut" x={-104} y={-16} width={208} height={32} rx={16} />
+          <text className="kg-gap-pill-text" data-kind="shortcut" textAnchor="middle" dominantBaseline="central">⤳ faster path · skip triage</text>
+        </g>
       </g>
     )
   }
 
-  // Contextual panel (top-right): pattern stack · gaps · changeset, by step.
+  // Contextual panel (top-right): pattern stack · findings · changeset, by step.
+  // While the step's agent is "working", show the reveal-dots theater; then the result reveals.
   function renderContext() {
-    if (step === 4) {
+    if (panelWorking) {
+      const titleByStep: Record<number, string> = { 4: 'Synthesizing…', 5: 'Scanning the graph…', 6: 'Drafting changes…' }
       return (
         <div className="kg-context">
+          <div className="kg-context-title">{titleByStep[step]}</div>
+          <div className="kg-reveal">
+            <span className="reveal-dots"><span /><span /><span /></span>
+            <span className="reveal-msg">{STEPS[step - 1]?.live}</span>
+          </div>
+        </div>
+      )
+    }
+
+    if (step === 4) {
+      return (
+        <div className="kg-context reveal-in">
           <div className="kg-context-title">Pattern · 3 incidents</div>
           <table className="kg-pattern">
             <thead>
@@ -174,26 +227,47 @@ export function KGHero() {
         </div>
       )
     }
+
     if (step === 5) {
       return (
-        <div className="kg-context">
-          <div className="kg-context-title">Gaps found</div>
-          {GAPS.map((g) => (
-            <div className="kg-gap-row" key={g.id} data-kind={g.kind}>
-              <div className="kg-gap-head">{g.headline}</div>
-              <div className="kg-gap-ev">{g.evidence}</div>
-            </div>
-          ))}
+        <div className="kg-context reveal-in">
+          <div className="kg-context-title">Findings · 2 gaps + 1 shortcut</div>
+          {GAPS.map((g) => {
+            const isExp = !!ctxExpanded[g.id]
+            return (
+              <div className="kg-inc-chip kg-finding" data-kind={g.kind} key={g.id}>
+                <button className="kg-inc-chip-head" data-expanded={isExp} onClick={() => toggleCtx(g.id)}>
+                  <span className="kg-inc-chip-caret">▸</span>
+                  <span className="kg-inc-chip-text">
+                    <span className="kg-inc-chip-value">{g.headline}</span>
+                    <span className="kg-finding-ev">{g.evidence}</span>
+                  </span>
+                </button>
+                {isExp && (
+                  <div className="kg-inc-detail">
+                    <p className="kg-inc-detail-text">{g.detail}</p>
+                    <div className="kg-inc-refs">
+                      <div className="kg-inc-refs-label">References</div>
+                      {g.refs.map((r, i) => <div className="kg-inc-ref" key={i}>{r}</div>)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )
     }
+
     if (step >= 6 && step <= APPROVE_STEP) {
       const lines = CHANGES.filter((c) => step >= c.proposeStep)
-      const validated = step >= 7
+      // at step 7 the Validation Critic "runs" (reveal-dots below the list) before the ✓ ticks land
+      const validating = step === 7 && stepSkills.length > 0 && !stepSkills.every((id) => done.has(id))
+      const validated = step >= 7 && !validating
       const batchLabel: Record<number, string> = { 1: 'Batch 1 · new knowledge', 2: 'Batch 2 · efficiency' }
       const title = allApplied ? 'Changes applied ✓' : step === APPROVE_STEP ? 'Approving…' : 'Proposed KG changes'
       return (
-        <div className="kg-context kg-changeset" data-applied={allApplied}>
+        <div className="kg-context kg-changeset reveal-in" data-applied={allApplied}>
           <div className="kg-context-title">{title}</div>
           {[1, 2].map((b) => {
             const bl = lines.filter((c) => c.batch === b)
@@ -202,20 +276,42 @@ export function KGHero() {
             return (
               <div className="kg-batch" key={b} data-applied={bApplied}>
                 <div className="kg-batch-label">{batchLabel[b]}{bApplied ? ' · applied ✓' : ''}</div>
-                {bl.map((c) => (
-                  <div className="kg-change-row" key={c.id} data-validated={validated} data-applied={bApplied}>
-                    <div className="kg-change-head">
-                      <span className="kg-change-kind" data-kind={c.kind}>{c.kind === 'reweight' ? '~' : c.kind === 'shortcut' ? '⤳' : '+'}</span>
-                      <span className="kg-change-label">{c.label}</span>
-                      {(bApplied || validated) && <span className="kg-change-ok">✓</span>}
+                {bl.map((c) => {
+                  const isExp = !!ctxExpanded[c.id]
+                  return (
+                    <div className="kg-inc-chip kg-change" data-kind={c.kind} key={c.id}>
+                      <button className="kg-inc-chip-head" data-expanded={isExp} onClick={() => toggleCtx(c.id)}>
+                        <span className="kg-inc-chip-caret">▸</span>
+                        <span className="kg-inc-chip-text">
+                          <span className="kg-change-headrow">
+                            <span className="kg-change-kind" data-kind={c.kind}>{c.kind === 'reweight' ? '~' : c.kind === 'shortcut' ? '⤳' : '+'}</span>
+                            <span className="kg-inc-chip-value">{c.label}</span>
+                            {(bApplied || validated) && <span className="kg-change-ok">✓</span>}
+                          </span>
+                          <span className="kg-change-sub">{c.detail}</span>
+                        </span>
+                      </button>
+                      {isExp && (
+                        <div className="kg-inc-detail">
+                          <p className="kg-inc-detail-text">{c.quote}</p>
+                          <div className="kg-inc-refs">
+                            <div className="kg-inc-refs-label">References</div>
+                            <div className="kg-inc-ref">cites {c.cites.length} incident{c.cites.length > 1 ? 's' : ''} · {c.evidence}</div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="kg-change-detail">{c.detail}</div>
-                    <div className="kg-change-cites">cites {c.cites.length} incident{c.cites.length > 1 ? 's' : ''}</div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )
           })}
+          {validating && (
+            <div className="kg-reveal kg-validating">
+              <span className="reveal-dots"><span /><span /><span /></span>
+              <span className="reveal-msg">{STEPS[step - 1]?.live}</span>
+            </div>
+          )}
           {step === APPROVE_STEP && !allApplied && <div className="kg-applied-note">Review &amp; approve in the dossier →</div>}
           {allApplied && <div className="kg-applied-note">Reliability engineer approved · graph updated in place</div>}
         </div>
@@ -246,6 +342,11 @@ export function KGHero() {
           preserveAspectRatio="xMidYMid meet"
           onClick={clearSel}
         >
+          <defs>
+            <marker id="kg-gap-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--teal-header)" />
+            </marker>
+          </defs>
           <g
             className="kg-zoom"
             data-zoomed={step >= 2}

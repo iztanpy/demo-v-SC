@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { STEPS, TOTAL_STEPS } from '../data/steps'
 import { useP2 } from '../store'
 import { IncidentInbox } from './IncidentInbox'
@@ -8,6 +8,12 @@ export function Rail({ step }: { step: number }) {
   const copy = STEPS[step - 1]
   const toggleLeft = useP2((s) => s.toggleLeft)
   const [tab, setTab] = useState<'story' | 'inbox'>('story')
+
+  // auto-show the inbox when the week's incidents arrive + parse (steps 2–3); manual after
+  useEffect(() => {
+    if (step === 2 || step === 3) setTab('inbox')
+    else setTab('story')
+  }, [step])
 
   return (
     <aside id="p2-rail">

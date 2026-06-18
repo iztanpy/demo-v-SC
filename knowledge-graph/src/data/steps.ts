@@ -61,7 +61,7 @@ export const STEPS: StepCopy[] = [
     title: 'Surface the gaps + a shortcut',
     goal: 'what the graph can’t explain',
     body: 'Gap Detection maps the pattern onto the graph: a casing crack confirmed 3 / 3 with no node, and an over-weighted DT-PHASE → bent-shaft edge — plus a captured call where a technician skipped triage straight to the runout, a workflow shortcut worth keeping.',
-    sequence: [{ skills: [{ id: 'synth-gap', durMs: 1400 }] }],
+    sequence: [{ skills: [{ id: 'synth-gap', durMs: 800 }] }],
     handoffs: [{ from: 'synth', to: 'kg', label: 'compare to graph' }],
     live: 'Gap Detection pinning the pattern to the graph — two gaps and a shortcut light up.',
   },
@@ -73,8 +73,8 @@ export const STEPS: StepCopy[] = [
     sequence: [
       {
         skills: [
-          { id: 'curator-node', durMs: 1500 },
-          { id: 'curator-reweight', durMs: 1100 },
+          { id: 'curator-node', durMs: 800 },
+          { id: 'curator-reweight', durMs: 600 },
         ],
       },
     ],

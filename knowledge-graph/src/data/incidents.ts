@@ -8,11 +8,21 @@ import type { ProposedChange } from '../types'
 export type DocKind = 'report' | 'workflow' | 'transcript'
 
 export interface ExtractionChip {
-  /** which Intake skill pulled this finding (drives the skill tag) */
+  /** which Intake skill pulled this finding (the "worker" shown while parsing) */
   skill: string
   doc: DocKind
-  text: string
+  /** punchy condensed output: a short label + a short value (no long sentences) */
+  field: string
+  value: string
+  /** fuller finding shown when the chip's dropdown is expanded */
+  detail: string
+  /** provenance reference lines (source doc · locator + system + KG node it maps to) */
+  refs: string[]
 }
+
+// Artificially inflates the per-document parse/extract timings so the audience can watch
+// the agents "work" at step 3 (2 = twice as slow). Applied in useDocTimeline.
+export const PARSE_MULTIPLIER = 1.5
 
 export interface WeekIncident {
   id: string
@@ -35,9 +45,9 @@ export const INCIDENTS: WeekIncident[] = [
     asset: 'BFP-3A',
     date: '2026-05-20',
     chips: [
-      { skill: 'intake-report', doc: 'report', text: 'Root cause: casing weld-toe crack (60 mm, volute @ discharge) · fix: weld repair + PWHT · vib 8.4→5.9 mm/s' },
-      { skill: 'intake-workflow', doc: 'workflow', text: 'DT-PHASE: 1×RPM dominant → KG suggested bent shaft · DT-RUNOUT: in-tol (ruled out) · casing NDT (off-path) → crack found' },
-      { skill: 'intake-transcript', doc: 'transcript', text: 'Lim ↔ Dr. Ismail: “1×RPM + bursty harmonics near the discharge weld — volute crack, not a bent shaft”' },
+      { skill: 'intake-report', doc: 'report', field: 'Root cause', value: 'Casing weld-toe crack (volute)', detail: 'Casing weld-toe crack — ~60 mm hairline at the volute near the discharge weld. Repaired by weld + PWHT; NDE vibration fell 8.4 → 5.9 mm/s.', refs: ['Service report · §Root cause / Fix', 'Maximo · WO-4471 close-out', 'OSIsoft PI · NDE vib trend', '→ maps to RC-CASING-CRACK'] },
+      { skill: 'intake-workflow', doc: 'workflow', field: 'Test path', value: 'Phase→bent shaft ✗ · casing NDT ✓', detail: 'DT-PHASE flagged 1×RPM dominant → KG suggested bent shaft. DT-RUNOUT in-tolerance (ruled out). A casing NDT — off the KG’s path — found the crack.', refs: ['Workflow trace · SOP-BFP-VIBR-001', 'DT-PHASE, DT-RUNOUT results', '→ DT-PHASE, DT-RUNOUT, (new) DT-WELD-NDT'] },
+      { skill: 'intake-transcript', doc: 'transcript', field: 'Expert', value: 'Volute crack, not bent shaft', detail: 'Lim ↔ Dr. Ismail: 1×RPM with bursty harmonics near the discharge weld points to a volute crack, not a bent shaft.', refs: ['Call transcript · 07:23 SGT', 'Dr. A. Ismail · Offsite Expert', '→ RC-CASING-CRACK'] },
     ],
   },
   {
@@ -46,9 +56,9 @@ export const INCIDENTS: WeekIncident[] = [
     asset: 'BFP-2A',
     date: '2026-05-16',
     chips: [
-      { skill: 'intake-report', doc: 'report', text: 'Root cause: casing crack near discharge flange · fix: weld + PWHT · vib 7.9→5.6 mm/s' },
-      { skill: 'intake-workflow', doc: 'workflow', text: 'DT-PHASE → bent shaft (0.88) · DT-ALIGNMENT: in-tol · visual inspection → weld crack' },
-      { skill: 'intake-transcript', doc: 'transcript', text: 'J. Tan ↔ expert: “phase read like shaft bow but alignment was clean — found a hairline at the volute”' },
+      { skill: 'intake-report', doc: 'report', field: 'Root cause', value: 'Casing crack @ discharge flange', detail: 'Casing crack near the discharge flange. Repaired by weld + PWHT; NDE vibration fell 7.9 → 5.6 mm/s.', refs: ['Service report · §Root cause / Fix', 'Maximo · WO-4392 close-out', '→ maps to RC-CASING-CRACK'] },
+      { skill: 'intake-workflow', doc: 'workflow', field: 'Test path', value: 'Phase→bent shaft ✗ · inspect ✓', detail: 'DT-PHASE indicated bent shaft (0.88). DT-ALIGNMENT in-tolerance. A visual inspection found the weld crack.', refs: ['Workflow trace · SOP-BFP-VIBR-001', 'DT-PHASE, DT-ALIGNMENT results', '→ DT-PHASE, DT-ALIGNMENT'] },
+      { skill: 'intake-transcript', doc: 'transcript', field: 'Expert', value: 'Alignment clean — hairline at volute', detail: 'J. Tan ↔ expert: phase read like shaft bow, but alignment was clean — a hairline was found at the volute.', refs: ['Call transcript · 14:05 SGT', 'J. Tan · Onsite', '→ RC-CASING-CRACK'] },
     ],
   },
   {
@@ -57,9 +67,9 @@ export const INCIDENTS: WeekIncident[] = [
     asset: 'BFP-1A',
     date: '2026-05-18',
     chips: [
-      { skill: 'intake-report', doc: 'report', text: 'Root cause: volute hairline crack · fix: weld repair · vib 8.1→5.8 mm/s' },
-      { skill: 'intake-workflow', doc: 'workflow', text: 'DT-PHASE → bent shaft · DT-RUNOUT: borderline · dye-penetrant → crack confirmed' },
-      { skill: 'intake-transcript', doc: 'transcript', text: 'S. Ibrahim note: “casing fatigue, recurring on Sulzer BFP discharge welds”' },
+      { skill: 'intake-report', doc: 'report', field: 'Root cause', value: 'Volute hairline crack', detail: 'Volute hairline crack. Repaired by weld; NDE vibration fell 8.1 → 5.8 mm/s.', refs: ['Service report · §Root cause / Fix', 'Maximo · WO-4310 close-out', '→ maps to RC-CASING-CRACK'] },
+      { skill: 'intake-workflow', doc: 'workflow', field: 'Test path', value: 'Phase→bent shaft ✗ · dye-penetrant ✓', detail: 'DT-PHASE indicated bent shaft. DT-RUNOUT borderline. Dye-penetrant inspection confirmed the crack.', refs: ['Workflow trace · SOP-BFP-VIBR-001', 'DT-PHASE, DT-RUNOUT results', '→ DT-PHASE, DT-RUNOUT, (new) DT-WELD-NDT'] },
+      { skill: 'intake-transcript', doc: 'transcript', field: 'Expert', value: 'Casing fatigue on discharge welds', detail: 'S. Ibrahim: casing fatigue recurring on Sulzer BFP discharge welds across the fleet.', refs: ['Call transcript · 09:40 SGT', 'S. Ibrahim · Onsite', '→ RC-CASING-CRACK'] },
     ],
   },
 ]
@@ -76,18 +86,23 @@ export const PATTERN_ROWS: PatternRow[] = [
   { label: 'Found by', cells: ['Casing NDT', 'Visual inspect', 'Dye-penetrant'] },
 ]
 
-// Two gaps Gap Detection draws onto the KG (step 4); each becomes a changeset line.
+// Findings Gap Detection draws onto the KG (step 5); each becomes a changeset line:
+// two knowledge gaps (add a node, re-weight an edge) + one efficiency shortcut.
 export interface DerivedGap {
   id: string
-  kind: 'add' | 'reweight'
+  kind: 'add' | 'reweight' | 'shortcut'
   headline: string
   evidence: string
   /** node or edge the callout pins to on the graph */
   target: string
+  /** fuller finding + provenance, shown in the dropdown */
+  detail: string
+  refs: string[]
 }
 export const GAPS: DerivedGap[] = [
-  { id: 'gap-node', kind: 'add', headline: 'Casing crack has no root-cause node', evidence: 'confirmed 3/3 reports', target: 'RC-CASING-CRACK' },
-  { id: 'gap-reweight', kind: 'reweight', headline: 'DT-PHASE → bent shaft over-weighted', evidence: 'contradicted 3/3', target: 'DT-PHASE>RC-BENT-SHAFT' },
+  { id: 'gap-node', kind: 'add', headline: 'Casing crack has no root-cause node', evidence: 'confirmed 3/3 reports', target: 'RC-CASING-CRACK', detail: 'A casing / weld crack was the confirmed cause in all three incidents, yet the graph has no root cause to hold it — and the test that catches it is off the graph’s path.', refs: ['Service reports · 3 / 3', 'OSIsoft PI · vib deltas', '→ add RC-CASING-CRACK + DT-WELD-NDT'] },
+  { id: 'gap-reweight', kind: 'reweight', headline: 'DT-PHASE → bent shaft over-weighted', evidence: 'contradicted 3/3', target: 'DT-PHASE>RC-BENT-SHAFT', detail: 'DT-PHASE points at bent shaft at 0.88, but bent shaft was ruled out in every incident — phase over-attributes the 1×RPM signature that casing fatigue mimics.', refs: ['Workflow traces · 3 / 3', 'SOP-BFP-VIBR-001', '→ re-weight 0.88 → 0.70'] },
+  { id: 'gap-shortcut', kind: 'shortcut', headline: 'Faster path — triage skipped to the runout', evidence: 'captured on a call', target: 'SYM-001>DT-RUNOUT', detail: 'On a call a technician skipped phase triage and went straight to the runout — and it held up. Worth capturing as a faster route for this symptom.', refs: ['Call transcript · INC-2026-0537', '→ add SYM-001 → DT-RUNOUT shortcut'] },
 ]
 
 // The changeset the Curator drafts (steps 5–6), validated at 7, applied at 8.

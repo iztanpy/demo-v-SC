@@ -313,10 +313,20 @@ body {
 .kg-zoom[data-zoomed="true"] .g-node[data-context="true"],
 .kg-zoom[data-zoomed="true"] .g-edge[data-context="true"] { opacity: 0.1; }
 
-/* proposed edges — dashed/ghost until approval */
-.g-edge[data-state="proposed"] .g-edge-line { stroke-dasharray: 8 6; opacity: 0.85; stroke: var(--green-vivid); }
-.g-edge[data-state="proposed"] .g-edge-label { fill: var(--green-deep); font-style: italic; }
+/* proposed edges — dotted/ghost until approval. The line itself is static dotted; a solid
+   white "wipe" path inside a per-edge mask draws on (dashoffset) to reveal it front→back,
+   so it never looks like a solid line while drawing. */
+.g-edge[data-state="proposed"] .g-edge-line {
+  stroke-dasharray: 1.5 7; stroke-linecap: round; opacity: 0.85; stroke: var(--green-vivid);
+}
+.g-edge[data-state="proposed"] .g-edge-label { fill: var(--green-deep); font-style: italic; animation: kg-fade-in 0.4s ease 1.7s backwards; }
 .g-edge[data-state="applied"] .g-edge-line { animation: kg-apply-flash 700ms ease-out; }
+/* the mask wipe: one big solid dash revealed via dashoffset = classic line-draw; held open
+   (forwards) so the dotted line stays fully revealed at steps 7–8. */
+.kg-draw-wipe { fill: none; stroke: #fff; stroke-width: 16; stroke-linecap: round;
+  stroke-dasharray: 1000; stroke-dashoffset: 1000; animation: kg-edge-draw 3.5s ease-out 0.3s forwards; }
+@keyframes kg-edge-draw { to { stroke-dashoffset: 0; } }
+@keyframes kg-fade-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* the re-weight target edge — pending highlight, then flip-flash on approval */
 .g-edge[data-reweight="pending"] .g-edge-line { stroke: var(--amber-vivid); stroke-width: 2.4; opacity: 0.9; stroke-dasharray: 6 4; }
@@ -335,11 +345,18 @@ body {
   fill: var(--text-muted); text-transform: uppercase; paint-order: stroke; stroke: #fff; stroke-width: 3px;
 }
 
-/* proposed node — dashed ghost ring + faded fill until approved */
+/* proposed node — dashed ghost ring + faded fill until approved; pops into being at step 6 */
 .g-node[data-state="proposed"] .g-node-dot {
   fill-opacity: 0.28; stroke: var(--green-vivid); stroke-width: 2.5; stroke-dasharray: 7 5;
+  animation: kg-node-create 0.55s cubic-bezier(0.2,0.85,0.25,1) both;
 }
+.g-node[data-state="proposed"] { animation: kg-fade-in 0.5s ease both; }
 .g-node[data-state="proposed"] .g-node-label { fill: var(--text-muted); }
+@keyframes kg-node-create {
+  0%   { transform: scale(0); }
+  65%  { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
 .g-node-proposed {
   font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: 0.3px;
   fill: var(--green-deep); text-transform: uppercase;
@@ -361,6 +378,11 @@ body {
 .kg-gap-label { font-family: var(--mono); font-size: 11px; font-weight: 700; fill: var(--red-vivid); }
 .kg-gap-pill { fill: #FEF2F2; stroke: var(--red-vivid); stroke-width: 1.5; }
 .kg-gap-pill-text { font-family: var(--mono); font-size: 11px; font-weight: 700; fill: var(--red-vivid); }
+.kg-gap-pill[data-kind="shortcut"] { fill: #ECFEFF; stroke: var(--teal-header); }
+.kg-gap-pill-text[data-kind="shortcut"] { fill: var(--teal-deep); }
+.kg-gap-shortcut-line { fill: none; stroke: var(--teal-header); stroke-width: 3; stroke-dasharray: 9 6; opacity: 0.85; }
+.kg-gaps { animation: kg-gaps-in 0.4s ease-out both; }
+@keyframes kg-gaps-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* contextual panel (top-right): pattern stack · gaps · changeset */
 .kg-context {
@@ -380,11 +402,21 @@ body {
 
 .kg-gap-row { border-left: 3px solid var(--red-vivid); padding: 6px 10px; margin-bottom: 8px; background: #FEF2F2; border-radius: 0 8px 8px 0; }
 .kg-gap-row[data-kind="reweight"] { border-left-color: var(--amber-vivid); background: #FFFBEB; }
+.kg-gap-row[data-kind="shortcut"] { border-left-color: var(--teal-header); background: #ECFEFF; }
 .kg-gap-head { font-size: 12.5px; font-weight: 700; color: var(--text-primary); line-height: 1.3; }
 .kg-gap-ev { font-family: var(--mono); font-size: 10.5px; color: var(--text-muted); margin-top: 2px; }
 
 .kg-batch { margin-bottom: 6px; }
 .kg-batch-label { font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: var(--text-muted); margin: 8px 0 5px; }
+/* findings / changeset reuse the inbox chip look (kg-inc-chip*) with kind-coloured borders */
+.kg-finding, .kg-change { margin-bottom: 7px; }
+.kg-finding[data-kind="add"], .kg-change[data-kind="add-node"] { border-left-color: var(--red-vivid); }
+.kg-finding[data-kind="reweight"], .kg-change[data-kind="reweight"] { border-left-color: var(--amber-vivid); }
+.kg-finding[data-kind="shortcut"], .kg-change[data-kind="shortcut"] { border-left-color: var(--teal-header); }
+.kg-finding-ev { display: block; font-family: var(--mono); font-size: 9.5px; font-weight: 700; color: var(--text-muted); margin-top: 2px; }
+.kg-change-headrow { display: flex; align-items: center; gap: 6px; }
+.kg-change-sub { display: block; font-size: 10.5px; line-height: 1.35; color: var(--text-muted); margin-top: 3px; }
+
 .kg-change-row { border: 1px solid var(--border-subtle); border-radius: 9px; padding: 9px 11px; margin-bottom: 8px; }
 .kg-change-row[data-validated="true"] { border-color: var(--green-vivid); box-shadow: 0 0 0 1px var(--green-soft); }
 .kg-change-head { display: flex; align-items: center; gap: 7px; }
@@ -420,24 +452,37 @@ body {
 .kg-inc-card[data-state="parsed"] { border-left-color: var(--amber-vivid); }
 .kg-inc-card[data-state="archived"] { border-left-color: var(--slate); }
 .kg-inc-head { font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; }
-.kg-inc-docs { display: flex; flex-direction: column; gap: 5px; }
-.kg-inc-doc-name { font-size: 10.5px; font-weight: 700; color: var(--text-muted); }
-.kg-inc-doc[data-parsed="true"] .kg-inc-doc-name { color: var(--text-secondary); }
-.kg-inc-chip { margin-top: 2px; padding: 4px 6px; background: var(--bg-pane); border-radius: 6px; animation: kg-chip-in 0.5s ease both; }
-@keyframes kg-chip-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-/* streaming shimmer on the skill tag as data lands */
-.kg-inc-chip-skill { position: relative; overflow: hidden; }
-.kg-inc-chip-skill::after {
-  content: ''; position: absolute; inset: 0; border-radius: 4px;
-  background: linear-gradient(90deg, transparent, rgba(37,99,235,0.25), transparent);
-  transform: translateX(-100%); animation: kg-shimmer 1.1s ease-out 1;
-}
-@keyframes kg-shimmer { to { transform: translateX(100%); } }
-.kg-inc-chip-skill {
-  display: inline-block; font-family: var(--mono); font-size: 8.5px; font-weight: 700; letter-spacing: 0.2px;
-  color: var(--blue-vivid); background: #EFF6FF; border-radius: 4px; padding: 1px 5px; margin-bottom: 2px;
-}
-.kg-inc-chip-text { display: block; font-size: 10.5px; line-height: 1.35; color: var(--text-secondary); }
+.kg-inc-docs { display: flex; flex-direction: column; gap: 7px; }
+.kg-inc-doc-top { display: flex; align-items: center; gap: 6px; }
+.kg-inc-doc-name { font-size: 10.5px; font-weight: 700; color: var(--text-secondary); }
+.kg-inc-queued { margin-left: auto; font-family: var(--mono); font-size: 9px; color: var(--text-muted); opacity: 0.6; }
+.kg-inc-tick { margin-left: auto; color: var(--green-vivid); font-weight: 800; font-size: 12px; }
+
+/* reveal-dots "working" theater (ported from app.js Part 1) */
+.kg-reveal { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.reveal-dots { display: inline-flex; gap: 4px; flex-shrink: 0; }
+.reveal-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--green-vivid); opacity: 0.4; animation: reveal-dot 1.2s ease-in-out infinite; }
+.reveal-dots span:nth-child(2) { animation-delay: 0.2s; }
+.reveal-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes reveal-dot { 0%, 100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 1; transform: scale(1.3); } }
+.reveal-msg { font-size: 11px; font-style: italic; color: var(--text-secondary); line-height: 1.4; }
+.reveal-agent { font-weight: 700; color: var(--text-primary); font-style: normal; }
+@keyframes reveal-slide { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.reveal-in { animation: reveal-slide 0.35s ease-out both; }
+
+/* condensed field · value result + dropdown disclosure (app.js rationale-toggle pattern) */
+.kg-inc-chip { margin-top: 4px; background: var(--bg-pane); border-left: 2px solid var(--green-vivid); border-radius: 0 6px 6px 0; }
+.kg-inc-chip-head { display: flex; align-items: flex-start; gap: 6px; width: 100%; text-align: left; background: transparent; border: none; cursor: pointer; padding: 5px 8px; font-family: inherit; }
+.kg-inc-chip-caret { color: var(--text-muted); font-size: 9px; margin-top: 3px; transition: transform 0.2s; }
+.kg-inc-chip-head[data-expanded="true"] .kg-inc-chip-caret { transform: rotate(90deg); }
+.kg-inc-chip-text { flex: 1 1 auto; min-width: 0; }
+.kg-inc-chip-field { display: block; font-family: var(--mono); font-size: 8.5px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; color: var(--text-muted); }
+.kg-inc-chip-value { display: block; font-size: 11.5px; font-weight: 600; color: var(--text-primary); line-height: 1.3; margin-top: 1px; }
+.kg-inc-detail { padding: 0 8px 8px 22px; }
+.kg-inc-detail-text { font-size: 11px; line-height: 1.45; color: var(--text-secondary); margin: 2px 0 7px; }
+.kg-inc-refs-label { font-family: var(--mono); font-size: 8.5px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 3px; }
+.kg-inc-ref { font-family: var(--mono); font-size: 10px; line-height: 1.5; color: var(--text-secondary); }
+.kg-inc-ref:last-child { color: var(--green-deep); font-weight: 700; }
 
 /* Inspector — floating property panel (click a node) */
 .kg-inspector {
