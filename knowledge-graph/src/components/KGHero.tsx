@@ -1,18 +1,14 @@
 import { useState } from 'react'
 import { NODES, EDGES, VIEWBOX, NODE_COLORS, NODE_LABELS, COL_HEADERS, DENSE_TRANSFORM } from '../data/graph'
 import type { GraphNode, GraphEdge, PropVal } from '../types'
-import { INCIDENTS, DOC_LABEL, PATTERN_ROWS, GAPS, CHANGES, APPROVE_STEP } from '../data/incidents'
-import type { DocKind } from '../data/incidents'
-import { SKILLS } from '../data/agents'
+import { INCIDENTS, PATTERN_ROWS, GAPS, CHANGES, APPROVE_STEP } from '../data/incidents'
 import { useP2 } from '../store'
 
 // One bounded knowledge graph (no incident nodes). Proposed nodes/edges show as dashed
 // `PROPOSED · not applied` previews from their proposeStep and only SOLIDIFY once a human
-// approves at APPROVE_STEP (8). Incidents live OUTSIDE the graph in the inbox strip.
+// approves at APPROVE_STEP (8). Incidents live OUTSIDE the graph (left-pane inbox tab).
 const R = 30
-const DOCS: DocKind[] = ['report', 'workflow', 'transcript']
 const byId = Object.fromEntries(NODES.map((n) => [n.id, n])) as Record<string, GraphNode>
-const skillName = (id: string) => SKILLS.find((s) => s.id === id)?.name ?? id
 
 // edge-type → chip colour for the edge inspector
 const EDGE_COLOR: Record<string, string> = {
@@ -228,9 +224,6 @@ export function KGHero() {
     return null
   }
 
-  const inboxState = step < 3 ? 'queued' : allApplied ? 'archived' : 'parsed'
-  const parsed = step >= 3
-
   return (
     <div className="kg-wrap">
       <div className="kg-stage">
@@ -328,38 +321,6 @@ export function KGHero() {
           )
         })()}
       </div>
-
-      {!focusGraph && step >= 2 && (
-      <div className="kg-inbox" data-state={inboxState}>
-        <div className="kg-inbox-label">
-          Incident inbox · documents, <em>not</em> graph nodes
-          <span className="kg-inbox-state">{inboxState}</span>
-        </div>
-        <div className="kg-inbox-cards">
-          {INCIDENTS.map((inc, ii) => (
-            <div className="kg-inc-card" data-state={inboxState} key={inc.id}>
-              <div className="kg-inc-head">{inc.id} · {inc.plant} · {inc.asset}</div>
-              <div className="kg-inc-docs">
-                {DOCS.map((doc, di) => {
-                  const chip = inc.chips.find((c) => c.doc === doc)
-                  return (
-                    <div className="kg-inc-doc" key={doc} data-parsed={parsed}>
-                      <span className="kg-inc-doc-name">{DOC_LABEL[doc]}</span>
-                      {parsed && chip && (
-                        <div className="kg-inc-chip" style={{ animationDelay: `${(ii * 3 + di) * 0.16}s` }}>
-                          <span className="kg-inc-chip-skill">{skillName(chip.skill)}</span>
-                          <span className="kg-inc-chip-text">{chip.text}</span>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-      )}
     </div>
   )
 }
