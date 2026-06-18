@@ -1,7 +1,8 @@
 import { useP2, TOTAL_STEPS } from './store'
 import { STEPS } from './data/steps'
 import { Rail } from './components/Rail'
-import { AgentConstellation } from './components/AgentConstellation'
+import { AgentSidebar } from './components/AgentSidebar'
+import { KGHero } from './components/KGHero'
 
 export default function App() {
   const step = useP2((s) => s.step)
@@ -25,9 +26,9 @@ export default function App() {
       <main id="p2-grid">
         <Rail step={step} />
         <section id="p2-kg-hero">
-          <div className="p2-hero-placeholder">KG hero renders here · step {step} (W2)</div>
+          <KGHero />
         </section>
-        <AgentConstellation activeAgents={copy.activeAgents} live={copy.live} />
+        <AgentSidebar activeAgents={copy.activeAgents} live={copy.live} />
       </main>
 
       <footer id="p2-nav">

@@ -102,7 +102,7 @@ body {
 .p2-dot.p2-dot-current { background: var(--green-vivid); }
 .p2-mantra { font-size: 11px; color: var(--text-muted); font-style: italic; line-height: 1.4; }
 
-/* ── Agent constellation (right panel) ── */
+/* ── Agent sidebar (right panel) ── */
 #p2-agent-panel {
   background: var(--bg-pane);
   border-left: 1px solid var(--border-subtle);
@@ -113,15 +113,62 @@ body {
   font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
   color: var(--text-muted); margin-bottom: 8px;
 }
-.p2-constellation { flex: 1 1 auto; width: 100%; min-height: 0; }
-.p2-orb-label { font-family: var(--sans); font-size: 10.5px; transition: fill 0.25s; }
-.p2-orch-label {
-  font-family: var(--mono); font-size: 9.5px; font-weight: 700; letter-spacing: 1px;
-  fill: var(--green-deep);
+
+.p2-agent-list {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 10px;
 }
-.p2-orb-halo { opacity: 0; transition: opacity 0.3s; }
-.p2-orb-active .p2-orb-halo { opacity: 0.28; animation: p2-halo-pulse 1.7s ease-in-out infinite; }
-@keyframes p2-halo-pulse { 0%, 100% { opacity: 0.15; } 50% { opacity: 0.42; } }
+
+/* agent card — dim by default, lights to its team colour when active */
+.p2-agent-card {
+  --agent-color: var(--slate);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.25s, box-shadow 0.25s, opacity 0.25s;
+  opacity: 0.72;
+}
+.p2-agent-card[data-on="true"] {
+  border-left-color: var(--agent-color);
+  box-shadow: 0 0 0 1px var(--agent-color), var(--shadow-card);
+  opacity: 1;
+}
+
+.p2-agent-head { display: flex; align-items: center; gap: 9px; }
+.p2-agent-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--slate); flex: 0 0 auto; transition: background 0.25s;
+}
+.p2-agent-card[data-on="true"] .p2-agent-dot {
+  background: var(--agent-color);
+  animation: p2-halo-pulse 1.6s ease-in-out infinite;
+}
+.p2-agent-name { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.p2-agent-verb {
+  margin-left: auto; font-family: var(--mono); font-size: 10.5px;
+  color: var(--text-muted); font-style: italic;
+}
+
+.p2-skill-list { margin-top: 10px; display: flex; flex-direction: column; gap: 9px; }
+.p2-skill-row { display: flex; align-items: flex-start; gap: 8px; padding-left: 1px; }
+.p2-skill-tick {
+  width: 5px; height: 5px; border-radius: 50%; margin-top: 5px;
+  background: var(--border-subtle); flex: 0 0 auto; transition: background 0.25s;
+}
+.p2-skill-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.p2-skill-name {
+  font-size: 12.5px; color: var(--text-muted); font-weight: 500; transition: color 0.25s, font-weight 0.25s;
+}
+.p2-skill-role {
+  font-size: 11px; line-height: 1.35; color: var(--text-muted); opacity: 0.78;
+}
+.p2-skill-row[data-on="true"] .p2-skill-tick { background: var(--agent-color); }
+.p2-skill-row[data-on="true"] .p2-skill-name { color: var(--text-primary); font-weight: 600; }
+
+@keyframes p2-halo-pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
 
 .p2-live-caption {
   display: flex; align-items: flex-start; gap: 8px; margin-top: 10px;
@@ -140,36 +187,73 @@ body {
   display: flex; align-items: center; justify-content: center;
   overflow: hidden; flex: 1 1 auto; min-height: 0;
 }
+.kg-wrap { position: relative; width: 100%; height: 100%; }
 .kg-svg { width: 100%; height: 100%; }
-.p2-hero-placeholder { color: var(--text-muted); font-family: var(--mono); font-size: 14px; }
 
-/* edges */
-.kg-edge { stroke: var(--slate); stroke-width: 2; opacity: 0.55; }
-.kg-edge[data-kind="corrected-by"] {
+/* legend — node types */
+.kg-legend {
+  position: absolute; bottom: 12px; right: 12px; z-index: 2;
+  background: rgba(255, 255, 255, 0.92); border: 1px solid var(--border-subtle);
+  border-radius: 10px; padding: 10px 12px; box-shadow: var(--shadow-card);
+  display: flex; flex-direction: column; gap: 5px;
+  font-size: 11px; font-weight: 600; color: var(--text-secondary);
+}
+.kg-legend-row { display: flex; align-items: center; gap: 7px; }
+.kg-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+
+/* edges — typed relationships */
+.g-edge-line { stroke: var(--slate); stroke-width: 1.4; opacity: 0.45; }
+.g-edge-label {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.3px;
+  fill: var(--text-muted); opacity: 0.7;
+}
+.g-edge[data-type="CORRECTED_BY"] .g-edge-line {
   stroke: var(--red-vivid); stroke-width: 2.5; stroke-dasharray: 7 5; opacity: 0.95;
 }
-.kg-edge-label { font-family: var(--mono); font-size: 12px; font-weight: 700; fill: var(--red-vivid); }
+.g-edge[data-type="CORRECTED_BY"] .g-edge-label { fill: var(--red-vivid); font-weight: 700; opacity: 1; }
 
-/* nodes */
-.kg-node-box {
-  fill: var(--bg-card); stroke: var(--slate); stroke-width: 2;
-  filter: drop-shadow(0 2px 6px rgba(15, 27, 61, 0.10));
+/* nodes — type-coloured circles */
+.g-node { cursor: pointer; }
+.g-node-dot { stroke: #FFFFFF; stroke-width: 2.5; filter: drop-shadow(0 2px 5px rgba(15, 27, 61, 0.18)); transition: stroke 0.15s; }
+.g-node[data-selected="true"] .g-node-dot { stroke: var(--text-primary); stroke-width: 4; }
+.g-node[data-selected="true"] .g-node-label { fill: var(--text-primary); }
+.g-node-label { font-family: var(--sans); font-size: 13px; font-weight: 700; fill: var(--text-primary); }
+.g-node-type {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.4px;
+  fill: var(--text-muted); text-transform: uppercase;
 }
-.kg-node-title { font-family: var(--sans); font-size: 14px; font-weight: 700; fill: var(--text-primary); }
-.kg-node-sub { font-family: var(--mono); font-size: 11.5px; fill: var(--text-muted); }
 
-.kg-node[data-state="history"] .kg-node-bar { fill: var(--slate); }
-.kg-node[data-state="proposed"] .kg-node-bar { fill: var(--amber-vivid); }
-.kg-node[data-state="proposed"] .kg-node-box { stroke: var(--amber-vivid); }
-.kg-node[data-state="selected"] .kg-node-bar { fill: var(--emerald); }
-.kg-node[data-state="selected"] .kg-node-box { stroke: var(--emerald); }
-.kg-node[data-state="confirmed"] .kg-node-bar { fill: var(--blue-vivid); }
-.kg-node[data-state="confirmed"] .kg-node-box { stroke: var(--blue-vivid); }
-.kg-node[data-state="incorrect"] .kg-node-bar { fill: var(--red-vivid); }
-.kg-node[data-state="incorrect"] .kg-node-box { stroke: var(--red-vivid); stroke-dasharray: 6 4; }
-.kg-node[data-state="incorrect"] .kg-node-title { fill: var(--red-vivid); }
-.kg-node[data-state="success"] .kg-node-bar { fill: var(--green-vivid); }
-.kg-node[data-state="success"] .kg-node-box { stroke: var(--green-vivid); }
+/* diagnosis status ring */
+.g-node-ring { fill: none; stroke-width: 2.5; }
+.g-node[data-status="Incorrect"] .g-node-ring { stroke: var(--red-vivid); stroke-dasharray: 5 4; }
+.g-node[data-status="Incorrect"] .g-node-label { fill: var(--red-vivid); }
+.g-node[data-status="Confirmed"] .g-node-ring { stroke: var(--green-vivid); }
+
+/* Inspector — floating property panel (click a node) */
+.kg-inspector {
+  position: absolute; top: 16px; right: 16px; z-index: 3;
+  width: 290px; max-height: 72%; overflow-y: auto;
+  background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 12px;
+  box-shadow: var(--shadow-card-lg); padding: 14px 16px;
+}
+.kg-inspector-head { display: flex; align-items: center; gap: 8px; }
+.kg-inspector-chip {
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase;
+  color: #FFFFFF; padding: 3px 9px; border-radius: 999px;
+}
+.kg-inspector-id { font-family: var(--mono); font-size: 11.5px; color: var(--text-muted); }
+.kg-inspector-close {
+  margin-left: auto; border: none; background: none; cursor: pointer;
+  font-size: 20px; line-height: 1; color: var(--text-muted); padding: 0 2px;
+}
+.kg-inspector-close:hover { color: var(--text-primary); }
+.kg-inspector-title { font-size: 15px; font-weight: 700; color: var(--text-primary); margin: 10px 0 12px; line-height: 1.3; }
+.kg-inspector-props { margin: 0; display: flex; flex-direction: column; gap: 9px; }
+.kg-inspector-prop dt {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.3px; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: 2px;
+}
+.kg-inspector-prop dd { margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--text-secondary); }
 
 /* ── Report ── */
 #p2-report {

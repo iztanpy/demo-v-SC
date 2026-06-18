@@ -10,7 +10,8 @@ export interface TeamDef {
   color: string
 }
 
-export interface AgentDef {
+/** a single skill belonging to one agent (team). Skills light per step. */
+export interface SkillDef {
   id: string
   name: string
   role: string
@@ -28,7 +29,7 @@ export interface StepCopy {
   title: string
   goal: string
   body: string
-  /** member agent ids that light inside the hubs this step */
+  /** skill ids that light inside their agent this step */
   activeAgents: string[]
   /** data packets that animate between hubs / KG this step */
   handoffs: Handoff[]
@@ -38,32 +39,48 @@ export interface StepCopy {
   live: string
 }
 
-// ── Knowledge-graph cluster ──
-export type NodeState =
-  | 'history'
-  | 'proposed'
-  | 'selected'
-  | 'confirmed'
-  | 'incorrect'
-  | 'success'
+// ── Property-graph model (mirrors cypher_queries/relevant_nodes.cypher) ──
+export type NodeLabel =
+  | 'Symptom'
+  | 'Incident'
+  | 'Diagnosis'
+  | 'RootCause'
+  | 'Outcome'
+  | 'Technician'
+  | 'WorkOrder'
+  | 'Conversation'
+  | 'ChecklistItem'
 
-export interface KGNode {
+export type RelType =
+  | 'HAS_INCIDENT'
+  | 'HAS_DIAGNOSIS'
+  | 'HAS_ROOT_CAUSE'
+  | 'HAS_OUTCOME'
+  | 'ASSIGNED_TO'
+  | 'HAS_WORK_ORDER'
+  | 'HAS_CONVERSATION'
+  | 'HAS_CHECKLIST_ITEM'
+  | 'CORRECTED_BY'
+
+export type PropVal = string | number | boolean | string[]
+
+export interface GraphNode {
   id: string
+  label: NodeLabel
+  /** short headline rendered under the node circle */
   title: string
-  sub: string
-  state: NodeState
-  cx: number
-  cy: number
-  /** first step at which this node is visible */
+  /** full cypher properties, surfaced in the Inspector panel (R2) */
+  props: Record<string, PropVal>
+  x: number
+  y: number
+  /** first step at which this node is visible (W3 gating; ignored by static render) */
   step: number
 }
 
-export type EdgeKind = 'normal' | 'corrected-by'
-
-export interface KGEdge {
+export interface GraphEdge {
   source: string
   target: string
-  kind: EdgeKind
+  type: RelType
   /** first step at which this edge is visible */
   step: number
 }
