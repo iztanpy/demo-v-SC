@@ -1,31 +1,30 @@
 import type { TeamDef, SkillDef } from '../types'
 
-// 4 agents · four-verb spine: documentation captures · data finds · evaluator judges · output produces
+// 4 agents · ingest → analyze → recommend → validate spine (+ a human approval gate).
+// Mantra: documents in · patterns found · edits proposed · human approves.
 export const TEAMS: TeamDef[] = [
-  { key: 'doc', label: 'Documentation', verb: 'captures', color: '#F59E0B' },
-  { key: 'data', label: 'Data', verb: 'finds', color: '#2563EB' },
-  { key: 'eval', label: 'Evaluator', verb: 'judges', color: '#00A651' },
-  { key: 'output', label: 'Output', verb: 'produces', color: '#8B5CF6' },
+  { key: 'intake', label: 'Documentation Intake', verb: 'captures', color: '#F59E0B' },
+  { key: 'synth', label: 'Pattern Synthesis', verb: 'finds', color: '#2563EB' },
+  { key: 'curator', label: 'KG Curator', verb: 'proposes', color: '#00A651' },
+  { key: 'critic', label: 'Validation Critic', verb: 'validates', color: '#8B5CF6' },
 ]
 
-// 10 skills, each assigned to one agent (team). `role` = the plain-English line
-// rendered under the skill name in the sidebar. Render grouped under their agent.
+// 9 skills, each assigned to one agent. `role` = the plain-English line under the name.
 export const SKILLS: SkillDef[] = [
-  // Documentation — captures into the graph
-  { id: 'doc-transcript', name: 'Transcript Parser', role: 'Turns radio & call audio into text', team: 'doc' },
-  { id: 'doc-entity', name: 'Entity Extraction', role: 'Understands relationships & entities in texts and readings', team: 'doc' },
-  { id: 'doc-field', name: 'Field Observation', role: 'Notes completed checklist items and comments on the work order', team: 'doc' },
+  // Documentation Intake — captures the week's documents into structured findings
+  { id: 'intake-report', name: 'Report Parser', role: 'Pulls confirmed root cause, fix & vibration delta from service reports', team: 'intake' },
+  { id: 'intake-transcript', name: 'Transcript Parser', role: 'Extracts the expert’s tacit finding from call transcripts', team: 'intake' },
+  { id: 'intake-workflow', name: 'Workflow Tracer', role: 'Recovers the tests run, each outcome & the off-path discovery step', team: 'intake' },
 
-  // Data — sole KG gateway
-  { id: 'data-retrieval', name: 'Retrieval', role: 'Searches the graph for similar past incidents', team: 'data' },
-  { id: 'data-writer', name: 'Graph Writer', role: 'Creates & links nodes, incl. corrected-by edges', team: 'data' },
+  // Pattern Synthesis — finds the pattern across incidents
+  { id: 'synth-mining', name: 'Pattern Mining', role: 'Clusters findings across incidents to surface the shared signature', team: 'synth' },
+  { id: 'synth-gap', name: 'Gap Detection', role: 'Compares the pattern to the graph and locates what it can’t explain', team: 'synth' },
 
-  // Evaluator — judges
-  { id: 'eval-rank', name: 'Diagnosis Ranking', role: 'Ranks diagnosis hypotheses by confidence', team: 'eval' },
-  { id: 'eval-tech', name: 'Technician Matching', role: 'Matches cert-qualified techs (Sulzer BFP)', team: 'eval' },
-  { id: 'eval-sop', name: 'SOP & Safety Validator', role: 'Checks SOP compliance & safety before dispatch', team: 'eval' },
+  // KG Curator — proposes bounded edits
+  { id: 'curator-node', name: 'Node Proposal', role: 'Drafts a new node when a recurring cause has no home', team: 'curator' },
+  { id: 'curator-reweight', name: 'Edge Re-weighting', role: 'Drafts confidence re-weights from observed outcomes', team: 'curator' },
 
-  // Output — produces artifacts from the graph
-  { id: 'out-wo', name: 'Work Order Generation', role: 'Drafts the work-order scope', team: 'output' },
-  { id: 'out-report', name: 'Service Report Drafting', role: 'Assembles the service report from incident nodes', team: 'output' },
+  // Validation Critic — validates proposals before the human
+  { id: 'critic-consistency', name: 'Consistency Check', role: 'Checks edits against existing edges, SOP & safety for conflicts', team: 'critic' },
+  { id: 'critic-evidence', name: 'Evidence Audit', role: 'Confirms each edit is justified by the cited incidents', team: 'critic' },
 ]

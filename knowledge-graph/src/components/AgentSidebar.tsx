@@ -1,16 +1,21 @@
 import { TEAMS, SKILLS } from '../data/agents'
+import { STEPS } from '../data/steps'
+import { useP2 } from '../store'
+import { useStepTimeline } from '../useStepTimeline'
 
-// Right panel — 4 agents (= teams), skills nested under each.
-// An agent lights when any of its skills is active this step; each active skill
-// highlights within it. activeAgents holds skill ids (unchanged from steps.ts).
-export function AgentSidebar({
-  activeAgents,
-  live,
-}: {
-  activeAgents: string[]
-  live: string
-}) {
-  const active = new Set(activeAgents)
+// Right panel — 4 agents (= teams), skills nested under each. Skills flash in timed beats:
+// the current beat PULSES, finished beats show a steady DONE ✓, the rest stay idle. An agent
+// card lights when any of its skills is pulsing or done this step.
+export function AgentSidebar() {
+  const step = useP2((s) => s.step)
+  const { pulsing, done } = useStepTimeline(step)
+  const live = STEPS[step - 1]?.live ?? ''
+
+  function skillState(id: string): 'pulsing' | 'done' | 'idle' {
+    if (pulsing.has(id)) return 'pulsing'
+    if (done.has(id)) return 'done'
+    return 'idle'
+  }
 
   return (
     <aside id="p2-agent-panel">
@@ -19,7 +24,7 @@ export function AgentSidebar({
       <div className="p2-agent-list">
         {TEAMS.map((agent) => {
           const skills = SKILLS.filter((s) => s.team === agent.key)
-          const agentOn = skills.some((s) => active.has(s.id))
+          const agentOn = skills.some((s) => pulsing.has(s.id) || done.has(s.id))
           return (
             <div
               key={agent.key}
@@ -34,7 +39,7 @@ export function AgentSidebar({
               </div>
               <div className="p2-skill-list">
                 {skills.map((s) => (
-                  <div key={s.id} className="p2-skill-row" data-on={active.has(s.id)}>
+                  <div key={s.id} className="p2-skill-row" data-state={skillState(s.id)}>
                     <span className="p2-skill-tick" />
                     <div className="p2-skill-text">
                       <span className="p2-skill-name">{s.name}</span>

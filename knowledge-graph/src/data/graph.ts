@@ -1,148 +1,102 @@
 import type { GraphNode, GraphEdge, NodeLabel } from '../types'
 
-// Property graph mirroring cypher_queries/relevant_nodes.cypher (canonical BFP-3A scenario).
-// Hand-authored radial layout: Symptom (centre-left) → 3 HISTORICAL Incidents the system
-// references. INC-101 (Sakra-CCGT-1) is the rich reference case on the right (a past
-// wrong-turn-then-corrected example); INC-102 / INC-103 are simpler precedents upper-/
-// lower-left. The LIVE Part 1 incident (JRG-CCGT-1 · BFP-3A) is NOT here yet — it is
-// generated during the step-through (R4). Coordinates authored against the viewBox below.
-export const VIEWBOX = { w: 1500, h: 980 }
+// One bounded, pure-knowledge graph (no incident instances) for the SYM-001 diagnostic
+// domain. Two test layers, then root causes LAST — realistic diagnostic flow where one
+// test sometimes resolves a cause and sometimes a follow-up test is needed:
+//
+//   AssetClass ← Symptom → Test layer 1 → (sometimes) Test layer 2 → Root causes (LAST)
+//        OCCURS_IN  TRIGGERS    FOLLOW_UP (when needed)    CONFIRMS / RULES_OUT
+//
+// Only the single L1→L2 hop is a test→test edge (FOLLOW_UP); no long chains. Layer-2
+// (confirmatory) tests render smaller. DT-THERMOGRAPHY dropped for legibility.
+export const VIEWBOX = { w: 1600, h: 1100 }
 
-// Node-type → fill colour (distinct hue per label, Neo4j-Bloom style, light-theme safe).
+// Column x positions (used for node coords + column headers).
+export const COLS = { asset: 110, symptom: 320, l1: 600, l2: 880, cause: 1230 }
+
 export const NODE_COLORS: Record<NodeLabel, string> = {
-  Symptom: '#F59E0B',       // amber — the alert
-  Incident: '#00A5A8',      // teal
-  Diagnosis: '#2563EB',     // blue
-  RootCause: '#DC2626',     // red — the culprit
-  Outcome: '#16A34A',       // green — success
-  Technician: '#8B5CF6',    // purple
-  WorkOrder: '#0EA5E9',     // sky
-  Conversation: '#EC4899',  // pink
-  ChecklistItem: '#64748B', // slate
+  AssetClass: '#64748B',     // slate — the equipment class
+  Symptom: '#F59E0B',        // amber — the alert
+  DiagnosticTest: '#2563EB', // blue — the tests
+  RootCause: '#DC2626',      // red — the culprits
+  Inconclusive: '#7C3AED',   // violet — the "more info needed" escalation sink
 }
 
-// Order used by the legend.
-export const NODE_LABELS: NodeLabel[] = [
-  'Symptom', 'Incident', 'Diagnosis', 'RootCause', 'Outcome',
-  'Technician', 'WorkOrder', 'Conversation', 'ChecklistItem',
+export const NODE_LABELS: NodeLabel[] = ['AssetClass', 'Symptom', 'DiagnosticTest', 'RootCause', 'Inconclusive']
+
+// Column headers drawn across the top of the graph.
+export const COL_HEADERS: { x: number; label: string }[] = [
+  { x: COLS.symptom, label: 'Symptom' },
+  { x: COLS.l1, label: 'Test layer 1' },
+  { x: COLS.l2, label: 'Test layer 2' },
+  { x: COLS.cause, label: 'Root causes' },
 ]
 
 export const NODES: GraphNode[] = [
-  // ── centre ──
+  // ── asset class + symptom ──
+  { id: 'AC-BFP', label: 'AssetClass', title: 'Boiler feed pump', x: COLS.asset, y: 500, props: { name: 'Boiler feed pump (BFP)', description: 'High-pressure multistage boiler feed pump class' } },
   {
-    id: 'SYM-001', label: 'Symptom', title: 'BFP NDE vib high', x: 520, y: 490, step: 1,
-    props: {
-      name: 'BFP NDE Vibration High (Zone C)',
-      description: 'NDE bearing-housing vibration RMS exceeds ISO 10816-7 Zone C alarm threshold',
-      severity: 'Amber', urgency: 'Immediate',
-    },
+    id: 'SYM-001', label: 'Symptom', title: 'BFP NDE vib high', x: COLS.symptom, y: 500,
+    props: { name: 'BFP NDE Vibration High (Zone C)', description: 'NDE bearing-housing vibration RMS exceeds ISO 10816-7 Zone C alarm threshold', severity: 'Amber', urgency: 'Immediate' },
   },
 
-  // ── INC-101 · Sakra-CCGT-1 (historical reference case — rich lobe, right) ──
-  // A past wrong-turn-then-corrected incident the system references; NOT the live
-  // Part 1 incident (different plant + people + date) so it reads as prior knowledge.
-  {
-    id: 'INC-101', label: 'Incident', title: 'Sakra-CCGT-1 · Blk 1', x: 820, y: 490, step: 1,
-    props: { location: 'Sakra-CCGT-1 · Block 1', datetime: '2026-03-18T01:30 SGT', asset: 'BFP-2A', status: 'Resolved' },
-  },
-  {
-    id: 'DIA-101', label: 'Diagnosis', title: 'Bearing race spalling', x: 1010, y: 300, step: 1,
-    props: {
-      name: 'Bearing race spalling', confidence: 0.78, status: 'Incorrect',
-      created_at: '2026-03-18T01:50 SGT', rationale: 'NDE vibration signature matched fleet bearing-spalling precedents',
-    },
-  },
-  {
-    id: 'DIA-102', label: 'Diagnosis', title: 'Bent shaft', x: 1050, y: 520, step: 1,
-    props: {
-      name: 'Bent shaft', confidence: 0.96, status: 'Confirmed',
-      created_at: '2026-03-18T04:10 SGT', rationale: 'Dial-indicator runout + 1×RPM-dominant vibration with ~180° NDE-DE phase shift',
-    },
-  },
-  { id: 'CHK-101', label: 'ChecklistItem', title: 'Inspect NDE brg', x: 1230, y: 180, step: 1, props: { task: 'Inspect NDE bearing housing', completed: true, result: 'No race damage found' } },
-  { id: 'CHK-102', label: 'ChecklistItem', title: 'Runout test', x: 1230, y: 320, step: 1, props: { task: 'Dial-indicator shaft runout test', completed: true, result: 'Runout 0.18 mm — out of tolerance' } },
-  { id: 'WORK-102', label: 'WorkOrder', title: 'WO · bearing replace', x: 1010, y: 145, step: 1, props: { description: 'Bearing inspection / replace', comments: 'No race damage found on inspection' } },
-  { id: 'TECH-004', label: 'Technician', title: 'A. Wong', x: 850, y: 220, step: 1, props: { name: 'A. Wong', certifications: ['Sulzer BFP Maintenance'] } },
-  { id: 'CONV-101', label: 'Conversation', title: 'J. Tan ↔ M. Lim', x: 1250, y: 450, step: 1, props: { participants: ['J. Tan', 'M. Lim'], summary: 'Bearing hypothesis challenged after runout finding; remote phase analysis confirms bent shaft', extracted_finding: '1×RPM-dominant + ~180° NDE-DE phase shift = bent shaft' } },
-  { id: 'TECH-001', label: 'Technician', title: 'J. Tan', x: 1380, y: 540, step: 1, props: { name: 'J. Tan', certifications: ['Sulzer BFP Maintenance', 'ISO 10816-7 Vibration Analysis'] } },
-  { id: 'WORK-101', label: 'WorkOrder', title: 'WO · shaft replace', x: 1190, y: 600, step: 1, props: { description: 'Shaft straighten / replace', duration_hours: 6.0, comments: 'NDE vibration dropped to 6.1 mm/s after shaft replacement' } },
-  { id: 'ROOT-101', label: 'RootCause', title: 'Bent shaft', x: 820, y: 740, step: 1, props: { description: 'Bent BFP-2A shaft causing elevated NDE vibration' } },
-  { id: 'OUT-101', label: 'Outcome', title: 'Success · 6.1 mm/s', x: 1050, y: 740, step: 1, props: { status: 'Success', verification: 'NDE vibration stable at 6.1 mm/s over 24 h' } },
+  // ── TEST LAYER 1 (triage, off the symptom) ──
+  { id: 'DT-PHASE', label: 'DiagnosticTest', title: 'Phase / spectrum', x: COLS.l1, y: 360, tier: 'triage', props: { name: 'Vibration phase / spectrum analysis', layer: 'triage (first-line)', method: 'Compare NDE-DE phase and harmonic content', cost_band: 'low', required_certs: ['ISO 10816-7 Vibration Analysis'] } },
+  { id: 'DT-HOUSING-INSPECT', label: 'DiagnosticTest', title: 'Housing inspect', x: COLS.l1, y: 680, tier: 'triage', props: { name: 'NDE bearing housing inspection', layer: 'triage (first-line)', method: 'Visual / borescope inspection of NDE bearing race', cost_band: 'low', required_certs: ['Sulzer BFP Maintenance'] } },
 
-  // ── INC-102 · Jurong-CCGT-2 (precedent — upper-left) ──
-  { id: 'INC-102', label: 'Incident', title: 'Jurong-CCGT-2', x: 430, y: 250, step: 1, props: { location: 'Jurong-CCGT-2', datetime: '2026-04-12T09:15 SGT', asset: 'BFP-2B', status: 'Resolved' } },
-  { id: 'DIA-201', label: 'Diagnosis', title: 'Bearing race spalling', x: 270, y: 150, step: 1, props: { name: 'Bearing race spalling', confidence: 0.89, status: 'Confirmed', created_at: '2026-04-12T10:00 SGT' } },
-  { id: 'ROOT-201', label: 'RootCause', title: 'Race spalling', x: 260, y: 350, step: 1, props: { description: 'NDE bearing race spalling' } },
-  { id: 'OUT-201', label: 'Outcome', title: 'Success', x: 570, y: 170, step: 1, props: { status: 'Success' } },
-  { id: 'TECH-002', label: 'Technician', title: 'S. Ibrahim', x: 110, y: 230, step: 1, props: { name: 'S. Ibrahim', certifications: ['Sulzer BFP Maintenance'] } },
-  { id: 'WORK-201', label: 'WorkOrder', title: 'WO · bearing replace', x: 130, y: 80, step: 1, props: { description: 'Replace NDE bearing' } },
+  // ── TEST LAYER 2 (follow-up / confirmatory, smaller; reached via FOLLOW_UP) ──
+  { id: 'DT-RUNOUT', label: 'DiagnosticTest', title: 'Shaft runout', x: COLS.l2, y: 210, tier: 'followup', props: { name: 'Dial-indicator shaft runout test', layer: 'follow-up (confirmatory)', method: 'Dial indicator on shaft, measure total indicated runout', cost_band: 'med', required_certs: ['Rotating Equipment Specialist', 'ISO 10816-7 Vibration Analysis'] } },
+  { id: 'DT-ALIGNMENT', label: 'DiagnosticTest', title: 'Laser alignment', x: COLS.l2, y: 490, tier: 'followup', props: { name: 'Laser shaft alignment check', layer: 'follow-up (confirmatory)', method: 'Laser alignment of pump-driver coupling', cost_band: 'med', required_certs: ['Laser Alignment Certified', 'Rotating Equipment Specialist'] } },
+  { id: 'DT-OIL-ANALYSIS', label: 'DiagnosticTest', title: 'Oil analysis', x: COLS.l2, y: 725, tier: 'followup', props: { name: 'Lubricant / oil debris analysis', layer: 'follow-up (confirmatory)', method: 'Sample bearing oil; ferrography + particle count', cost_band: 'med', required_certs: ['Lubrication Analysis Level 1'] } },
 
-  // ── INC-103 · Banyan-CHP (precedent — lower-left) ──
-  { id: 'INC-103', label: 'Incident', title: 'Banyan-CHP', x: 430, y: 730, step: 1, props: { location: 'Banyan-CHP', datetime: '2026-02-11T08:05 SGT', asset: 'BFP-1A', status: 'Resolved' } },
-  { id: 'DIA-301', label: 'Diagnosis', title: 'Bearing Race spiralling', x: 270, y: 830, step: 1, props: { name: 'Bent shaft', confidence: 0.84, status: 'Confirmed', created_at: '2026-02-11T08:30 SGT' } },
-  { id: 'ROOT-301', label: 'RootCause', title: 'Bent shaft', x: 260, y: 630, step: 1, props: { description: 'Bent shaft (thermal bow)' } },
-  { id: 'OUT-301', label: 'Outcome', title: 'Success', x: 570, y: 810, step: 1, props: { status: 'Success' } },
-  { id: 'TECH-003', label: 'Technician', title: 'P. Subramaniam', x: 110, y: 750, step: 1, props: { name: 'P. Subramaniam', certifications: ['Sulzer BFP Maintenance'] } },
-  { id: 'WORK-301', label: 'WorkOrder', title: 'WO · bearing replace', x: 130, y: 900, step: 1, props: { description: 'Bearing replacement' } },
+  // ── ROOT CAUSES (LAST column) — each carries a `solution` remedy ──
+  { id: 'RC-BENT-SHAFT', label: 'RootCause', title: 'Bent shaft', x: COLS.cause, y: 210, props: { name: 'Bent shaft', description: 'Shaft bow (mechanical or thermal) driving 1×RPM vibration', solution: 'Straighten or replace shaft; re-balance rotor; re-check runout' } },
+  { id: 'RC-MISALIGN', label: 'RootCause', title: 'Misalignment', x: COLS.cause, y: 400, props: { name: 'Coupling misalignment', description: 'Pump-driver misalignment driving 2×RPM vibration and bearing load', solution: 'Laser-align pump-driver coupling to tolerance; renew worn coupling element' } },
+  { id: 'RC-BEARING-SPALL', label: 'RootCause', title: 'Bearing spalling', x: COLS.cause, y: 590, props: { name: 'Bearing race spalling', description: 'NDE bearing race surface fatigue / spalling', solution: 'Replace NDE bearing; verify lubrication & housing fit' } },
+  { id: 'RC-LUBE-FAIL', label: 'RootCause', title: 'Lube failure', x: COLS.cause, y: 780, props: { name: 'Lubrication failure', description: 'Oil starvation / contamination degrading the NDE bearing', solution: 'Flush & replace lubricant; correct oil supply / cooler; fit breather' } },
 
-  // ── LIVE incident · JRG-CCGT-1 · BFP-3A — generated during the step-through (R4). ──
-  // Built full-size in the freed centre/right as history recedes. `step` = step it appears.
-  { id: 'LIVE-INC', label: 'Incident', title: 'JRG-CCGT-1 · Blk 2', x: 720, y: 470, step: 2, live: true, props: { location: 'Jurong-CCGT-1 · Block 2', datetime: '2026-05-27T02:47 SGT', asset: 'BFP-3A', status: 'Open' } },
-  { id: 'LIVE-DIA1', label: 'Diagnosis', title: 'Bearing race spalling', x: 940, y: 330, step: 2, live: true, props: { name: 'Bearing race spalling', confidence: 0.78, status: 'Incorrect', created_at: '2026-05-27T03:05 SGT', rationale: 'NDE vibration signature matched fleet bearing-spalling precedents' } },
-  { id: 'LIVE-WO1', label: 'WorkOrder', title: 'WO · bearing inspect', x: 1160, y: 250, step: 3, live: true, props: { description: 'Bearing inspection / replace' } },
-  { id: 'LIVE-TECH', label: 'Technician', title: 'Lim Wei Jie', x: 760, y: 250, step: 3, live: true, props: { name: 'Lim Wei Jie', certifications: ['Sulzer BFP Maintenance', 'ISO 10816-7 Vibration Analysis'] } },
-  { id: 'LIVE-CHK', label: 'ChecklistItem', title: 'Runout test', x: 1180, y: 400, step: 4, live: true, props: { task: 'Dial-indicator shaft runout test', completed: true, result: 'Runout 0.2 mm — out of tolerance' } },
-  { id: 'LIVE-CONV', label: 'Conversation', title: 'Lim ↔ Dr. Ismail', x: 960, y: 180, step: 4, live: true, props: { participants: ['Lim Wei Jie', 'Dr. A. Ismail'], summary: 'Bearing hypothesis challenged after runout finding; remote phase analysis confirms bent shaft', extracted_finding: '1×RPM-dominant + ~180° NDE-DE phase shift = bent shaft' } },
-  { id: 'LIVE-DIA2', label: 'Diagnosis', title: 'Bent shaft', x: 1000, y: 620, step: 6, live: true, props: { name: 'Bent shaft', confidence: 0.96, status: 'Confirmed', created_at: '2026-05-27T05:10 SGT', rationale: 'Dial-indicator runout + 1×RPM-dominant vibration with ~180° NDE-DE phase shift' } },
-  { id: 'LIVE-WO2', label: 'WorkOrder', title: 'WO · shaft replace', x: 1240, y: 660, step: 6, live: true, props: { description: 'Shaft straighten / replace', comments: 'NDE vibration dropped to 6.1 mm/s after replacement' } },
-  { id: 'LIVE-ROOT', label: 'RootCause', title: 'Bent shaft', x: 760, y: 700, step: 8, live: true, props: { description: 'Bent BFP-3A shaft causing elevated NDE vibration' } },
-  { id: 'LIVE-OUT', label: 'Outcome', title: 'Success · 6.1 mm/s', x: 1020, y: 820, step: 8, live: true, props: { status: 'Success', verification: 'NDE vibration stable at 6.1 mm/s over 24 h' } },
+  // ── inconclusive sink — the second outcome of every confirmatory test ──
+  { id: 'NEEDS-INFO', label: 'Inconclusive', title: 'More info needed', x: 1050, y: 1020, props: { name: 'More information needed', description: 'Confirmatory test inconclusive — escalate for expert review / further data before committing a repair' } },
+
+  // ── PROPOSED nodes (the week's recommended add — dashed/ghost until approval at step 8) ──
+  { id: 'DT-WELD-NDT', label: 'DiagnosticTest', title: 'Weld NDT', x: COLS.l2, y: 940, tier: 'followup', state: 'proposed', proposeStep: 5, props: { name: 'Weld NDT / dye-penetrant inspection (volute, near discharge)', layer: 'follow-up (confirmatory)', method: 'PT/MT of casing volute & discharge-weld region', cost_band: 'med', required_certs: ['NDT Level 2 (PT/MT)'] } },
+  { id: 'RC-CASING-CRACK', label: 'RootCause', title: 'Casing crack', x: COLS.cause, y: 970, state: 'proposed', proposeStep: 5, props: { name: 'Pump casing crack / weld fatigue', description: 'Volute / discharge weld-toe crack; casing fatigue mimicking 1×RPM shaft signatures', solution: 'Weld repair + PWHT of volute / discharge weld; MPI re-check; review casing fatigue life' } },
 ]
 
+// `result` on every test edge = the observed test finding that drives it (shown when the
+// edge is clicked). On FOLLOW_UP it's the triage outcome that escalates to the next test.
 export const EDGES: GraphEdge[] = [
-  // symptom → incidents
-  { source: 'SYM-001', target: 'INC-101', type: 'HAS_INCIDENT', step: 1 },
-  { source: 'SYM-001', target: 'INC-102', type: 'HAS_INCIDENT', step: 1 },
-  { source: 'SYM-001', target: 'INC-103', type: 'HAS_INCIDENT', step: 1 },
+  // symptom scoped to asset class
+  { source: 'SYM-001', target: 'AC-BFP', type: 'OCCURS_IN' },
 
-  // INC-101 (historical reference case — fully present from the start)
-  { source: 'INC-101', target: 'DIA-101', type: 'HAS_DIAGNOSIS', step: 1 },
-  { source: 'INC-101', target: 'DIA-102', type: 'HAS_DIAGNOSIS', step: 1 },
-  { source: 'INC-101', target: 'ROOT-101', type: 'HAS_ROOT_CAUSE', step: 1 },
-  { source: 'INC-101', target: 'OUT-101', type: 'HAS_OUTCOME', step: 1 },
-  { source: 'DIA-101', target: 'DIA-102', type: 'CORRECTED_BY', step: 1 },
-  { source: 'DIA-101', target: 'CHK-101', type: 'HAS_CHECKLIST_ITEM', step: 1 },
-  { source: 'DIA-101', target: 'CHK-102', type: 'HAS_CHECKLIST_ITEM', step: 1 },
-  { source: 'DIA-102', target: 'TECH-001', type: 'ASSIGNED_TO', step: 1 },
-  { source: 'DIA-102', target: 'WORK-101', type: 'HAS_WORK_ORDER', step: 1 },
-  { source: 'DIA-102', target: 'CONV-101', type: 'HAS_CONVERSATION', step: 1 },
-  { source: 'DIA-101', target: 'TECH-004', type: 'ASSIGNED_TO', step: 1 },
-  { source: 'DIA-101', target: 'WORK-102', type: 'HAS_WORK_ORDER', step: 1 },
+  // symptom → layer-1 (triage) tests (cheap/decisive first)
+  { source: 'SYM-001', target: 'DT-PHASE', type: 'TRIGGERS', order: 1, result: 'First-line: cheap, non-invasive, most discriminating' },
+  { source: 'SYM-001', target: 'DT-HOUSING-INSPECT', type: 'TRIGGERS', order: 2, result: 'First-line visual / borescope of NDE bearing race' },
 
-  // INC-102 (precedent)
-  { source: 'INC-102', target: 'DIA-201', type: 'HAS_DIAGNOSIS', step: 1 },
-  { source: 'INC-102', target: 'ROOT-201', type: 'HAS_ROOT_CAUSE', step: 1 },
-  { source: 'INC-102', target: 'OUT-201', type: 'HAS_OUTCOME', step: 1 },
-  { source: 'DIA-201', target: 'TECH-002', type: 'ASSIGNED_TO', step: 1 },
-  { source: 'DIA-201', target: 'WORK-201', type: 'HAS_WORK_ORDER', step: 1 },
+  // FOLLOW_UP — single L1→L2 hop when a triage test isn't decisive on its own
+  { source: 'DT-PHASE', target: 'DT-RUNOUT', type: 'FOLLOW_UP', result: '1×RPM dominant → confirm shaft bow with runout' },
+  { source: 'DT-PHASE', target: 'DT-ALIGNMENT', type: 'FOLLOW_UP', result: '2×RPM dominant → confirm with alignment check' },
+  { source: 'DT-HOUSING-INSPECT', target: 'DT-OIL-ANALYSIS', type: 'FOLLOW_UP', result: 'No visible spalling → escalate to oil debris analysis' },
 
-  // INC-103 (precedent)
-  { source: 'INC-103', target: 'DIA-301', type: 'HAS_DIAGNOSIS', step: 1 },
-  { source: 'INC-103', target: 'ROOT-301', type: 'HAS_ROOT_CAUSE', step: 1 },
-  { source: 'INC-103', target: 'OUT-301', type: 'HAS_OUTCOME', step: 1 },
-  { source: 'DIA-301', target: 'TECH-003', type: 'ASSIGNED_TO', step: 1 },
-  { source: 'DIA-301', target: 'WORK-301', type: 'HAS_WORK_ORDER', step: 1 },
+  // test → root cause (probability = how diagnostic). 1-layer (triage confirms) + 2-layer (follow-up confirms).
+  // ⭐ re-weight target: phase over-confirms bent shaft at 0.88 today; week proposes 0.70
+  { source: 'DT-PHASE', target: 'RC-BENT-SHAFT', type: 'CONFIRMS', band: 'high', probability: 0.88, oldProbability: 0.88, newProbability: 0.70, reweightProposeStep: 6, result: '1×RPM-dominant with ~180° NDE–DE phase shift' },
+  { source: 'DT-PHASE', target: 'RC-MISALIGN', type: 'CONFIRMS', band: 'med', probability: 0.7, result: '2×RPM component elevated relative to 1×RPM' },
+  { source: 'DT-HOUSING-INSPECT', target: 'RC-BEARING-SPALL', type: 'CONFIRMS', band: 'high', probability: 0.95, result: 'Visible race spalling / pitting on NDE bearing' },
+  { source: 'DT-HOUSING-INSPECT', target: 'RC-BENT-SHAFT', type: 'RULES_OUT', band: 'med', probability: 0.6, result: 'Bearing housing intact — bow unlikely the primary' },
+  { source: 'DT-RUNOUT', target: 'RC-BENT-SHAFT', type: 'CONFIRMS', band: 'high', probability: 0.9, result: 'Total indicated runout exceeds tolerance' },
+  { source: 'DT-ALIGNMENT', target: 'RC-MISALIGN', type: 'CONFIRMS', band: 'high', probability: 0.92, result: 'Offset / angularity out of tolerance' },
+  { source: 'DT-ALIGNMENT', target: 'RC-BENT-SHAFT', type: 'RULES_OUT', band: 'low', probability: 0.4, result: 'Coupling aligned within tolerance' },
+  { source: 'DT-OIL-ANALYSIS', target: 'RC-LUBE-FAIL', type: 'CONFIRMS', band: 'high', probability: 0.9, result: 'High particle/water count; viscosity off-spec' },
+  { source: 'DT-OIL-ANALYSIS', target: 'RC-BEARING-SPALL', type: 'CONFIRMS', band: 'med', probability: 0.65, result: 'Ferrous spall debris in ferrography' },
 
-  // ── LIVE incident edges (R4) — revealed at the later endpoint's step ──
-  { source: 'SYM-001', target: 'LIVE-INC', type: 'HAS_INCIDENT', step: 2, live: true },
-  { source: 'LIVE-INC', target: 'LIVE-DIA1', type: 'HAS_DIAGNOSIS', step: 2, live: true },
-  { source: 'LIVE-DIA1', target: 'LIVE-WO1', type: 'HAS_WORK_ORDER', step: 3, live: true },
-  { source: 'LIVE-DIA1', target: 'LIVE-TECH', type: 'ASSIGNED_TO', step: 3, live: true },
-  { source: 'LIVE-DIA1', target: 'LIVE-CHK', type: 'HAS_CHECKLIST_ITEM', step: 4, live: true },
-  { source: 'LIVE-DIA1', target: 'LIVE-CONV', type: 'HAS_CONVERSATION', step: 4, live: true },
-  { source: 'LIVE-INC', target: 'LIVE-DIA2', type: 'HAS_DIAGNOSIS', step: 6, live: true },
-  { source: 'LIVE-DIA2', target: 'LIVE-WO2', type: 'HAS_WORK_ORDER', step: 6, live: true },
-  { source: 'LIVE-DIA1', target: 'LIVE-DIA2', type: 'CORRECTED_BY', step: 7, live: true },
-  { source: 'LIVE-INC', target: 'LIVE-ROOT', type: 'HAS_ROOT_CAUSE', step: 8, live: true },
-  { source: 'LIVE-INC', target: 'LIVE-OUT', type: 'HAS_OUTCOME', step: 8, live: true },
+  // INCONCLUSIVE — the second outcome of each confirmatory test (test ran, didn't confirm → escalate)
+  { source: 'DT-RUNOUT', target: 'NEEDS-INFO', type: 'INCONCLUSIVE', result: 'Runout within tolerance → shaft bow not confirmed; gather more data' },
+  { source: 'DT-ALIGNMENT', target: 'NEEDS-INFO', type: 'INCONCLUSIVE', result: 'Alignment within tolerance → misalignment not confirmed; gather more data' },
+  { source: 'DT-OIL-ANALYSIS', target: 'NEEDS-INFO', type: 'INCONCLUSIVE', result: 'Oil clean → lube failure / spalling not confirmed; gather more data' },
+
+  // ── PROPOSED edges (wiring for the new cause — dashed until approval) ──
+  { source: 'DT-PHASE', target: 'DT-WELD-NDT', type: 'FOLLOW_UP', result: 'Harmonics near discharge weld → run weld NDT', state: 'proposed', proposeStep: 5 },
+  { source: 'DT-WELD-NDT', target: 'RC-CASING-CRACK', type: 'CONFIRMS', band: 'high', probability: 0.9, result: 'PT/MT indication at volute weld toe', state: 'proposed', proposeStep: 5 },
+  { source: 'DT-WELD-NDT', target: 'NEEDS-INFO', type: 'INCONCLUSIVE', result: 'No weld indication → casing crack not confirmed; gather more data', state: 'proposed', proposeStep: 5 },
 ]

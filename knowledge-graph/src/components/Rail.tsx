@@ -27,7 +27,7 @@ export function Rail({ step }: { step: number }) {
           ))}
         </div>
         <div className="p2-mantra">
-          documentation captures · data finds · evaluator judges · output produces
+          documents in · patterns found · edits proposed · human approves
         </div>
       </div>
     </aside>

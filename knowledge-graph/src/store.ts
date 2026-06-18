@@ -18,7 +18,7 @@ export const useP2 = create<P2State>((set) => ({
       return { step, maxStepReached: Math.max(s.maxStepReached, step) }
     }),
   back: () => set((s) => ({ step: Math.max(1, s.step - 1) })),
-  restart: () => set({ step: 1 }),
+  restart: () => set({ step: 1, maxStepReached: 1 }),
 }))
 
 export { TOTAL_STEPS }

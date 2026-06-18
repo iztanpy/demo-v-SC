@@ -155,6 +155,7 @@ body {
 .p2-skill-list { margin-top: 10px; display: flex; flex-direction: column; gap: 9px; }
 .p2-skill-row { display: flex; align-items: flex-start; gap: 8px; padding-left: 1px; }
 .p2-skill-tick {
+  position: relative;
   width: 5px; height: 5px; border-radius: 50%; margin-top: 5px;
   background: var(--border-subtle); flex: 0 0 auto; transition: background 0.25s;
 }
@@ -165,10 +166,25 @@ body {
 .p2-skill-role {
   font-size: 11px; line-height: 1.35; color: var(--text-muted); opacity: 0.78;
 }
-.p2-skill-row[data-on="true"] .p2-skill-tick { background: var(--agent-color); }
-.p2-skill-row[data-on="true"] .p2-skill-name { color: var(--text-primary); font-weight: 600; }
+/* skill states: idle (dim) · pulsing (flashing, current beat) · done (steady ✓) */
+.p2-skill-row[data-state="done"] .p2-skill-tick { background: var(--agent-color); }
+.p2-skill-row[data-state="done"] .p2-skill-name { color: var(--text-primary); font-weight: 600; }
+.p2-skill-row[data-state="done"] .p2-skill-tick::after {
+  content: '✓'; position: absolute; font-size: 8px; color: #fff; left: -0.5px; top: -3px;
+}
+.p2-skill-row[data-state="pulsing"] .p2-skill-name { color: var(--text-primary); font-weight: 700; }
+.p2-skill-row[data-state="pulsing"] .p2-skill-tick {
+  width: 8px; height: 8px; margin-top: 3.5px;
+  background: var(--agent-color); animation: p2-skill-flash 0.7s ease-in-out infinite;
+}
+.p2-skill-row { transition: opacity 0.2s; }
+.p2-skill-row[data-state="idle"] { opacity: 0.6; }
 
 @keyframes p2-halo-pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+@keyframes p2-skill-flash {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--agent-color) 60%, transparent); }
+  50%      { box-shadow: 0 0 0 4px color-mix(in srgb, var(--agent-color) 0%, transparent); }
+}
 
 .p2-live-caption {
   display: flex; align-items: flex-start; gap: 8px; margin-top: 10px;
@@ -184,15 +200,15 @@ body {
 /* ── KG hero ── */
 #p2-kg-hero {
   position: relative; background: var(--bg-stage);
-  display: flex; align-items: center; justify-content: center;
   overflow: hidden; flex: 1 1 auto; min-height: 0;
 }
-.kg-wrap { position: relative; width: 100%; height: 100%; }
+.kg-wrap { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; }
+.kg-stage { position: relative; flex: 1 1 auto; min-height: 0; }
 .kg-svg { width: 100%; height: 100%; }
 
-/* legend — node types */
+/* legend — node types + proposed swatch */
 .kg-legend {
-  position: absolute; bottom: 12px; right: 12px; z-index: 2;
+  position: absolute; bottom: 12px; left: 12px; z-index: 2;
   background: rgba(255, 255, 255, 0.92); border: 1px solid var(--border-subtle);
   border-radius: 10px; padding: 10px 12px; box-shadow: var(--shadow-card);
   display: flex; flex-direction: column; gap: 5px;
@@ -200,56 +216,154 @@ body {
 }
 .kg-legend-row { display: flex; align-items: center; gap: 7px; }
 .kg-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+.kg-legend-proposed { border-top: 1px solid var(--border-subtle); padding-top: 5px; margin-top: 2px; }
+.kg-legend-dot-proposed { background: transparent; border: 2px dashed var(--green-vivid); }
 
 /* edges — typed relationships */
-.g-edge-line { stroke: var(--slate); stroke-width: 1.4; opacity: 0.45; }
+.g-edge { cursor: pointer; }
+.g-edge-hit { stroke: transparent; stroke-width: 18; fill: none; }
+.g-edge-line { stroke: var(--slate); stroke-width: 1.4; opacity: 0.4; fill: none; pointer-events: none; }
 .g-edge-label {
-  font-family: var(--mono); font-size: 9px; letter-spacing: 0.3px;
-  fill: var(--text-muted); opacity: 0.7;
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.2px;
+  fill: var(--text-muted); opacity: 0.85; paint-order: stroke; stroke: #fff; stroke-width: 3px;
+  pointer-events: none;
 }
-.g-edge[data-type="CORRECTED_BY"] .g-edge-line {
-  stroke: var(--red-vivid); stroke-width: 2.5; stroke-dasharray: 7 5; opacity: 0.95;
-}
-.g-edge[data-type="CORRECTED_BY"] .g-edge-label { fill: var(--red-vivid); font-weight: 700; opacity: 1; }
+/* selected edge — emphasise line + label */
+.g-edge[data-selected="true"] .g-edge-line { stroke-width: 3.5 !important; opacity: 1 !important; }
+.g-edge[data-selected="true"] .g-edge-label { font-weight: 800; opacity: 1; }
+.g-edge[data-type="CONFIRMS"] .g-edge-line { stroke: var(--green-vivid); stroke-width: 1.8; opacity: 0.6; }
+.g-edge[data-type="CONFIRMS"] .g-edge-label { fill: var(--green-deep); font-weight: 700; }
+.g-edge[data-type="FOLLOW_UP"] .g-edge-line { stroke: var(--blue-vivid); stroke-dasharray: 2 4; opacity: 0.45; }
+.g-edge[data-type="FOLLOW_UP"] .g-edge-label { fill: var(--blue-vivid); opacity: 0.7; font-size: 9.5px; font-style: italic; }
+.g-edge[data-type="RULES_OUT"] .g-edge-line { stroke: var(--slate); stroke-dasharray: 4 4; opacity: 0.35; }
+.g-edge[data-type="RULES_OUT"] .g-edge-label { font-size: 9.5px; opacity: 0.65; }
+.g-edge[data-type="INCONCLUSIVE"] .g-edge-line { stroke: #7C3AED; stroke-dasharray: 2 5; opacity: 0.35; }
+.g-edge[data-type="INCONCLUSIVE"] .g-edge-label { fill: #7C3AED; opacity: 0.6; font-size: 9.5px; font-style: italic; }
+.g-edge[data-type="TRIGGERS"] .g-edge-line { stroke: var(--amber-vivid); opacity: 0.5; }
+.g-edge[data-type="OCCURS_IN"] .g-edge-line { opacity: 0.3; }
 
-/* historical graph recede — faint memory bank once the live build starts (R4) */
-.kg-historical[data-recede="true"] { opacity: 0.32; }
-
-/* live node enter — scale + fade pop (R4) */
-.g-enter {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: g-node-enter 450ms cubic-bezier(0.2, 0.85, 0.25, 1) 320ms both;
-}
-@keyframes g-node-enter {
-  0%   { opacity: 0; transform: scale(0.3); }
-  70%  { opacity: 1; transform: scale(1.12); }
-  100% { opacity: 1; transform: scale(1); }
+/* column headers */
+.kg-col-header {
+  font-family: var(--mono); font-size: 15px; font-weight: 700; letter-spacing: 0.6px;
+  fill: var(--text-muted); text-transform: uppercase;
 }
 
-/* live edge draw-in — relationship line draws first, then the node pops (R4) */
-.kg-live .g-edge-line { stroke-dasharray: 1400; animation: g-edge-draw 460ms ease-out both; }
-@keyframes g-edge-draw {
-  from { stroke-dashoffset: 1400; }
-  to   { stroke-dashoffset: 0; }
-}
+/* proposed edges — dashed/ghost until approval */
+.g-edge[data-state="proposed"] .g-edge-line { stroke-dasharray: 8 6; opacity: 0.85; stroke: var(--green-vivid); }
+.g-edge[data-state="proposed"] .g-edge-label { fill: var(--green-deep); font-style: italic; }
+.g-edge[data-state="applied"] .g-edge-line { animation: kg-apply-flash 700ms ease-out; }
+
+/* the re-weight target edge — pending highlight, then flip-flash on approval */
+.g-edge[data-reweight="pending"] .g-edge-line { stroke: var(--amber-vivid); stroke-width: 2.4; opacity: 0.9; stroke-dasharray: 6 4; }
+.g-edge[data-reweight="pending"] .g-edge-label { fill: var(--amber-vivid); font-weight: 700; }
+.g-edge[data-reweight="applied"] .g-edge-line { stroke: var(--green-vivid); stroke-width: 2.4; opacity: 0.85; }
+.g-edge[data-reweight="applied"] .g-edge-label { fill: var(--green-deep); font-weight: 700; animation: p2-relabel-flash 800ms ease-out; }
 
 /* nodes — type-coloured circles */
 .g-node { cursor: pointer; }
 .g-node-dot { stroke: #FFFFFF; stroke-width: 2.5; filter: drop-shadow(0 2px 5px rgba(15, 27, 61, 0.18)); transition: stroke 0.15s; }
 .g-node[data-selected="true"] .g-node-dot { stroke: var(--text-primary); stroke-width: 4; }
 .g-node[data-selected="true"] .g-node-label { fill: var(--text-primary); }
-.g-node-label { font-family: var(--sans); font-size: 13px; font-weight: 700; fill: var(--text-primary); }
+.g-node-label { font-family: var(--sans); font-size: 13px; font-weight: 700; fill: var(--text-primary); paint-order: stroke; stroke: #fff; stroke-width: 3px; }
 .g-node-type {
   font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.4px;
-  fill: var(--text-muted); text-transform: uppercase;
+  fill: var(--text-muted); text-transform: uppercase; paint-order: stroke; stroke: #fff; stroke-width: 3px;
 }
 
-/* diagnosis status ring */
-.g-node-ring { fill: none; stroke-width: 2.5; }
-.g-node[data-status="Incorrect"] .g-node-ring { stroke: var(--red-vivid); stroke-dasharray: 5 4; }
-.g-node[data-status="Incorrect"] .g-node-label { fill: var(--red-vivid); }
-.g-node[data-status="Confirmed"] .g-node-ring { stroke: var(--green-vivid); }
+/* proposed node — dashed ghost ring + faded fill until approved */
+.g-node[data-state="proposed"] .g-node-dot {
+  fill-opacity: 0.28; stroke: var(--green-vivid); stroke-width: 2.5; stroke-dasharray: 7 5;
+}
+.g-node[data-state="proposed"] .g-node-label { fill: var(--text-muted); }
+.g-node-proposed {
+  font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: 0.3px;
+  fill: var(--green-deep); text-transform: uppercase;
+}
+/* applied — solidified on approval, with a pop */
+.g-node[data-state="applied"] .g-node-dot { animation: kg-node-solidify 600ms cubic-bezier(0.2,0.85,0.25,1); }
+@keyframes kg-node-solidify {
+  0%   { fill-opacity: 0.28; transform: scale(0.9); }
+  60%  { transform: scale(1.12); }
+  100% { fill-opacity: 1; transform: scale(1); }
+}
+@keyframes kg-apply-flash {
+  0% { opacity: 0; } 50% { opacity: 0.9; } 100% { opacity: 0.85; }
+}
+
+/* gap callouts (step 4) */
+.kg-gap-ghost { fill: none; stroke: var(--red-vivid); stroke-width: 2.5; stroke-dasharray: 6 5; opacity: 0.8; }
+.kg-gap-q { font-size: 28px; font-weight: 800; fill: var(--red-vivid); }
+.kg-gap-label { font-family: var(--mono); font-size: 11px; font-weight: 700; fill: var(--red-vivid); }
+.kg-gap-pill { fill: #FEF2F2; stroke: var(--red-vivid); stroke-width: 1.5; }
+.kg-gap-pill-text { font-family: var(--mono); font-size: 11px; font-weight: 700; fill: var(--red-vivid); }
+
+/* contextual panel (top-right): pattern stack · gaps · changeset */
+.kg-context {
+  position: absolute; top: 14px; right: 14px; z-index: 2; width: 320px;
+  background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 12px;
+  box-shadow: var(--shadow-card-lg); padding: 13px 15px;
+}
+.kg-context-title {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: 10px;
+}
+.kg-pattern { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+.kg-pattern th { font-family: var(--mono); font-size: 10px; color: var(--text-muted); padding: 3px 4px; text-align: left; }
+.kg-pattern td { padding: 4px 4px; border-top: 1px solid var(--border-subtle); color: var(--text-secondary); }
+.kg-pattern-rl { color: var(--text-muted) !important; font-weight: 600; }
+.kg-pattern-key td { background: var(--green-soft); color: var(--green-deep); font-weight: 700; }
+
+.kg-gap-row { border-left: 3px solid var(--red-vivid); padding: 6px 10px; margin-bottom: 8px; background: #FEF2F2; border-radius: 0 8px 8px 0; }
+.kg-gap-row[data-kind="reweight"] { border-left-color: var(--amber-vivid); background: #FFFBEB; }
+.kg-gap-head { font-size: 12.5px; font-weight: 700; color: var(--text-primary); line-height: 1.3; }
+.kg-gap-ev { font-family: var(--mono); font-size: 10.5px; color: var(--text-muted); margin-top: 2px; }
+
+.kg-change-row { border: 1px solid var(--border-subtle); border-radius: 9px; padding: 9px 11px; margin-bottom: 8px; }
+.kg-change-row[data-validated="true"] { border-color: var(--green-vivid); box-shadow: 0 0 0 1px var(--green-soft); }
+.kg-change-head { display: flex; align-items: center; gap: 7px; }
+.kg-change-kind { font-family: var(--mono); font-weight: 800; color: var(--green-deep); }
+.kg-change-kind[data-kind="reweight"] { color: var(--amber-vivid); }
+.kg-change-label { font-size: 13px; font-weight: 700; }
+.kg-change-ok { margin-left: auto; color: var(--green-vivid); font-weight: 800; }
+.kg-change-detail { font-size: 11.5px; line-height: 1.4; color: var(--text-secondary); margin-top: 4px; }
+.kg-change-cites { font-family: var(--mono); font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+.kg-changeset[data-applied="true"] .kg-context-title { color: var(--green-deep); }
+.kg-approve-btn {
+  width: 100%; margin-top: 4px; padding: 9px; border-radius: 9px; border: none; cursor: pointer;
+  background: var(--green-vivid); color: #fff; font-size: 13px; font-weight: 700; font-family: var(--sans);
+}
+.kg-approve-btn:disabled { background: var(--border-subtle); color: var(--text-muted); cursor: not-allowed; }
+.kg-applied-note { font-size: 11px; color: var(--green-deep); font-style: italic; margin-top: 2px; }
+
+/* incident inbox — documents OUTSIDE the graph */
+.kg-inbox {
+  flex: 0 0 auto; border-top: 1px solid var(--border-subtle); background: var(--bg-pane);
+  padding: 9px 14px 11px; max-height: 38%; overflow-y: auto;
+}
+.kg-inbox[data-state="archived"] { opacity: 0.5; }
+.kg-inbox-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+}
+.kg-inbox-label em { color: var(--green-deep); font-style: italic; text-transform: none; letter-spacing: 0; }
+.kg-inbox-state { margin-left: auto; font-family: var(--mono); font-size: 10px; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 999px; padding: 2px 8px; text-transform: lowercase; }
+.kg-inbox-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.kg-inc-card {
+  background: var(--bg-card); border: 1px solid var(--border-subtle); border-left: 3px solid var(--slate);
+  border-radius: 10px; padding: 9px 11px; box-shadow: var(--shadow-card); transition: border-color 0.25s;
+}
+.kg-inc-card[data-state="parsed"] { border-left-color: var(--amber-vivid); }
+.kg-inc-card[data-state="archived"] { border-left-color: var(--slate); }
+.kg-inc-head { font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; }
+.kg-inc-docs { display: flex; flex-direction: column; gap: 5px; }
+.kg-inc-doc-name { font-size: 10.5px; font-weight: 700; color: var(--text-muted); }
+.kg-inc-doc[data-parsed="true"] .kg-inc-doc-name { color: var(--text-secondary); }
+.kg-inc-chip { margin-top: 2px; padding: 4px 6px; background: var(--bg-pane); border-radius: 6px; }
+.kg-inc-chip-skill {
+  display: inline-block; font-family: var(--mono); font-size: 8.5px; font-weight: 700; letter-spacing: 0.2px;
+  color: var(--blue-vivid); background: #EFF6FF; border-radius: 4px; padding: 1px 5px; margin-bottom: 2px;
+}
+.kg-inc-chip-text { display: block; font-size: 10.5px; line-height: 1.35; color: var(--text-secondary); }
 
 /* Inspector — floating property panel (click a node) */
 .kg-inspector {

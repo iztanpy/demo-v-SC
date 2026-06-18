@@ -1,22 +1,23 @@
 import { useState } from 'react'
-import { NODES, EDGES, VIEWBOX, NODE_COLORS, NODE_LABELS } from '../data/graph'
+import { NODES, EDGES, VIEWBOX, NODE_COLORS, NODE_LABELS, COL_HEADERS } from '../data/graph'
 import type { GraphNode, GraphEdge, PropVal } from '../types'
+import { INCIDENTS, DOC_LABEL, PATTERN_ROWS, GAPS, CHANGES, APPROVE_STEP } from '../data/incidents'
+import type { DocKind } from '../data/incidents'
+import { SKILLS } from '../data/agents'
 import { useP2 } from '../store'
 
-// R1/R2 — circular typed-graph render + click-to-inspect.
-// R4 — the live incident is generated node-by-node as `step` advances. When the build
-// starts (step >= 2) the historical graph shrinks + tucks left into a faint "memory bank";
-// the live incident builds full-size in the freed centre/right, tethered to the Symptom.
+// One bounded knowledge graph (no incident nodes). Proposed nodes/edges show as dashed
+// `PROPOSED · not applied` previews from their proposeStep and only SOLIDIFY once a human
+// approves at APPROVE_STEP (8). Incidents live OUTSIDE the graph in the inbox strip.
 const R = 30
-
-// Recede transform for the historical group (CSS, so it animates via transition).
-const RECEDE = { s: 0.46, tx: 20, ty: 40 }
-
+const DOCS: DocKind[] = ['report', 'workflow', 'transcript']
 const byId = Object.fromEntries(NODES.map((n) => [n.id, n])) as Record<string, GraphNode>
+const skillName = (id: string) => SKILLS.find((s) => s.id === id)?.name ?? id
 
-// Symptom's on-screen position once the historical group has receded (for the live tether).
-const SYM = byId['SYM-001']
-const SYM_RECEDED = { x: SYM.x * RECEDE.s + RECEDE.tx, y: SYM.y * RECEDE.s + RECEDE.ty }
+// edge-type → chip colour for the edge inspector
+const EDGE_COLOR: Record<string, string> = {
+  CONFIRMS: '#00A651', RULES_OUT: '#64748B', FOLLOW_UP: '#2563EB', TRIGGERS: '#F59E0B', OCCURS_IN: '#64748B', INCONCLUSIVE: '#7C3AED',
+}
 
 function formatVal(v: PropVal): string {
   if (Array.isArray(v)) return v.join(' · ')
@@ -24,126 +25,305 @@ function formatVal(v: PropVal): string {
   return String(v)
 }
 
+function edgeLabel(e: GraphEdge, prob: number | undefined): string {
+  switch (e.type) {
+    case 'CONFIRMS': return prob != null ? prob.toFixed(2) : ''
+    case 'RULES_OUT': return 'rules out'
+    case 'TRIGGERS': return `▸ ${e.order}`
+    case 'FOLLOW_UP': return e.result ?? 'if inconclusive'
+    case 'INCONCLUSIVE': return 'inconclusive'
+    default: return '' // OCCURS_IN
+  }
+}
+
 export function KGHero() {
   const step = useP2((s) => s.step)
+  const next = useP2((s) => s.next)
   const [selectedId, setSelected] = useState<string | null>(null)
+  const [selEdgeKey, setSelEdgeKey] = useState<string | null>(null)
   const selected = selectedId ? byId[selectedId] : null
-  const receded = step >= 2
+  const approved = step >= APPROVE_STEP
 
-  const histNodes = NODES.filter((n) => !n.live)
-  const histEdges = EDGES.filter((e) => !e.live)
-  const liveNodes = NODES.filter((n) => n.live && n.step <= step)
-  const liveEdges = EDGES.filter((e) => e.live && e.step <= step)
+  const edgeKey = (e: GraphEdge) => `${e.source}__${e.target}__${e.type}`
+  const selEdge = selEdgeKey ? EDGES.find((e) => edgeKey(e) === selEdgeKey) ?? null : null
+  const clearSel = () => { setSelected(null); setSelEdgeKey(null) }
 
-  // Displayed diagnosis status — the live initial dx only flips to Incorrect at step 7.
-  function statusOf(n: GraphNode): string {
-    if (n.id === 'LIVE-DIA1') return step >= 7 ? 'Incorrect' : ''
-    return n.label === 'Diagnosis' ? String(n.props.status ?? '') : ''
+  const nodeVisible = (n: GraphNode) => n.state !== 'proposed' || step >= (n.proposeStep ?? 99)
+  const edgeVisible = (e: GraphEdge) => e.state !== 'proposed' || step >= (e.proposeStep ?? 99)
+  const visNodes = NODES.filter(nodeVisible)
+  const visEdges = EDGES.filter(edgeVisible)
+
+  function nodeStateAttr(n: GraphNode): string {
+    if (n.state === 'proposed') return approved ? 'applied' : 'proposed'
+    return 'committed'
   }
 
-  function renderNode(n: GraphNode, animate: boolean) {
-    const inner = (
-      <>
-        {statusOf(n) && <circle className="g-node-ring" r={R + 5} />}
-        <circle className="g-node-dot" r={R} fill={NODE_COLORS[n.label]} />
-        <text className="g-node-label" y={R + 18} textAnchor="middle">{n.title}</text>
-        <text className="g-node-type" y={R + 32} textAnchor="middle">{n.label}</text>
-      </>
-    )
+  function renderNode(n: GraphNode) {
+    const r = n.tier === 'followup' ? 22 : R
     return (
       <g
         key={n.id}
         className="g-node"
         data-label={n.label}
-        data-status={statusOf(n)}
+        data-tier={n.tier ?? ''}
+        data-state={nodeStateAttr(n)}
         data-selected={selectedId === n.id}
         transform={`translate(${n.x},${n.y})`}
-        onClick={(e) => {
-          e.stopPropagation()
-          setSelected(n.id)
-        }}
+        onClick={(e) => { e.stopPropagation(); setSelected(n.id); setSelEdgeKey(null) }}
       >
-        {animate ? <g className="g-enter">{inner}</g> : inner}
+        <circle className="g-node-dot" r={r} fill={NODE_COLORS[n.label]} />
+        <text className="g-node-label" y={r + 16} textAnchor="middle">{n.title}</text>
+        <text className="g-node-type" y={r + 30} textAnchor="middle">{n.tier === 'followup' ? 'follow-up test' : n.label}</text>
+        {n.state === 'proposed' && !approved && (
+          <text className="g-node-proposed" y={-r - 10} textAnchor="middle">PROPOSED · not applied</text>
+        )}
       </g>
     )
   }
 
-  function renderEdge(e: GraphEdge, sx: number, sy: number, tx: number, ty: number, live: boolean) {
-    const mx = (sx + tx) / 2
-    const my = (sy + ty) / 2
+  function renderEdge(e: GraphEdge) {
+    const s = byId[e.source], t = byId[e.target]
+    // INCONCLUSIVE edges curve (quadratic) so the long ones to the bottom sink bow clear
+    const curved = e.type === 'INCONCLUSIVE'
+    let d: string, mx: number, my: number
+    if (curved) {
+      const dx = t.x - s.x, dy = t.y - s.y, len = Math.hypot(dx, dy) || 1
+      const K = 80
+      const cx = (s.x + t.x) / 2 + (dy / len) * K
+      const cy = (s.y + t.y) / 2 + (-dx / len) * K
+      d = `M ${s.x} ${s.y} Q ${cx} ${cy} ${t.x} ${t.y}`
+      mx = 0.25 * s.x + 0.5 * cx + 0.25 * t.x
+      my = 0.25 * s.y + 0.5 * cy + 0.25 * t.y
+    } else {
+      d = `M ${s.x} ${s.y} L ${t.x} ${t.y}`
+      mx = (s.x + t.x) / 2
+      my = (s.y + t.y) / 2
+    }
+    const isReweight = e.reweightProposeStep != null
+    const reweightState = isReweight
+      ? approved ? 'applied' : step >= (e.reweightProposeStep ?? 99) ? 'pending' : ''
+      : ''
+    const prob = isReweight && approved && e.newProbability != null ? e.newProbability : e.probability
+    const eState = e.state === 'proposed' ? (approved ? 'applied' : 'proposed') : 'committed'
+    const label = edgeLabel(e, prob)
     return (
-      <g key={`${e.source}-${e.target}`} className={'g-edge' + (live ? ' g-edge-live' : '')} data-type={e.type}>
-        <line className="g-edge-line" x1={sx} y1={sy} x2={tx} y2={ty} />
-        <text className="g-edge-label" x={mx} y={my} textAnchor="middle" dominantBaseline="middle">{e.type}</text>
+      <g
+        key={edgeKey(e)}
+        className="g-edge"
+        data-type={e.type}
+        data-state={eState}
+        data-reweight={reweightState}
+        data-selected={selEdgeKey === edgeKey(e)}
+        onClick={(ev) => { ev.stopPropagation(); setSelEdgeKey(edgeKey(e)); setSelected(null) }}
+      >
+        <path className="g-edge-hit" d={d} />
+        <path className="g-edge-line" d={d} />
+        {label && <text className="g-edge-label" x={mx} y={my} textAnchor="middle" dominantBaseline="middle">{label}</text>}
       </g>
     )
   }
+
+  // Gap callouts (step 4) — pin the two gaps onto the graph.
+  function renderGaps() {
+    if (step !== 4) return null
+    const casing = byId['RC-CASING-CRACK']
+    const phase = byId['DT-PHASE'], bent = byId['RC-BENT-SHAFT']
+    const emx = (phase.x + bent.x) / 2, emy = (phase.y + bent.y) / 2
+    return (
+      <g className="kg-gaps">
+        <g transform={`translate(${casing.x},${casing.y})`}>
+          <circle className="kg-gap-ghost" r={R} />
+          <text className="kg-gap-q" textAnchor="middle" dominantBaseline="central">?</text>
+          <text className="kg-gap-label" y={R + 20} textAnchor="middle">no node · 3/3</text>
+        </g>
+        <g transform={`translate(${emx},${emy})`}>
+          <rect className="kg-gap-pill" x={-92} y={-16} width={184} height={32} rx={16} />
+          <text className="kg-gap-pill-text" textAnchor="middle" dominantBaseline="central">0.88 · contradicted 3/3</text>
+        </g>
+      </g>
+    )
+  }
+
+  // Contextual panel (top-right): pattern stack · gaps · changeset, by step.
+  function renderContext() {
+    if (step === 3) {
+      return (
+        <div className="kg-context">
+          <div className="kg-context-title">Pattern · 3 incidents</div>
+          <table className="kg-pattern">
+            <thead>
+              <tr><th></th>{INCIDENTS.map((i) => <th key={i.id}>{i.asset}</th>)}</tr>
+            </thead>
+            <tbody>
+              {PATTERN_ROWS.map((row) => (
+                <tr key={row.label} className={row.label === 'Confirmed cause' ? 'kg-pattern-key' : ''}>
+                  <td className="kg-pattern-rl">{row.label}</td>
+                  {row.cells.map((c, i) => <td key={i}>{c}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
+    }
+    if (step === 4) {
+      return (
+        <div className="kg-context">
+          <div className="kg-context-title">Gaps found</div>
+          {GAPS.map((g) => (
+            <div className="kg-gap-row" key={g.id} data-kind={g.kind}>
+              <div className="kg-gap-head">{g.headline}</div>
+              <div className="kg-gap-ev">{g.evidence}</div>
+            </div>
+          ))}
+        </div>
+      )
+    }
+    if (step >= 5 && step <= APPROVE_STEP) {
+      const lines = CHANGES.filter((c) => step >= c.proposeStep)
+      const validated = step >= 7
+      return (
+        <div className="kg-context kg-changeset" data-applied={approved}>
+          <div className="kg-context-title">{approved ? 'Changes applied ✓' : 'Proposed KG changes'}</div>
+          {lines.map((c) => (
+            <div className="kg-change-row" key={c.id} data-validated={validated}>
+              <div className="kg-change-head">
+                <span className="kg-change-kind" data-kind={c.kind}>{c.kind === 'reweight' ? '~' : '+'}</span>
+                <span className="kg-change-label">{c.label}</span>
+                {validated && <span className="kg-change-ok">✓</span>}
+              </div>
+              <div className="kg-change-detail">{c.detail}</div>
+              <div className="kg-change-cites">cites {c.cites.length} incidents</div>
+            </div>
+          ))}
+          {!approved && (
+            <button className="kg-approve-btn" disabled={!validated} onClick={next}>
+              {validated ? 'Approve & run changes ▸' : 'Awaiting validation…'}
+            </button>
+          )}
+          {approved && <div className="kg-applied-note">Reliability engineer approved · graph updated in place</div>}
+        </div>
+      )
+    }
+    return null
+  }
+
+  const inboxState = step < 2 ? 'queued' : approved ? 'archived' : 'parsed'
 
   return (
     <div className="kg-wrap">
-      <div className="kg-legend">
-        {NODE_LABELS.map((l) => (
-          <div key={l} className="kg-legend-row">
-            <span className="kg-legend-dot" style={{ background: NODE_COLORS[l] }} />
-            {l}
+      <div className="kg-stage">
+        <div className="kg-legend">
+          {NODE_LABELS.map((l) => (
+            <div key={l} className="kg-legend-row">
+              <span className="kg-legend-dot" style={{ background: NODE_COLORS[l] }} />
+              {l}
+            </div>
+          ))}
+          <div className="kg-legend-row kg-legend-proposed">
+            <span className="kg-legend-dot kg-legend-dot-proposed" />
+            Proposed
           </div>
-        ))}
+        </div>
+
+        <svg
+          className="kg-svg"
+          viewBox={`0 0 ${VIEWBOX.w} ${VIEWBOX.h}`}
+          preserveAspectRatio="xMidYMid meet"
+          onClick={clearSel}
+        >
+          <g className="kg-col-headers">
+            {COL_HEADERS.map((h) => (
+              <text key={h.label} className="kg-col-header" x={h.x} y={70} textAnchor="middle">{h.label}</text>
+            ))}
+          </g>
+          <g className="kg-edges">{visEdges.map(renderEdge)}</g>
+          <g className="kg-nodes">{visNodes.map(renderNode)}</g>
+          {renderGaps()}
+        </svg>
+
+        {renderContext()}
+
+        {selected && (
+          <div className="kg-inspector">
+            <div className="kg-inspector-head">
+              <span className="kg-inspector-chip" style={{ background: NODE_COLORS[selected.label] }}>
+                {selected.label}
+              </span>
+              <span className="kg-inspector-id">{selected.id}</span>
+              <button className="kg-inspector-close" onClick={() => setSelected(null)} aria-label="Close">×</button>
+            </div>
+            <div className="kg-inspector-title">{selected.title}</div>
+            <dl className="kg-inspector-props">
+              {Object.entries(selected.props).map(([k, v]) => (
+                <div className="kg-inspector-prop" key={k}>
+                  <dt>{k}</dt>
+                  <dd>{formatVal(v)}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
+
+        {selEdge && (() => {
+          const s = byId[selEdge.source], t = byId[selEdge.target]
+          const isRw = selEdge.reweightProposeStep != null
+          const prob = isRw && approved && selEdge.newProbability != null ? selEdge.newProbability : selEdge.probability
+          return (
+            <div className="kg-inspector kg-edge-inspector">
+              <div className="kg-inspector-head">
+                <span className="kg-inspector-chip" style={{ background: EDGE_COLOR[selEdge.type] }}>{selEdge.type}</span>
+                <span className="kg-inspector-id">{s.title} → {t.title}</span>
+                <button className="kg-inspector-close" onClick={clearSel} aria-label="Close">×</button>
+              </div>
+              <dl className="kg-inspector-props">
+                {selEdge.result && (
+                  <div className="kg-inspector-prop"><dt>{selEdge.type === 'FOLLOW_UP' ? 'When to run' : selEdge.type === 'TRIGGERS' ? 'Why first' : 'Test result'}</dt><dd>{selEdge.result}</dd></div>
+                )}
+                {prob != null && (
+                  <div className="kg-inspector-prop"><dt>{selEdge.type === 'RULES_OUT' ? 'Rules out · confidence' : 'Confirms · confidence'}</dt><dd>{prob.toFixed(2)} ({selEdge.band})</dd></div>
+                )}
+                {isRw && !approved && (
+                  <div className="kg-inspector-prop"><dt>Pending re-weight</dt><dd>{selEdge.oldProbability?.toFixed(2)} → {selEdge.newProbability?.toFixed(2)} · awaiting approval</dd></div>
+                )}
+                {selEdge.order != null && (
+                  <div className="kg-inspector-prop"><dt>Suggested order</dt><dd>{selEdge.order}</dd></div>
+                )}
+              </dl>
+            </div>
+          )
+        })()}
       </div>
 
-      <svg
-        className="kg-svg"
-        viewBox={`0 0 ${VIEWBOX.w} ${VIEWBOX.h}`}
-        preserveAspectRatio="xMidYMid meet"
-        onClick={() => setSelected(null)}
-      >
-        {/* historical graph — recedes (shrinks + tucks left) once the live build starts */}
-        <g
-          className="kg-historical"
-          data-recede={receded}
-          style={{
-            transform: receded ? `translate(${RECEDE.tx}px, ${RECEDE.ty}px) scale(${RECEDE.s})` : 'none',
-            transformBox: 'view-box',
-            transformOrigin: '0 0',
-            transition: 'transform 700ms ease, opacity 700ms ease',
-          }}
-        >
-          <g>{histEdges.map((e) => renderEdge(e, byId[e.source].x, byId[e.source].y, byId[e.target].x, byId[e.target].y, false))}</g>
-          <g>{histNodes.map((n) => renderNode(n, false))}</g>
-        </g>
-
-        {/* live incident — full scale, on top. Tether edge starts from the receded symptom. */}
-        <g className="kg-live">
-          <g>
-            {liveEdges.map((e) => {
-              const s = e.source === 'SYM-001' ? SYM_RECEDED : byId[e.source]
-              const t = byId[e.target]
-              return renderEdge(e, s.x, s.y, t.x, t.y, true)
-            })}
-          </g>
-          <g>{liveNodes.map((n) => renderNode(n, true))}</g>
-        </g>
-      </svg>
-
-      {selected && (
-        <div className="kg-inspector">
-          <div className="kg-inspector-head">
-            <span className="kg-inspector-chip" style={{ background: NODE_COLORS[selected.label] }}>
-              {selected.label}
-            </span>
-            <span className="kg-inspector-id">{selected.id}</span>
-            <button className="kg-inspector-close" onClick={() => setSelected(null)} aria-label="Close">×</button>
-          </div>
-          <div className="kg-inspector-title">{selected.title}</div>
-          <dl className="kg-inspector-props">
-            {Object.entries(selected.props).map(([k, v]) => (
-              <div className="kg-inspector-prop" key={k}>
-                <dt>{k}</dt>
-                <dd>{formatVal(v)}</dd>
-              </div>
-            ))}
-          </dl>
+      <div className="kg-inbox" data-state={inboxState}>
+        <div className="kg-inbox-label">
+          Incident inbox · documents, <em>not</em> graph nodes
+          <span className="kg-inbox-state">{inboxState}</span>
         </div>
-      )}
+        <div className="kg-inbox-cards">
+          {INCIDENTS.map((inc) => (
+            <div className="kg-inc-card" data-state={inboxState} key={inc.id}>
+              <div className="kg-inc-head">{inc.id} · {inc.plant} · {inc.asset}</div>
+              <div className="kg-inc-docs">
+                {DOCS.map((doc) => {
+                  const chip = inc.chips.find((c) => c.doc === doc)
+                  return (
+                    <div className="kg-inc-doc" key={doc} data-parsed={step >= 2}>
+                      <span className="kg-inc-doc-name">{DOC_LABEL[doc]}</span>
+                      {step >= 2 && chip && (
+                        <div className="kg-inc-chip">
+                          <span className="kg-inc-chip-skill">{skillName(chip.skill)}</span>
+                          <span className="kg-inc-chip-text">{chip.text}</span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
