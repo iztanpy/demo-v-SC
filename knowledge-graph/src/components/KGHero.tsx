@@ -9,7 +9,8 @@ import { useP2 } from '../store'
 // One bounded knowledge graph (no incident nodes). Proposed nodes/edges show as dashed
 // `PROPOSED · not applied` previews from their proposeStep and only SOLIDIFY once a human
 // approves at APPROVE_STEP (8). Incidents live OUTSIDE the graph (left-pane inbox tab).
-const R = 30
+const R = 30        // focus-cluster node radius (the nodes you zoom into) — kept large
+const CTX_R = 30    // dense backdrop node radius — uniform + smaller so page-1 nodes never overlap
 const byId = Object.fromEntries(NODES.map((n) => [n.id, n])) as Record<string, GraphNode>
 
 // edge-type → chip colour for the edge inspector
@@ -22,6 +23,9 @@ function formatVal(v: PropVal): string {
   if (typeof v === 'boolean') return v ? '✓ yes' : '✗ no'
   return String(v)
 }
+
+// which agent is "running" on the hero per step — shown as a green pill in the working theater
+const STEP_AGENT: Record<number, string> = { 4: 'Pattern Synthesis', 5: 'Pattern Synthesis', 6: 'KG Curator', 7: 'Validation Critic' }
 
 function edgeLabel(e: GraphEdge, prob: number | undefined): string {
   switch (e.type) {
@@ -55,6 +59,8 @@ export function KGHero() {
   const batchApplied = (b?: number) =>
     step > APPROVE_STEP ? true : step < APPROVE_STEP ? false : approvedBatches >= (b ?? 1)
   const allApplied = batchApplied(2)
+  // last page — the just-learned nodes + connections pulse to mark them as newly created
+  const isLast = step === STEPS.length
 
   // Batch-2 payoff: once approved, the captured "skip triage" shortcut is formalised — Shaft
   // runout (DT-RUNOUT) is promoted from Test layer 2 → Test layer 1, and SYM-001 now TRIGGERS it
@@ -85,8 +91,12 @@ export function KGHero() {
     // promoted runout renders as a triage (L1) test: full size + plain label, in the L1 column
     const tier = isPromotedRunout(n.id) ? 'triage' : n.tier
     const { x, y } = effPos(n)
-    // focus L2 (follow-up) tests render at the same R as the rest; backdrop nodes keep their size
-    const r = n.size ?? R
+    // focus nodes stay large (R); the dense backdrop uses a smaller uniform radius so page-1
+    // nodes are evenly sized AND never overlap (closest backdrop pair is ~66px apart)
+    const r = n.context ? CTX_R : R
+    // last slide: newly created nodes + the promoted runout pulse; everything else dims
+    const isNewNode = isLast && (n.state === 'proposed' || isPromotedRunout(n.id))
+    const isDimNode = isLast && !isNewNode && !n.context
     return (
       <g
         key={n.id}
@@ -97,6 +107,8 @@ export function KGHero() {
         data-state={nodeStateAttr(n)}
         data-selected={selectedId === n.id}
         data-promoted={isPromotedRunout(n.id) ? 'true' : undefined}
+        data-new={isNewNode ? 'true' : undefined}
+        data-dim={isDimNode ? 'true' : undefined}
         transform={`translate(${x},${y})`}
         onClick={(e) => { e.stopPropagation(); if (!n.context) { setSelected(n.id); setSelEdgeKey(null) } }}
       >
@@ -140,6 +152,9 @@ export function KGHero() {
       ? batchApplied(e.batch) ? 'applied' : step >= (e.reweightProposeStep ?? 99) ? 'pending' : ''
       : ''
     const prob = isReweight && batchApplied(e.batch) && e.newProbability != null ? e.newProbability : e.probability
+    // last slide: newly created connections AND the re-weighted edge pulse; the rest dim
+    const isNewEdge = isLast && (e.state === 'proposed' || e.reweightProposeStep != null)
+    const isDimEdge = isLast && !isNewEdge && !e.context
     const eState = e.state === 'proposed' ? (batchApplied(e.batch) ? 'applied' : 'proposed') : 'committed'
     const label = promotedTrigger ? edgeLabel({ ...e, type: 'TRIGGERS' }, prob) : edgeLabel(e, prob)
     // proposed edges draw on dotted via a per-edge mask (solid wipe reveals the dotted line)
@@ -154,6 +169,8 @@ export function KGHero() {
         data-state={eState}
         data-reweight={reweightState}
         data-seq={e.source === 'DT-WELD-NDT' ? 'after' : undefined}
+        data-new={isNewEdge ? 'true' : undefined}
+        data-dim={isDimEdge ? 'true' : undefined}
         data-selected={selEdgeKey === edgeKey(e)}
         onClick={(ev) => { ev.stopPropagation(); setSelEdgeKey(edgeKey(e)); setSelected(null) }}
       >
@@ -214,6 +231,7 @@ export function KGHero() {
       const titleByStep: Record<number, string> = { 4: 'Synthesizing…', 5: 'Scanning the graph…', 6: 'Drafting changes…' }
       return (
         <div className="kg-context">
+          {STEP_AGENT[step] && <span className="kg-agent-pill">{STEP_AGENT[step]} Agent</span>}
           <div className="kg-context-title">{titleByStep[step]}</div>
           <div className="kg-reveal">
             <span className="reveal-dots"><span /><span /><span /></span>
@@ -324,6 +342,7 @@ export function KGHero() {
           })}
           {validating && (
             <div className="kg-reveal kg-validating">
+              {STEP_AGENT[step] && <span className="kg-agent-pill">{STEP_AGENT[step]} Agent</span>}
               <span className="reveal-dots"><span /><span /><span /></span>
               <span className="reveal-msg">{STEPS[step - 1]?.live}</span>
             </div>

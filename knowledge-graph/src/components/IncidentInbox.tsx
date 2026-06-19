@@ -57,7 +57,7 @@ export function IncidentInbox() {
                       <div className="kg-reveal">
                         <span className="reveal-dots"><span /><span /><span /></span>
                         <span className="reveal-msg">
-                          <span className="reveal-agent">{skillName(chip.skill)}</span> · {phase === 'parsing' ? 'parsing…' : 'extracting…'}
+                          <span className="reveal-agent">{skillName(chip.skill)} Agent</span> · {phase === 'parsing' ? 'parsing…' : 'extracting…'}
                         </span>
                       </div>
                     )}

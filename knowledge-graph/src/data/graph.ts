@@ -137,8 +137,12 @@ CTX_DEFS.forEach((def, i) => {
   CONTEXT_NODES.push({ id: def.id, label: 'Symptom', title: def.title, x: CTX_CENTER.x + Math.cos(ang) * symR, y: CTX_CENTER.y + Math.sin(ang) * symR, context: true, size: 30 + seeded(seed * 3) * 16, props: { name: def.title } })
   CONTEXT_EDGES.push({ source: def.id, target: 'AC-BFP', type: 'OCCURS_IN', context: true }) // yellow spoke into the hub
   const m = def.chains.length
+  // downward-pointing (bottom) symptoms get a NARROWER chain fan so their chains don't collide
+  // with neighbours; sides/top keep the full fan. downness: 0 at sides/top → 1 straight down.
+  const downness = Math.max(0, Math.sin(ang))
+  const chainSpread = 0.44 - 0.20 * downness
   def.chains.forEach((ch, k) => {
-    const chAng = ang + (k - (m - 1) / 2) * 0.44 + (seeded(seed * 5 + k) - 0.5) * 0.06
+    const chAng = ang + (k - (m - 1) / 2) * chainSpread + (seeded(seed * 5 + k) - 0.5) * 0.06
     const pt = (radius: number) => ({ x: CTX_CENTER.x + Math.cos(chAng) * radius, y: CTX_CENTER.y + Math.sin(chAng) * radius })
     // tiers radiate outward: triage (blue) → optional follow-up (blue) → cause (red)
     const rTriage = symR + 200 + seeded(seed * 7 + k) * 50

@@ -81,7 +81,7 @@ export interface PatternRow {
 }
 export const PATTERN_ROWS: PatternRow[] = [
   { label: 'DT-PHASE suggested', cells: ['Bent shaft', 'Bent shaft', 'Bent shaft'] },
-  { label: 'Bent shaft', cells: ['Ruled out', 'Ruled out', 'Ruled out'] },
+  { label: 'Origianl Diagnosis', cells: ['Ruled out', 'Ruled out', 'Ruled out'] },
   { label: 'Confirmed cause', cells: ['Casing crack', 'Casing crack', 'Casing crack'] },
   { label: 'Found by', cells: ['Casing NDT', 'Visual inspect', 'Dye-penetrant'] },
 ]
