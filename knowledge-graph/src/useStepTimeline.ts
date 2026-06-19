@@ -18,12 +18,14 @@ interface Cue { id: string; start: number; end: number }
 
 function buildCues(step: number): Cue[] {
   const sequence = STEPS[step - 1]?.sequence ?? []
+  // steps 4+ run the loading theater a little faster than the intake beats (1–3)
+  const stepSpeed = step >= 4 ? 0.7 : 1
   const cues: Cue[] = []
   let beatStart = 0
   for (const beat of sequence) {
     let beatLen = 0
     for (const s of beat.skills) {
-      const dur = s.durMs * BEAT_MULTIPLIER
+      const dur = s.durMs * BEAT_MULTIPLIER * stepSpeed
       cues.push({ id: s.id, start: beatStart, end: beatStart + dur })
       beatLen = Math.max(beatLen, dur)
     }

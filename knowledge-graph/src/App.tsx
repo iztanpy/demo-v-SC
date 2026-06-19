@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useP2, TOTAL_STEPS } from './store'
 import { Rail } from './components/Rail'
 import { AgentSidebar } from './components/AgentSidebar'
@@ -16,9 +17,26 @@ export default function App() {
   const toggleLeft = useP2((s) => s.toggleLeft)
   const toggleRight = useP2((s) => s.toggleRight)
   const toggleFocus = useP2((s) => s.toggleFocus)
+  const approvedBatches = useP2((s) => s.approvedBatches)
 
   const showLeft = leftOpen && !focusGraph
   const showRight = rightOpen && !focusGraph
+
+  // Steps 2–3 are the incident-inbox beats — open the left pane if it was collapsed so the inbox
+  // shows (Rail's own effect then selects the inbox tab once it mounts). Step 4 leaves the inbox
+  // behind for the graph beats, so collapse it again.
+  useEffect(() => {
+    if ((step === 2 || step === 3) && !leftOpen) useP2.setState({ leftOpen: true })
+    else if (step === 4 && leftOpen) useP2.setState({ leftOpen: false })
+  }, [step])
+
+  // Step 8 is the approval beat — open the right panel (the dossier) if it was collapsed, then
+  // close it again once the reviewer has approved both batches (approval completed).
+  useEffect(() => {
+    if (step !== APPROVE_STEP) return
+    if (approvedBatches >= 2) { if (rightOpen) useP2.setState({ rightOpen: false }) }
+    else if (!rightOpen) useP2.setState({ rightOpen: true })
+  }, [step, approvedBatches])
 
   return (
     <div id="p2-stage">

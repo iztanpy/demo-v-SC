@@ -85,7 +85,7 @@ export const STEPS: StepCopy[] = [
     n: 7,
     title: 'Validate the changes',
     goal: 'check before the human',
-    body: 'The Validation Critic reviews the changeset: a Consistency Check confirms nothing conflicts with existing CONFIRMS / FOLLOW_UP / RULES_OUT edges, SOP or safety; an Evidence Audit confirms each edit is justified by the incidents it cites. Everything passes — still awaiting a human.',
+    body: 'The Validation Critic reviews the changeset: a Consistency Check confirms nothing conflicts with existing CONFIRMS / FOLLOW_UP edges, SOP or safety; an Evidence Audit confirms each edit is justified by the incidents it cites. Everything passes — still awaiting a human.',
     sequence: [
       { skills: [{ id: 'critic-consistency', durMs: 1200 }] },
       { skills: [{ id: 'critic-evidence', durMs: 1200 }] },

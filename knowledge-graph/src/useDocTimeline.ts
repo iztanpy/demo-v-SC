@@ -8,18 +8,28 @@ import type { DocKind } from './data/incidents'
 export type DocPhase = 'queued' | 'parsing' | 'extracting' | 'done'
 
 const DOCS: DocKind[] = ['report', 'workflow', 'transcript']
-// base durations (ms), before PARSE_MULTIPLIER — tuned so the whole sweep reads as real work
-const BASE = { incidentStagger: 1500, docStagger: 280, parse: 950, extract: 800 }
+// Each doc TYPE has its own parse/extract duration (ms, before PARSE_MULTIPLIER) so within a card
+// they finish at different times — "some end faster than others".
+const DOC_DUR: Record<DocKind, { parse: number; extract: number }> = {
+  report:     { parse: 1100, extract: 950 }, // ~2050 — slowest (longest doc)
+  workflow:   { parse: 900,  extract: 750 }, // ~1650
+  transcript: { parse: 750,  extract: 600 }, // ~1350 — fastest
+}
+// All 9 docs START together (at t=0) but END independently: each card runs at its own pace, so
+// even the same doc type across cards finishes at a different time — no lockstep.
+const CARD_SPEED = [1.0, 0.8, 1.25]
 
 interface Win { key: string; start: number; parseEnd: number; end: number }
 const WINS: Win[] = (() => {
   const m = PARSE_MULTIPLIER
   const wins: Win[] = []
   INCIDENTS.forEach((inc, i) => {
-    DOCS.forEach((doc, j) => {
-      const start = (i * BASE.incidentStagger + j * BASE.docStagger) * m
-      const parseEnd = start + BASE.parse * m
-      wins.push({ key: `${inc.id}:${doc}`, start, parseEnd, end: parseEnd + BASE.extract * m })
+    const speed = CARD_SPEED[i] ?? 1
+    DOCS.forEach((doc) => {
+      const d = DOC_DUR[doc]
+      const start = 0
+      const parseEnd = start + d.parse * speed * m
+      wins.push({ key: `${inc.id}:${doc}`, start, parseEnd, end: parseEnd + d.extract * speed * m })
     })
   })
   return wins

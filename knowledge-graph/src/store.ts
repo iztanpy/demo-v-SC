@@ -29,11 +29,12 @@ export const useP2 = create<P2State>((set) => ({
       return { step, maxStepReached: Math.max(s.maxStepReached, step), approvedBatches: 0 }
     }),
   back: () => set((s) => ({ step: Math.max(1, s.step - 1), approvedBatches: 0 })),
-  restart: () => set({ step: 1, maxStepReached: 1, approvedBatches: 0 }),
+  restart: () => set({ step: 1, maxStepReached: 1, approvedBatches: 0, leftOpen: false, rightOpen: false }),
   approvedBatches: 0,
   approveBatch: () => set((s) => ({ approvedBatches: Math.min(2, s.approvedBatches + 1) })),
-  leftOpen: true,
-  rightOpen: true,
+  // initial view (step 1) = both side panels closed; the step effects in App open them on cue
+  leftOpen: false,
+  rightOpen: false,
   focusGraph: false,
   toggleLeft: () => set((s) => ({ leftOpen: !s.leftOpen })),
   toggleRight: () => set((s) => ({ rightOpen: !s.rightOpen })),

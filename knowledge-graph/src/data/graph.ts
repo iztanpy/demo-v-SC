@@ -84,10 +84,8 @@ const FOCUS_EDGES: GraphEdge[] = [
   { source: 'DT-PHASE', target: 'RC-BENT-SHAFT', type: 'CONFIRMS', band: 'high', probability: 0.88, oldProbability: 0.88, newProbability: 0.70, reweightProposeStep: 6, batch: 1, result: '1×RPM-dominant with ~180° NDE–DE phase shift' },
   { source: 'DT-PHASE', target: 'RC-MISALIGN', type: 'CONFIRMS', band: 'med', probability: 0.7, result: '2×RPM component elevated relative to 1×RPM' },
   { source: 'DT-HOUSING-INSPECT', target: 'RC-BEARING-SPALL', type: 'CONFIRMS', band: 'high', probability: 0.95, result: 'Visible race spalling / pitting on NDE bearing' },
-  { source: 'DT-HOUSING-INSPECT', target: 'RC-BENT-SHAFT', type: 'RULES_OUT', band: 'med', probability: 0.6, result: 'Bearing housing intact — bow unlikely the primary' },
   { source: 'DT-RUNOUT', target: 'RC-BENT-SHAFT', type: 'CONFIRMS', band: 'high', probability: 0.9, result: 'Total indicated runout exceeds tolerance' },
   { source: 'DT-ALIGNMENT', target: 'RC-MISALIGN', type: 'CONFIRMS', band: 'high', probability: 0.92, result: 'Offset / angularity out of tolerance' },
-  { source: 'DT-ALIGNMENT', target: 'RC-BENT-SHAFT', type: 'RULES_OUT', band: 'low', probability: 0.4, result: 'Coupling aligned within tolerance' },
   { source: 'DT-OIL-ANALYSIS', target: 'RC-LUBE-FAIL', type: 'CONFIRMS', band: 'high', probability: 0.9, result: 'High particle/water count; viscosity off-spec' },
   { source: 'DT-OIL-ANALYSIS', target: 'RC-BEARING-SPALL', type: 'CONFIRMS', band: 'med', probability: 0.65, result: 'Ferrous spall debris in ferrography' },
 
@@ -101,8 +99,9 @@ const FOCUS_EDGES: GraphEdge[] = [
   { source: 'DT-WELD-NDT', target: 'RC-CASING-CRACK', type: 'CONFIRMS', band: 'high', probability: 0.9, result: 'PT/MT indication at volute weld toe', state: 'proposed', proposeStep: 6, batch: 1 },
   { source: 'DT-WELD-NDT', target: 'NEEDS-INFO', type: 'INCONCLUSIVE', result: 'No weld indication → casing crack not confirmed; gather more data', state: 'proposed', proposeStep: 6, batch: 1 },
 
-  // ── PROPOSED shortcut (batch 2) — captured from a call: skip triage, go straight to runout ──
-  { source: 'SYM-001', target: 'DT-RUNOUT', type: 'SHORTCUT', result: 'Captured call: “1×RPM is obvious — skip phase, go straight to the runout”', state: 'proposed', proposeStep: 6, batch: 2 },
+  // ── PROPOSED shortcut (batch 2) — captured from a call: skip triage, go straight to runout.
+  // On approval this formalises into a first-line TRIGGERS edge (Shaft runout promoted to L1). ──
+  { source: 'SYM-001', target: 'DT-RUNOUT', type: 'SHORTCUT', order: 3, result: 'Captured call: “1×RPM is obvious — skip phase, go straight to the runout”', state: 'proposed', proposeStep: 6, batch: 2 },
 ]
 
 // ── Decorative "rest of the KG" — a dense RADIAL field: other BFP symptoms ringing the

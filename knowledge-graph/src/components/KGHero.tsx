@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NODES, EDGES, VIEWBOX, NODE_COLORS, NODE_LABELS, COL_HEADERS, DENSE_TRANSFORM } from '../data/graph'
+import { NODES, EDGES, VIEWBOX, NODE_COLORS, NODE_LABELS, COL_HEADERS, DENSE_TRANSFORM, COLS } from '../data/graph'
 import type { GraphNode, GraphEdge, PropVal } from '../types'
 import { INCIDENTS, PATTERN_ROWS, GAPS, CHANGES, APPROVE_STEP } from '../data/incidents'
 import { STEPS } from '../data/steps'
@@ -56,6 +56,13 @@ export function KGHero() {
     step > APPROVE_STEP ? true : step < APPROVE_STEP ? false : approvedBatches >= (b ?? 1)
   const allApplied = batchApplied(2)
 
+  // Batch-2 payoff: once approved, the captured "skip triage" shortcut is formalised — Shaft
+  // runout (DT-RUNOUT) is promoted from Test layer 2 → Test layer 1, and SYM-001 now TRIGGERS it
+  // directly (like the other first-line tests). DT-PHASE → runout FOLLOW_UP still stands.
+  const RUNOUT_PROMOTED = { x: COLS.l1, y: 210 }
+  const isPromotedRunout = (id: string) => allApplied && id === 'DT-RUNOUT'
+  const effPos = (n: GraphNode) => (isPromotedRunout(n.id) ? RUNOUT_PROMOTED : { x: n.x, y: n.y })
+
   const edgeKey = (e: GraphEdge) => `${e.source}__${e.target}__${e.type}`
   const selEdge = selEdgeKey ? EDGES.find((e) => edgeKey(e) === selEdgeKey) ?? null : null
   const clearSel = () => { setSelected(null); setSelEdgeKey(null) }
@@ -75,24 +82,29 @@ export function KGHero() {
   }
 
   function renderNode(n: GraphNode) {
-    const r = n.size ?? (n.tier === 'followup' ? 22 : R)
+    // promoted runout renders as a triage (L1) test: full size + plain label, in the L1 column
+    const tier = isPromotedRunout(n.id) ? 'triage' : n.tier
+    const { x, y } = effPos(n)
+    // focus L2 (follow-up) tests render at the same R as the rest; backdrop nodes keep their size
+    const r = n.size ?? R
     return (
       <g
         key={n.id}
         className="g-node"
         data-label={n.label}
-        data-tier={n.tier ?? ''}
+        data-tier={tier ?? ''}
         data-context={n.context ? 'true' : undefined}
         data-state={nodeStateAttr(n)}
         data-selected={selectedId === n.id}
-        transform={`translate(${n.x},${n.y})`}
+        data-promoted={isPromotedRunout(n.id) ? 'true' : undefined}
+        transform={`translate(${x},${y})`}
         onClick={(e) => { e.stopPropagation(); if (!n.context) { setSelected(n.id); setSelEdgeKey(null) } }}
       >
         <circle className="g-node-dot" r={r} fill={NODE_COLORS[n.label]} />
         {!n.context && (
           <>
             <text className="g-node-label" y={r + 16} textAnchor="middle">{n.title}</text>
-            <text className="g-node-type" y={r + 30} textAnchor="middle">{n.tier === 'followup' ? 'follow-up test' : n.label}</text>
+            <text className="g-node-type" y={r + 30} textAnchor="middle">{tier === 'followup' ? 'follow-up test' : n.label}</text>
           </>
         )}
         {n.state === 'proposed' && !batchApplied(n.batch) && (
@@ -103,9 +115,12 @@ export function KGHero() {
   }
 
   function renderEdge(e: GraphEdge) {
-    const s = byId[e.source], t = byId[e.target]
+    const s = effPos(byId[e.source]), t = effPos(byId[e.target])
+    // batch-2 payoff: SYM-001 → runout SHORTCUT formalises into a first-line TRIGGERS edge
+    const promotedTrigger = allApplied && e.type === 'SHORTCUT' && e.source === 'SYM-001' && e.target === 'DT-RUNOUT'
+    const effType = promotedTrigger ? 'TRIGGERS' : e.type
     // INCONCLUSIVE + SHORTCUT edges curve (quadratic) so they bow clear of the straight lines
-    const curved = e.type === 'INCONCLUSIVE' || e.type === 'SHORTCUT'
+    const curved = effType === 'INCONCLUSIVE' || effType === 'SHORTCUT'
     let d: string, mx: number, my: number
     if (curved) {
       const dx = t.x - s.x, dy = t.y - s.y, len = Math.hypot(dx, dy) || 1
@@ -126,7 +141,7 @@ export function KGHero() {
       : ''
     const prob = isReweight && batchApplied(e.batch) && e.newProbability != null ? e.newProbability : e.probability
     const eState = e.state === 'proposed' ? (batchApplied(e.batch) ? 'applied' : 'proposed') : 'committed'
-    const label = edgeLabel(e, prob)
+    const label = promotedTrigger ? edgeLabel({ ...e, type: 'TRIGGERS' }, prob) : edgeLabel(e, prob)
     // proposed edges draw on dotted via a per-edge mask (solid wipe reveals the dotted line)
     const drawing = eState === 'proposed'
     const maskId = `draw-${edgeKey(e)}`
@@ -134,10 +149,11 @@ export function KGHero() {
       <g
         key={edgeKey(e)}
         className="g-edge"
-        data-type={e.type}
+        data-type={effType}
         data-context={e.context ? 'true' : undefined}
         data-state={eState}
         data-reweight={reweightState}
+        data-seq={e.source === 'DT-WELD-NDT' ? 'after' : undefined}
         data-selected={selEdgeKey === edgeKey(e)}
         onClick={(ev) => { ev.stopPropagation(); setSelEdgeKey(edgeKey(e)); setSelected(null) }}
       >
