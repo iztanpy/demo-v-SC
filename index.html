@@ -1238,6 +1238,136 @@
       font-style: italic;
     }
 
+    /* ── W41 — Work Order "Sources" provenance modal ── */
+    .sources-modal {
+      position: fixed; inset: 0; z-index: 2000;
+      display: none; align-items: center; justify-content: center;
+    }
+    .sources-modal[data-open="true"] { display: flex; }
+    .sources-modal-overlay {
+      position: absolute; inset: 0;
+      background: rgba(15,27,61,0.55);
+      backdrop-filter: blur(4px);
+      cursor: pointer;
+    }
+    .sources-modal-window {
+      position: relative;
+      background: #FAFBFC;
+      border-radius: 12px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.45);
+      width: 92%; max-width: 880px; max-height: 84vh;
+      overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    .sources-modal-hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: var(--bg-card);
+    }
+    .sources-modal-title { display: block; font-size: 15px; font-weight: 800; color: var(--text-primary); }
+    .sources-modal-sub { font-size: 11.5px; color: var(--text-muted); }
+    .sources-modal-close {
+      width: 26px; height: 26px;
+      background: var(--bg-card-hover);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      font-size: 16px; cursor: pointer; line-height: 1;
+    }
+    .sources-modal-body {
+      display: grid; grid-template-columns: 320px 1fr;
+      overflow: hidden; flex: 1; min-height: 0;
+    }
+    .sources-col-left {
+      padding: 16px; overflow-y: auto;
+      background: var(--bg-card-hover);
+      border-right: 1px solid var(--border-subtle);
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .sources-col-right {
+      padding: 18px 20px; overflow-y: auto; background: #fff;
+    }
+    /* left — source cards */
+    .prov-card {
+      background: #fff;
+      border: 1px solid var(--border-subtle);
+      border-left: 4px solid var(--prov);
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+    .prov-card-agent {
+      display: inline-flex; align-items: center;
+      font-size: 9.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+      color: #fff; background: var(--prov);
+      padding: 3px 8px; border-radius: 999px;
+    }
+    .prov-card-title { font-size: 13px; font-weight: 800; color: var(--text-primary); margin-top: 8px; }
+    .prov-card-desc { font-size: 11.5px; line-height: 1.5; color: var(--text-secondary); margin-top: 5px; }
+    .prov-card-records { list-style: none; margin: 9px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+    .prov-card-records li {
+      font-family: var(--mono); font-size: 10.5px; color: var(--text-muted);
+      padding-left: 13px; position: relative;
+    }
+    .prov-card-records li::before {
+      content: ''; position: absolute; left: 0; top: 5px;
+      width: 6px; height: 6px; border-radius: 50%; background: var(--prov);
+    }
+    /* right — color-coded WO document */
+    .prov-doc-note { font-size: 11px; color: var(--text-muted); margin-bottom: 10px; }
+    .prov-doc-head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border-subtle); margin-bottom: 14px;
+    }
+    .prov-doc-title { font-size: 14px; font-weight: 800; color: var(--text-primary); }
+    .prov-doc-id { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
+    .prov-block {
+      border-left: 3px solid var(--prov);
+      background: color-mix(in srgb, var(--prov) 8%, #fff);
+      border-radius: 0 6px 6px 0;
+      padding: 8px 12px; margin-bottom: 10px;
+    }
+    .prov-block-via {
+      display: block; font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+      color: var(--prov); margin-bottom: 3px;
+    }
+    .prov-block-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+    .prov-block-val { font-size: 12.5px; color: var(--text-primary); margin-top: 2px; }
+    .prov-machine-asset { font-weight: 700; }
+    .prov-spec-grid { margin-top: 8px; display: flex; flex-direction: column; gap: 3px; }
+    .prov-spec-row { display: flex; gap: 8px; font-size: 11.5px; line-height: 1.4; }
+    .prov-spec-k { flex: 0 0 128px; color: var(--text-muted); font-weight: 700; }
+    .prov-spec-v { color: var(--text-primary); }
+    .prov-hist-lbl {
+      font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+      color: var(--text-muted); margin: 11px 0 5px;
+    }
+    .prov-hist-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+    .prov-hist-list li { font-size: 11px; line-height: 1.4; color: var(--text-secondary); }
+    .prov-hist-date { font-family: var(--mono); font-weight: 700; color: var(--prov); margin-right: 6px; }
+    .prov-works-lbl {
+      font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
+      color: var(--text-secondary); margin: 14px 0 8px;
+    }
+    .prov-works-group-lbl { font-size: 11px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+    .prov-works-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+    .prov-works-list li {
+      font-size: 11.5px; line-height: 1.4; color: var(--text-secondary);
+      padding-left: 14px; position: relative;
+    }
+    .prov-works-list li::before { content: '·'; position: absolute; left: 4px; color: var(--prov); font-weight: 800; }
+
+    /* W41 — Sources button on the WO card */
+    .as-wo-head-right { display: inline-flex; align-items: center; gap: 10px; }
+    .as-wo-sources-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px;
+      font-family: inherit; font-size: 11px; font-weight: 700;
+      color: var(--blue-vivid);
+      background: #fff; border: 1px solid var(--blue-vivid); border-radius: 999px;
+      cursor: pointer; white-space: nowrap;
+    }
+    .as-wo-sources-btn:hover { background: #EFF6FF; }
+
     /* W3.6 — ops impact body wrappers (allow normal wrap of dyn-entity content) */
     .ops-impact-text {
       font-size: 12.5px;
@@ -2402,7 +2532,7 @@
       margin-top: 14px;
       padding-top: 12px;
       border-top: 1px solid var(--border-subtle);
-      display: flex; align-items: center; gap: 10px;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
     }
     .sr-confirm-btn {
       padding: 10px 22px;
@@ -2427,6 +2557,74 @@
       font-weight: 700;
       border-radius: 12px;
       letter-spacing: 0.02em;
+    }
+
+    /* W42b — "Locking in…" pill (replaces the mutated button during the 2s lock-in) */
+    .sr-locking-pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 14px;
+      background: var(--green-soft);
+      color: var(--green-soft-text);
+      font-size: 11.5px;
+      font-weight: 700;
+      border-radius: 12px;
+      letter-spacing: 0.02em;
+    }
+    .sr-locking-dots { display: inline-flex; gap: 3px; }
+    .sr-locking-dots span {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--green-vivid);
+      animation: sr-locking-blink 1s infinite ease-in-out;
+    }
+    .sr-locking-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .sr-locking-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes sr-locking-blink {
+      0%, 80%, 100% { opacity: 0.25; }
+      40% { opacity: 1; }
+    }
+
+    /* W40 — Override reasoning prompt (shown only when Faye picks a non-recommended diagnosis) */
+    .sr-override {
+      margin-top: 12px;
+      padding: 10px 12px;
+      background: var(--amber-soft);
+      border: 1px solid var(--amber-soft-text);
+      border-left: 3px solid var(--amber-vivid);
+      border-radius: 8px;
+      animation: reveal-slide 0.3s ease-out;
+    }
+    .sr-override-label {
+      font-size: 11.5px; font-weight: 700; line-height: 1.4;
+      color: var(--amber-soft-text);
+      margin-bottom: 8px;
+    }
+    .sr-override-input {
+      width: 100%;
+      min-height: 58px;
+      padding: 8px 10px;
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 12.5px;
+      color: var(--text-primary);
+      background: #fff;
+      resize: vertical;
+      line-height: 1.5;
+      box-sizing: border-box;
+    }
+    .sr-override-input:focus { outline: none; border-color: var(--amber-vivid); }
+    .sr-override-captured {
+      flex-basis: 100%;
+      font-size: 11px; line-height: 1.45;
+      color: var(--text-secondary);
+    }
+    .sr-override-captured-lbl {
+      display: inline-block;
+      font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
+      font-size: 9.5px; color: var(--amber-soft-text);
+      background: var(--amber-soft);
+      padding: 2px 6px; border-radius: 999px;
+      margin-right: 6px;
     }
 
     /* W13 R2 — SOP Anticipation Theater (intermediate, before Step 1) */
@@ -2669,7 +2867,7 @@
     }
     .as-wo-card-regen { border-left-color: var(--amber, #F59E0B); }
     .as-wo-head {
-      display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
       margin-bottom: 8px;
     }
     .as-wo-title {
@@ -2678,6 +2876,18 @@
     }
     .as-wo-id { font-family: var(--mono); font-size: 11.5px; font-weight: 700; color: var(--text-secondary); }
     .as-wo-asset { font-size: 12px; color: var(--text-primary); margin-bottom: 6px; }
+    /* W41b — rich machine detail on the WO card (mirrors the Sources modal) */
+    .as-wo-specs { margin: 4px 0 8px; display: flex; flex-direction: column; gap: 3px; }
+    .as-wo-spec { display: flex; gap: 8px; font-size: 11.5px; line-height: 1.4; }
+    .as-wo-spec-k { flex: 0 0 124px; color: var(--text-muted); font-weight: 700; }
+    .as-wo-spec-v { color: var(--text-primary); }
+    .as-wo-hist-lbl {
+      font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+      color: var(--text-muted); margin: 6px 0 4px;
+    }
+    .as-wo-hist { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+    .as-wo-hist li { font-size: 11px; line-height: 1.4; color: var(--text-secondary); }
+    .as-wo-hist-date { font-family: var(--mono); font-weight: 700; color: var(--green-soft-text); margin-right: 6px; }
     .as-wo-diagnosis { font-size: 12px; color: var(--text-primary); margin-bottom: 10px; }
     .as-wo-lbl {
       font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
@@ -3148,6 +3358,67 @@
       white-space: nowrap;
     }
     .ic-instr-done-skip { color: #B45309; }
+
+    /* W43 — temperature-spike: struck instrument items + escalation item + alert modal */
+    .ic-item-struck .ic-text { text-decoration: line-through; color: var(--text-muted); }
+    .ic-instr-superseded {
+      margin-left: auto;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--text-muted); white-space: nowrap;
+    }
+    .ic-escalate-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      margin-top: 8px; padding: 10px 12px;
+      background: var(--amber-soft);
+      border-left: 3px solid var(--amber-vivid);
+      border-radius: 8px;
+      animation: reveal-slide 0.3s ease-out;
+      cursor: pointer;
+      transition: background 150ms, box-shadow 150ms;
+    }
+    .ic-escalate-item:hover {
+      background: #FDE9B0;
+      box-shadow: 0 2px 8px rgba(217,119,6,0.18);
+    }
+    .ic-escalate-arrow { color: var(--amber-vivid); font-weight: 800; font-size: 15px; line-height: 1.3; }
+    .ic-escalate-text { display: block; font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
+    .ic-escalate-sub { display: block; font-size: 11px; color: var(--amber-soft-text); margin-top: 2px; }
+
+    .ts-alert {
+      position: absolute; inset: 0; z-index: 60;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ts-alert-backdrop {
+      position: absolute; inset: 0;
+      background: rgba(15,27,61,0.45);
+      backdrop-filter: blur(2px);
+    }
+    .ts-alert-card {
+      position: relative;
+      width: 78%; max-width: 420px;
+      background: #fff;
+      border-radius: 14px;
+      border-top: 5px solid var(--amber-vivid);
+      box-shadow: 0 18px 48px rgba(15,27,61,0.32);
+      padding: 20px 22px;
+      animation: reveal-slide 0.25s ease-out;
+    }
+    .ts-alert-icon { font-size: 26px; line-height: 1; }
+    .ts-alert-label {
+      margin-top: 8px;
+      font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--amber-soft-text);
+    }
+    .ts-alert-title { margin-top: 4px; font-size: 16px; font-weight: 800; color: var(--text-primary); }
+    .ts-alert-body { margin-top: 8px; font-size: 12.5px; line-height: 1.55; color: var(--text-secondary); }
+    .ts-alert-body strong { color: var(--amber-soft-text); }
+    .ts-alert-ack {
+      margin-top: 16px; padding: 9px 18px;
+      background: var(--amber-vivid); color: #fff;
+      border: none; border-radius: 8px;
+      font-family: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+    }
+    .ts-alert-ack:hover { background: #B45309; }
     .ic-cross-reason-block {
       display: flex;
       gap: 6px;
@@ -3308,6 +3579,117 @@
     .in-call-end-btn:hover { background: #B91C1C; }
     .in-call-end-btn.ended {
       background: var(--text-muted); cursor: default;
+    }
+
+    /* W44 — live call transcript (typewriter chat bubbles during the Dr. Ismail call) */
+    .call-transcript {
+      width: 88%; margin: 10px auto 4px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .call-bubble {
+      max-width: 80%;
+      padding: 8px 12px;
+      border-radius: 13px;
+      font-size: 12px; line-height: 1.5;
+      color: var(--text-primary);
+      word-break: break-word;
+      animation: reveal-slide 0.2s ease-out;
+    }
+    .call-bubble-spk {
+      display: block;
+      font-size: 9px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+    .call-bubble-lim { align-self: flex-end; background: var(--green-soft); border-bottom-right-radius: 3px; }
+    .call-bubble-lim .call-bubble-spk { color: var(--green-soft-text); }
+    .call-bubble-ismail { align-self: flex-start; background: #EFF6FF; border-bottom-left-radius: 3px; }
+    .call-bubble-ismail .call-bubble-spk { color: var(--blue-vivid); }
+    .call-typing-dots { display: inline-flex; gap: 4px; padding: 3px 0; }
+    .call-typing-dots span {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: currentColor; opacity: 0.45;
+      animation: sr-locking-blink 1s infinite ease-in-out;
+    }
+    .call-typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .call-typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+    .call-caret::after {
+      content: '▍'; margin-left: 1px; opacity: 0.55;
+      animation: call-caret-blink 0.7s steps(1) infinite;
+    }
+    @keyframes call-caret-blink { 50% { opacity: 0; } }
+
+    /* W45 — comprehensive Service Report on Lim's final page */
+    .service-report {
+      margin: 12px 16px;
+      padding: 16px 18px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      box-shadow: var(--shadow-card);
+      animation: reveal-slide 0.35s ease-out;
+    }
+    .svr-head {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+      padding-bottom: 10px; border-bottom: 2px solid var(--green-vivid); margin-bottom: 4px;
+    }
+    .svr-title { font-size: 15px; font-weight: 800; color: var(--text-primary); }
+    .svr-sub { font-size: 11px; font-family: var(--mono); color: var(--text-muted); margin-top: 2px; }
+    .svr-gen {
+      flex-shrink: 0; font-size: 9.5px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
+      color: var(--green-soft-text); background: var(--green-soft);
+      padding: 4px 9px; border-radius: 999px;
+    }
+    .svr-head-right { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; flex-shrink: 0; }
+    .svr-sources-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px;
+      font-family: inherit; font-size: 11px; font-weight: 700;
+      color: var(--blue-vivid);
+      background: #fff; border: 1px solid var(--blue-vivid); border-radius: 999px;
+      cursor: pointer; white-space: nowrap;
+    }
+    .svr-sources-btn:hover { background: #EFF6FF; }
+    /* W46 — report content rendered inside a source-highlighted block (Sources view) */
+    .svr-prov-body { margin-top: 5px; }
+    .svr-section { padding: 11px 0; border-bottom: 1px dashed var(--border-subtle); }
+    .svr-section:last-of-type { border-bottom: none; }
+    .svr-label {
+      font-size: 10px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
+      color: var(--text-secondary); margin-bottom: 7px;
+    }
+    .svr-kv {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+      padding: 3px 0; font-size: 12px; line-height: 1.45;
+    }
+    .svr-k { color: var(--text-secondary); }
+    .svr-v { flex-shrink: 0; font-family: var(--mono); font-weight: 700; color: var(--text-primary); text-align: right; }
+    .svr-note { font-family: inherit; font-weight: 400; color: var(--text-muted); }
+    .svr-tag {
+      font-family: inherit; font-size: 9px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--green-soft-text); background: var(--green-soft); padding: 1px 6px; border-radius: 999px;
+    }
+    .svr-ok { color: var(--green-soft-text); }
+    .svr-skip { color: #B45309; }
+    .svr-sup { color: var(--text-muted); }
+    .svr-p { font-size: 12px; line-height: 1.55; color: var(--text-secondary); margin: 4px 0 0; }
+    .svr-muted { color: var(--text-muted); font-size: 11.5px; }
+    .svr-quote {
+      margin-top: 6px; padding: 8px 12px;
+      background: var(--amber-soft); border-left: 3px solid var(--amber-vivid); border-radius: 6px;
+      font-size: 12px; line-height: 1.5; color: var(--amber-soft-text);
+    }
+    .svr-transcript { display: flex; flex-direction: column; gap: 6px; }
+    .svr-tx { display: flex; gap: 10px; font-size: 11.5px; line-height: 1.5; }
+    .svr-tx-spk { flex-shrink: 0; width: 70px; font-family: var(--mono); font-weight: 700; }
+    .svr-tx-lim { color: var(--green-soft-text); }
+    .svr-tx-ismail { color: var(--blue-vivid); }
+    .svr-tx-txt { flex: 1; color: var(--text-secondary); }
+    .svr-list { margin: 4px 0 0; padding-left: 18px; }
+    .svr-list li { font-size: 12px; line-height: 1.5; color: var(--text-primary); margin-bottom: 3px; }
+    .svr-foot {
+      margin-top: 10px; padding: 9px 12px;
+      background: var(--green-soft); border-radius: 6px;
+      font-size: 11.5px; line-height: 1.5; color: var(--green-soft-text);
     }
 
     /* Post-call stages (generating transcript / attached / analyzing / confirmed-button) */
@@ -4197,6 +4579,9 @@
       font-weight: 600;
       color: var(--green-vivid);
     }
+    /* W47 — partial / superseded group status (temp-spike escalation) */
+    .ic-group-label-completed .ic-group-label-status-partial { color: var(--amber-vivid); }
+    .ic-group-label-completed .ic-group-label-status-superseded { color: var(--text-muted); font-style: italic; }
 
     /* W6 — locked group header-only display (replaces W4.1 dim-items rule) */
     .ic-group[data-locked="true"] .ic-group-label.ic-group-label-locked {
@@ -6695,6 +7080,24 @@
     </div>
   </div>
 
+  <!-- W41 — Work Order "Sources" provenance modal -->
+  <div id="sources-modal" class="sources-modal" data-open="false" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="sources-modal-overlay" id="sources-modal-overlay"></div>
+    <div class="sources-modal-window">
+      <div class="sources-modal-hdr">
+        <span class="sources-modal-titles">
+          <span class="sources-modal-title">Sources</span>
+          <span class="sources-modal-sub">Where each agent extracted this work order</span>
+        </span>
+        <button class="sources-modal-close" id="sources-modal-close" type="button">×</button>
+      </div>
+      <div class="sources-modal-body">
+        <div class="sources-col-left" id="sources-col-left"></div>
+        <div class="sources-col-right" id="sources-col-right"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- W3.10 — Telemetry modal (Step 1 paperclip) -->
   <div class="telemetry-modal" id="telemetry-modal" data-open="false" role="dialog" aria-modal="true" aria-hidden="true">
     <div class="telemetry-modal-backdrop"></div>
@@ -6796,11 +7199,11 @@
         </div>
       </div>
       <div class="transcript-modal-body">
-        <div class="tx-line"><span class="tx-spk">L. Lim</span><span class="tx-txt">Ismail-sir, vibration on BFP-3A NDE bearing — checks don't fit bearing spalling cleanly. Bearing temp normal, lube oil clean, no spall pattern on the inspection port. Something else.</span></div>
-        <div class="tx-line"><span class="tx-spk">Dr. Ismail</span><span class="tx-txt">Pull up the casing inspection from your station. Look for hairline cracking around the volute weld near the discharge flange.</span></div>
+        <div class="tx-line"><span class="tx-spk">L. Lim</span><span class="tx-txt">Ismail-sir — NDE bearing housing temp on BFP-3A just spiked to 94°C and it's still climbing. Vibration's well into Zone C. But the checks don't fit bearing spalling — lube oil's clean, no spall pattern on the inspection port. Something else is driving this.</span></div>
+        <div class="tx-line"><span class="tx-spk">Dr. Ismail</span><span class="tx-txt">Rapid temp rise with that vibration signature — don't fixate on the bearing. Pull up the casing inspection from your station. Look for hairline cracking around the volute weld near the discharge flange.</span></div>
         <div class="tx-line"><span class="tx-spk">L. Lim</span><span class="tx-txt">... I see it. Faint discontinuity at the 4-o'clock position on the casing, about 60mm from the discharge weld. Liquid penetrant would confirm.</span></div>
-        <div class="tx-line"><span class="tx-spk">Dr. Ismail</span><span class="tx-txt">That's casing crack — same failure mode I saw on Jurong-CCGT-2 BFP three years ago. Pump casing fatigue under cyclic pressure load. Vibration is a symptom, not the root cause.</span></div>
-        <div class="tx-line"><span class="tx-spk">L. Lim</span><span class="tx-txt">Updating diagnosis: pump casing crack · BFP-3A. Bearing damage looks like secondary fatigue from imbalanced loading.</span></div>
+        <div class="tx-line"><span class="tx-spk">Dr. Ismail</span><span class="tx-txt">That's a casing crack — same failure mode I saw on Jurong-CCGT-2 BFP three years ago. Pump casing fatigue under cyclic pressure load. The bearing heat and vibration are secondary — symptoms, not the root cause.</span></div>
+        <div class="tx-line"><span class="tx-spk">L. Lim</span><span class="tx-txt">Updating diagnosis: pump casing crack · BFP-3A. Bearing damage and temp rise look like secondary effects from imbalanced loading.</span></div>
         <div class="tx-line"><span class="tx-spk">Dr. Ismail</span><span class="tx-txt">Confirmed. Shutdown required — can't run with a propagating casing crack. Escalating back to Faye for ops + commercial impact routing.</span></div>
       </div>
       <div class="transcript-modal-footer">
@@ -6809,6 +7212,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=w19k"></script>
+  <script src="app.js?v=w47"></script>
 </body>
 </html>
