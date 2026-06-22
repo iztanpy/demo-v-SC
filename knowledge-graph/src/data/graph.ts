@@ -33,7 +33,7 @@ export const COL_HEADERS: { x: number; label: string }[] = [
   { x: COLS.cause, label: 'Root causes' },
 ]
 
-const FOCUS_NODES: GraphNode[] = [
+export const FOCUS_NODES: GraphNode[] = [
   // ── asset class + symptom ──
   { id: 'AC-BFP', label: 'AssetClass', title: 'Boiler feed pump', x: COLS.asset, y: 500, props: { name: 'Boiler feed pump (BFP)', description: 'High-pressure multistage boiler feed pump class' } },
   {
@@ -66,7 +66,7 @@ const FOCUS_NODES: GraphNode[] = [
 
 // `result` on every test edge = the observed test finding that drives it (shown when the
 // edge is clicked). On FOLLOW_UP it's the triage outcome that escalates to the next test.
-const FOCUS_EDGES: GraphEdge[] = [
+export const FOCUS_EDGES: GraphEdge[] = [
   // symptom scoped to asset class
   { source: 'SYM-001', target: 'AC-BFP', type: 'OCCURS_IN' },
 

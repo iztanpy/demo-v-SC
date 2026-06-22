@@ -1,0 +1,78 @@
+/* 2D force-clustered fleet graph — light-theme depth + glow + flowing edges */
+.kgf-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 40%, #FCFEFF 0%, #EEF3F9 52%, #DFE6F0 100%);
+}
+.kgf-svg { width: 100%; height: 100%; display: block; }
+
+/* subtle region tints behind the emergent neighbourhoods (blurred into soft washes) */
+.kgf-halos { filter: blur(26px); }
+.kgf-halo { opacity: 0.06; }
+
+.kgf-clabel {
+  font: 600 14px/1 ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.78;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 3px;
+  pointer-events: none;
+}
+
+/* edges — visible by default so the graph reads as connected lines, not clumps of dots */
+.kgf-edge { stroke: #7C8DA6; stroke-opacity: 0.5; stroke-width: 1.4; }
+.kgf-edge-focus { stroke-width: 2; stroke-opacity: 0.72; stroke-dasharray: 5 6; animation: kgf-flow 1.1s linear infinite; }
+.kgf-edge-focus[data-type="CONFIRMS"]     { stroke: #00A651; }
+.kgf-edge-focus[data-type="TRIGGERS"]      { stroke: #F59E0B; }
+.kgf-edge-focus[data-type="FOLLOW_UP"]     { stroke: #2563EB; }
+.kgf-edge-focus[data-type="OCCURS_IN"]     { stroke: #64748B; }
+.kgf-edge-focus[data-type="RULES_OUT"]     { stroke: #64748B; }
+.kgf-edge-focus[data-type="INCONCLUSIVE"]  { stroke: #7C3AED; }
+.kgf-edge-focus[data-type="SHORTCUT"]      { stroke: #00A5A8; }
+@keyframes kgf-flow { to { stroke-dashoffset: -22px; } }
+
+/* cross-class SIMILAR_TO bridges — the interconnection between regions (kept clearly visible) */
+.kgf-edge-cross { stroke: #00A5A8; stroke-opacity: 0.7; stroke-width: 2.4; stroke-dasharray: 4 5; animation: kgf-flow 1.5s linear infinite; }
+
+/* matched / reaffirmed path — nodes glow green + pulse; edges flow green ("graph already knew this") */
+.kgf-match { stroke: #00A651; stroke-width: 3; filter: drop-shadow(0 0 12px #00A651) !important; animation: kgf-matchpulse 1.2s ease-in-out infinite; }
+@keyframes kgf-matchpulse { 0%, 100% { stroke-opacity: 0.55; } 50% { stroke-opacity: 1; } }
+.kgf-edge-match { stroke: #00A651 !important; stroke-opacity: 1; stroke-width: 5.5; stroke-dasharray: 9 7; animation: kgf-flow 0.7s linear infinite; }
+
+/* re-weighted edge — the over-confident suggestion drops; amber, with a confidence label */
+.kgf-reweight { stroke: #F59E0B; stroke-width: 3; filter: drop-shadow(0 0 12px #F59E0B) !important; animation: kgf-matchpulse 1.2s ease-in-out infinite; }
+.kgf-edge-reweight { stroke: #F59E0B !important; stroke-opacity: 0.95; stroke-width: 3.2; stroke-dasharray: 7 6; animation: kgf-flow 0.8s linear infinite; }
+.kgf-reweight-label { fill: #B45309; font: 700 17px ui-monospace, monospace; paint-order: stroke; stroke: #fff; stroke-width: 4px; pointer-events: none; }
+
+/* newly committed knowledge — grows in with a green glow */
+.kgf-new { stroke: #00A651; stroke-width: 3; filter: drop-shadow(0 0 14px #00A651) !important; animation: kgf-grow 700ms ease-out, kgf-matchpulse 1.4s ease-in-out 700ms infinite; }
+@keyframes kgf-grow { from { opacity: 0; } to { opacity: 1; } }
+.kgf-edge-new { stroke: #00A651 !important; stroke-opacity: 0.95; stroke-width: 3.2; stroke-dasharray: 7 6; animation: kgf-flow 0.7s linear infinite; }
+/* identifier label on the newly-committed node(s) */
+.kgf-newlabel { fill: #047857; font: 700 18px ui-sans-serif, system-ui, sans-serif; paint-order: stroke; stroke: #fff; stroke-width: 4px; pointer-events: none; }
+/* animated marching-ants outline ring around the new node */
+.kgf-newring { stroke: #00A651; stroke-width: 2.6; stroke-opacity: 0.95; stroke-dasharray: 9 7; animation: kgf-flow 0.8s linear infinite; pointer-events: none; }
+
+/* re-weight APPLIED — settled amber edge (no pulse) once the admin recalculated */
+.kgf-edge-reweighted { stroke: #D97706 !important; stroke-opacity: 0.9; stroke-width: 2.6; }
+
+/* nodes — backdrop translucent (depth), focus tree full + glow */
+.kgf-node { opacity: 0.5; }
+.kgf-hub  { opacity: 0.92; }
+.kgf-node-focus { opacity: 1; }
+
+.kgf-count {
+  position: absolute;
+  bottom: 12px;
+  right: 16px;
+  font: 500 12px/1 ui-monospace, monospace;
+  color: #64748B;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 4px 8px;
+  border-radius: 6px;
+  pointer-events: none;
+}

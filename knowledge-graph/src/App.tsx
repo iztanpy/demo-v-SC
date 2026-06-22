@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useP2, TOTAL_STEPS } from './store'
 import { Rail } from './components/Rail'
 import { AgentSidebar } from './components/AgentSidebar'
-import { KGHero } from './components/KGHero'
+import { KGForce } from './components/KGForce'
 import { RationaleDossier } from './components/RationaleDossier'
 import { APPROVE_STEP } from './data/incidents'
 
@@ -64,7 +64,7 @@ export default function App() {
         )}
 
         <section id="p2-kg-hero">
-          <KGHero />
+          <KGForce />
         </section>
 
         {showRight ? (

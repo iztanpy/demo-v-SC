@@ -1,31 +1,31 @@
 {
-  "hash": "fd31a0ad",
-  "configHash": "9b8f58af",
+  "hash": "0d5bd2b5",
+  "configHash": "60e2b938",
   "lockfileHash": "08525aa0",
-  "browserHash": "236b1b93",
+  "browserHash": "1fe33574",
   "optimized": {
     "react-dom/client": {
       "src": "../../node_modules/react-dom/client.js",
       "file": "react-dom_client.js",
-      "fileHash": "93bef541",
+      "fileHash": "fb1dcd96",
       "needsInterop": true
     },
     "react": {
       "src": "../../node_modules/react/index.js",
       "file": "react.js",
-      "fileHash": "c6d622f6",
+      "fileHash": "eea4e56b",
       "needsInterop": true
     },
     "react/jsx-dev-runtime": {
       "src": "../../node_modules/react/jsx-dev-runtime.js",
       "file": "react_jsx-dev-runtime.js",
-      "fileHash": "ea7a85c2",
+      "fileHash": "7d4a3f5f",
       "needsInterop": true
     },
     "zustand": {
       "src": "../../node_modules/zustand/esm/index.mjs",
       "file": "zustand.js",
-      "fileHash": "47cf6dd2",
+      "fileHash": "f20b84b6",
       "needsInterop": false
     }
   },
