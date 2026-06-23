@@ -2863,13 +2863,8 @@ function advanceToRoutedRevisedDiagnosis() {
 function appendRevisedDiagnosisCaptureFooter() {
   const container = document.getElementById('incident-detail-view');
   if (!container) return;
-  if (container.querySelector('.dispatch-capture-footer')) return;
-  const footer = el('div', 'dispatch-capture-footer');
-  footer.innerHTML = `
-    <div class="dcf-line"><span class="dcf-ic">✓</span><span class="dcf-txt"><strong>Hyperspace OS</strong> · <span class="dyn-name">Faye Sit</span> notified · revised diagnosis routed</span></div>
-    <div class="dcf-line"><span class="dcf-ic">✓</span><span class="dcf-txt">Call transcript + revised diagnosis routed to <strong>A2A Coordination Agent</strong> for chain-of-custody</span></div>
-    <div class="dcf-line"><span class="dcf-ic">✓</span><span class="dcf-txt"><strong>Knowledge-Graph</strong> · revised diagnosis + transcript enriched · routing recorded</span></div>`;
-  container.appendChild(footer);
+  // W18 — green capture footer removed from Lim's screen (redundant with the inline escalation report). Routed label kept.
+  if (container.querySelector('.dispatched-to-label')) return;
   const lbl = el('div', 'dispatched-to-label');
   lbl.innerHTML = `Routed back to <span class="dyn-name">Faye Sit</span> · ${currentSGTLog()}`;
   container.appendChild(lbl);
@@ -3246,7 +3241,11 @@ function escalationReportSectionsHTML() {
           <span class="oer-ab-icon">⚠</span>
           <div class="oer-ab-body">
             <div class="oer-ab-label">Immediate action</div>
-            <div class="oer-ab-text">Shut down BFP-3A · isolate Block 2 feedwater</div>
+            <div class="oer-ab-text">Immediate shut down BFP-3A · isolate Block 2 feedwater</div>
+          </div>
+          <div class="oer-ab-timer">
+            <span class="oer-abt-val">4h</span>
+            <span class="oer-abt-lbl">downtime expected</span>
           </div>
         </div>
         <div class="oer-impact-card">
