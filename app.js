@@ -829,8 +829,11 @@ function paintSummaryComplete(summarySlot) {
   // Initial Diagnosis is a set of selectable option CARDS — each with its own collapsible rationale.
   // AI-recommended primary pre-selected; Faye picks one, then Confirms (locked pill post-confirm).
   const confirmed = state.faye && state.faye.diagnosisConfirmed;
+  const options = getDiagnosisOptions();
   const selIdx = (state.faye && state.faye.selectedDiagnosisIdx) || 0;
-  const cardsHtml = getDiagnosisOptions().map((o, i) => {
+  // Override gate: picking a non-recommended diagnosis requires a typed rationale before Confirm unlocks.
+  const overrideShown = !!(options[selIdx] && !options[selIdx].recommended);
+  const cardsHtml = options.map((o, i) => {
     const ratHtml = (o.rationale || []).map(r => `
       <div class="sr-rationale-row" data-strength="${r.strength}">
         <span class="sr-rat-bullet">·</span>
@@ -867,6 +870,10 @@ function paintSummaryComplete(summarySlot) {
         <div class="sr-diag-cards">
           ${cardsHtml}
         </div>
+        <div class="sr-diag-override" data-show="${overrideShown}">
+          <div class="sr-diag-override-lbl">Rationale required · overriding the AI recommendation</div>
+          <textarea class="sr-diag-override-input" rows="2" placeholder="Why this diagnosis over the AI recommendation?" ${confirmed ? 'disabled' : ''}></textarea>
+        </div>
         <div class="sr-confirm-row">
           ${confirmRowHtml}
         </div>
@@ -875,6 +882,11 @@ function paintSummaryComplete(summarySlot) {
   wireDiagnosisOptionSelect();
   wireDiagnosisRationaleToggles();
   wireConfirmInitialDiagnosis();
+  // restore any previously captured rationale + apply initial Confirm gating
+  const ovEl = summarySlot.querySelector('.sr-diag-override-input');
+  if (ovEl) ovEl.value = state.faye.overrideReason || '';
+  wireDiagnosisOverride();
+  updateDiagnosisConfirmGate();
 }
 
 // Pre-confirm: clicking a card's select row picks it (radio behavior). Disabled once diagnosis is locked.
@@ -888,8 +900,38 @@ function wireDiagnosisOptionSelect() {
       document.querySelectorAll('.sr-diag-card').forEach(card => {
         card.dataset.selected = (parseInt(card.dataset.idx, 10) === state.faye.selectedDiagnosisIdx) ? 'true' : 'false';
       });
+      syncOverrideVisibility();
+      updateDiagnosisConfirmGate();
     });
   });
+}
+
+// Show the rationale textarea only when a non-recommended diagnosis is selected.
+function syncOverrideVisibility() {
+  const opts = getDiagnosisOptions();
+  const sel = opts[state.faye.selectedDiagnosisIdx];
+  const block = document.querySelector('.sr-diag-override');
+  if (block) block.dataset.show = String(!!(sel && !sel.recommended));
+}
+
+function wireDiagnosisOverride() {
+  const ov = document.querySelector('.sr-diag-override-input');
+  if (!ov || ov.dataset.wired === '1') return;
+  ov.dataset.wired = '1';
+  ov.addEventListener('input', () => {
+    state.faye.overrideReason = ov.value;
+    updateDiagnosisConfirmGate();
+  });
+}
+
+// Confirm is gated when overriding the AI recommendation until a rationale is typed.
+function updateDiagnosisConfirmGate() {
+  const btn = document.querySelector('.sr-confirm-btn');
+  if (!btn) return; // confirmed → locked pill, no button to gate
+  const sel = getDiagnosisOptions()[state.faye.selectedDiagnosisIdx];
+  const needsReason = !!(sel && !sel.recommended);
+  const hasReason = (state.faye.overrideReason || '').trim().length > 0;
+  btn.disabled = needsReason && !hasReason;
 }
 
 // Each option card has its own Rationale dropdown — toggle the list within that card only.
@@ -1575,10 +1617,15 @@ function wireConfirmInitialDiagnosis() {
 
 function onInitialDiagnosisConfirmClick() {
   if (state.faye.diagnosisConfirmed) return;
+  // Overriding the AI recommendation requires a rationale before proceeding
+  const sel = getDiagnosisOptions()[state.faye.selectedDiagnosisIdx];
+  if (sel && !sel.recommended && !(state.faye.overrideReason || '').trim()) return;
   state.faye.diagnosisConfirmed = true;
 
-  // Lock the diagnosis options to the picked one
+  // Lock the diagnosis options to the picked one + freeze the rationale textarea
   document.querySelectorAll('.sr-diag-select').forEach(o => { o.disabled = true; });
+  const ov = document.querySelector('.sr-diag-override-input');
+  if (ov) ov.disabled = true;
 
   // Disable button + show "Locking in…"
   const btn = document.querySelector('.sr-confirm-btn');
