@@ -10,9 +10,13 @@
   },
   "dependencies": {
     "@types/d3-force": "^3.0.10",
+    "@types/three": "^0.184.1",
+    "3d-force-graph": "^1.80.0",
     "d3-force": "^3.0.0",
+    "d3-force-3d": "^3.0.6",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
+    "three": "^0.184.0",
     "zustand": "^5.0.14"
   },
   "devDependencies": {

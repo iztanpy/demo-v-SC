@@ -2,7 +2,8 @@ import { useDemo } from './demoStore'
 import { DocumentsPanel } from './components/DocumentsPanel'
 import { ResolutionPanel } from './components/ResolutionPanel'
 import { NewKnowledgePanel } from './components/NewKnowledgePanel'
-import { KGForce } from './components/KGForce'
+// 2D fallback preserved on disk: swap this back to `./components/KGForce` (and <KGForce/>) to revert.
+import { KGForce3D } from './components/KGForce3D'
 import './demo.css'
 
 // 3-panel concurrent demo shell. Left = the three process panels stacked (Documents → Resolution
@@ -34,7 +35,7 @@ export default function Demo() {
           <NewKnowledgePanel />
         </div>
         <div className="demo-right">
-          <KGForce />
+          <KGForce3D />
         </div>
       </main>
     </div>

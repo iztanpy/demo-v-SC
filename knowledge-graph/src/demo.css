@@ -58,6 +58,12 @@
 .demo-left { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr; gap: 10px; padding: 12px; min-height: 0; overflow: hidden; }
 .demo-right { position: relative; border-left: 1px solid var(--line); overflow: hidden; }
 
+/* 3D knowledge graph (3d-force-graph / WebGL) fills the right pane */
+.kg3-host { position: absolute; inset: 0; }
+.kg3-host canvas { display: block; }
+.kg3-tip { font: 600 12px ui-sans-serif, system-ui, sans-serif; color: #0F1B3D; background: rgba(255,255,255,0.95); border: 1px solid var(--line); border-radius: 7px; padding: 5px 9px; box-shadow: 0 4px 14px rgba(15,27,61,0.14); }
+.kg3-tip span { display: block; font: 500 10px ui-monospace, monospace; color: var(--slate); margin-top: 2px; }
+
 /* panels — each a full-height column in the row. Dormant ones dim; collapsed ones fold to header. */
 .p-panel {
   min-height: 0;
