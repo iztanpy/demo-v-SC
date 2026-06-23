@@ -24,7 +24,7 @@ interface ResCard {
 
 const CARDS: ResCard[] = [
   {
-    id: 'c-0488', incident: 'INC-0488', chip: 'reaffirms graph', chipKind: 'reaffirm',
+    id: 'c-0488', incident: 'INC-0488', chip: 'matched', chipKind: 'reaffirm',
     entities: [
       { label: 'Symptom', detail: 'BFP NDE vib high → SYM-001', status: 'match' },
       { label: 'Tests run', detail: 'Housing inspect → DT-HOUSING-INSPECT', status: 'match' },
@@ -33,7 +33,7 @@ const CARDS: ResCard[] = [
     matchedNodes: ['SYM-001', 'DT-HOUSING-INSPECT', 'RC-BEARING-SPALL'],
   },
   {
-    id: 'c-0501', incident: 'INC-0501', chip: 'reaffirms graph', chipKind: 'reaffirm',
+    id: 'c-0501', incident: 'INC-0501', chip: 'matched', chipKind: 'reaffirm',
     entities: [
       { label: 'Symptom', detail: 'BFP NDE vib high → SYM-001', status: 'match' },
       { label: 'Tests run', detail: 'Phase, Alignment → DT-PHASE, DT-ALIGNMENT', status: 'match' },
@@ -42,7 +42,7 @@ const CARDS: ResCard[] = [
     matchedNodes: ['SYM-001', 'DT-PHASE', 'DT-ALIGNMENT', 'RC-MISALIGN'],
   },
   {
-    id: 'c-0455', incident: 'INC-0455', chip: 'reaffirms graph', chipKind: 'reaffirm',
+    id: 'c-0455', incident: 'INC-0455', chip: 'matched', chipKind: 'reaffirm',
     entities: [
       { label: 'Symptom', detail: 'BFP NDE vib high → SYM-001', status: 'match' },
       { label: 'Tests run', detail: 'Housing inspect → DT-HOUSING-INSPECT', status: 'match' },
@@ -51,7 +51,7 @@ const CARDS: ResCard[] = [
     matchedNodes: ['SYM-001', 'DT-HOUSING-INSPECT', 'RC-BEARING-SPALL'],
   },
   {
-    id: 'c-0472', incident: 'INC-0472', chip: 'reaffirms graph', chipKind: 'reaffirm',
+    id: 'c-0472', incident: 'INC-0472', chip: 'matched', chipKind: 'reaffirm',
     entities: [
       { label: 'Symptom', detail: 'BFP NDE vib high → SYM-001', status: 'match' },
       { label: 'Tests run', detail: 'Alignment → DT-ALIGNMENT', status: 'match' },
@@ -60,7 +60,7 @@ const CARDS: ResCard[] = [
     matchedNodes: ['SYM-001', 'DT-PHASE', 'DT-ALIGNMENT', 'RC-MISALIGN'],
   },
   {
-    id: 'c-0510', incident: 'INC-0510', chip: 'reaffirms graph', chipKind: 'reaffirm',
+    id: 'c-0510', incident: 'INC-0510', chip: 'matched', chipKind: 'reaffirm',
     entities: [
       { label: 'Symptom', detail: 'BFP NDE vib high → SYM-001', status: 'match' },
       { label: 'Tests run', detail: 'Oil analysis → DT-OIL-ANALYSIS', status: 'match' },
@@ -69,7 +69,7 @@ const CARDS: ResCard[] = [
     matchedNodes: ['SYM-001', 'DT-HOUSING-INSPECT', 'DT-OIL-ANALYSIS', 'RC-LUBE-FAIL'],
   },
   {
-    id: 'c-0523', incident: 'INC-0523', chip: 'reaffirms graph', chipKind: 'reaffirm',
+    id: 'c-0523', incident: 'INC-0523', chip: 'matched', chipKind: 'reaffirm',
     entities: [
       { label: 'Symptom', detail: 'BFP NDE vib high → SYM-001', status: 'match' },
       { label: 'Tests run', detail: 'Housing inspect → DT-HOUSING-INSPECT', status: 'match' },
@@ -78,13 +78,32 @@ const CARDS: ResCard[] = [
     matchedNodes: ['SYM-001', 'DT-HOUSING-INSPECT', 'RC-BEARING-SPALL'],
   },
   {
-    id: 'c-0544', incident: 'INC-0544', chip: 'reaffirms graph', chipKind: 'reaffirm',
+    id: 'c-0544', incident: 'INC-0544', chip: 'matched', chipKind: 'reaffirm',
     entities: [
       { label: 'Symptom', detail: 'BFP NDE vib high → SYM-001', status: 'match' },
       { label: 'Tests run', detail: 'Alignment → DT-ALIGNMENT', status: 'match' },
       { label: 'Diagnosis', detail: 'Misalignment → RC-MISALIGN', status: 'match' },
     ],
     matchedNodes: ['SYM-001', 'DT-PHASE', 'DT-ALIGNMENT', 'RC-MISALIGN'],
+  },
+  // INC-0537 (the exception) emits several resolution cards — most of it the graph already knows
+  // (symptom, asset, first-line tests), one over-confident edge to re-weight, and the casing-crack
+  // entities that have no home on the graph (the gaps that flow to New Knowledge).
+  {
+    id: 'c-0537-sym', incident: 'INC-0537', chip: 'matched', chipKind: 'reaffirm',
+    entities: [
+      { label: 'Symptom', detail: 'BFP NDE vib high → SYM-001', status: 'match' },
+      { label: 'Asset class', detail: 'Boiler feed pump → AC-BFP', status: 'match' },
+    ],
+    matchedNodes: ['SYM-001', 'AC-BFP'],
+  },
+  {
+    id: 'c-0537-tests', incident: 'INC-0537', chip: 'matched', chipKind: 'reaffirm',
+    entities: [
+      { label: 'Tests run', detail: 'Phase analysis → DT-PHASE', status: 'match' },
+      { label: 'Tests run', detail: 'Housing inspection → DT-HOUSING-INSPECT', status: 'match' },
+    ],
+    matchedNodes: ['SYM-001', 'DT-PHASE', 'DT-HOUSING-INSPECT'],
   },
   {
     id: 'c-0537-rw', incident: 'INC-0537', chip: 're-weight confidence', chipKind: 'reweight',
@@ -96,9 +115,16 @@ const CARDS: ResCard[] = [
     reweight: true,
   },
   {
-    id: 'c-0537-gap', incident: 'INC-0537', chip: 'gap — new knowledge', chipKind: 'gap',
+    id: 'c-0537-ndt', incident: 'INC-0537', chip: 'gap — off path', chipKind: 'gap',
     entities: [
       { label: 'Tests run', detail: 'Casing NDT — run off the graph’s path', status: 'gap' },
+    ],
+    matchedNodes: [],
+    gap: true,
+  },
+  {
+    id: 'c-0537-gap', incident: 'INC-0537', chip: 'gap — new knowledge', chipKind: 'gap',
+    entities: [
       { label: 'Diagnosis', detail: 'Casing weld-toe crack — no node on the graph', status: 'gap' },
     ],
     matchedNodes: [],
@@ -107,6 +133,13 @@ const CARDS: ResCard[] = [
 ]
 
 const STATUS_GLYPH: Record<EntStatus, string> = { match: '✓', reweight: '~', gap: '⚠' }
+
+// hidden for now — flip to true to re-enable the dots flying from resolved cards toward the graph
+const SHOW_PARTICLES = false
+
+// INC-0537 is the hero (the exception). Its re-weight + gap cards render full (entity lists);
+// every other (reaffirm) incident stays a compact mini card — just the incident + chip + ✓.
+const FOCUS_INCIDENT = 'INC-0537'
 
 // ── cross-panel particle flow: dots fly from a resolved card toward the graph (reaffirming it) ──
 let fxLayer: HTMLDivElement | null = null
@@ -163,17 +196,24 @@ export function ResolutionPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phaseKey])
 
-  // it's a work queue: actionable cards (gap, re-weight) sort to the TOP, reaffirms to the bottom.
-  // Keep the top in view so action items surface as they resolve.
+  // Focus incident (INC-0537) groups at the TOP in its authored narrative order (matches →
+  // re-weight → gaps); the mini reaffirm cards sit below, ordered by work-queue priority.
   const PRIORITY: Record<ResCard['chipKind'], number> = { gap: 0, reweight: 1, reaffirm: 2 }
   const visibleCards = CARDS
     .filter((c) => (phases.get(c.incident) ?? 'pending') !== 'pending')
-    .sort((a, b) => PRIORITY[a.chipKind] - PRIORITY[b.chipKind])
+    .sort((a, b) => {
+      const fa = a.incident === FOCUS_INCIDENT ? 0 : 1
+      const fb = b.incident === FOCUS_INCIDENT ? 0 : 1
+      if (fa !== fb) return fa - fb
+      if (fa === 0) return 0 // focus cards keep their array order (stable)
+      return PRIORITY[a.chipKind] - PRIORITY[b.chipKind]
+    })
 
+  // keep the hero (INC-0537, sorted to the top) in view — don't follow the stream down
   const bodyRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const el = bodyRef.current
-    if (el) requestAnimationFrame(() => { el.scrollTop = el.scrollHeight }) // follow the resolving stream down
+    if (el) requestAnimationFrame(() => { el.scrollTop = 0 })
   }, [phaseKey])
 
   // when a card resolves, fly particles from it toward the graph (reaffirming the knowledge graph)
@@ -181,6 +221,7 @@ export function ResolutionPanel() {
   const emittedRef = useRef<Set<string>>(new Set())
   useEffect(() => { emittedRef.current.clear() }, [runId])
   useEffect(() => {
+    if (!SHOW_PARTICLES) return
     const graph = document.querySelector('.demo-right')
     if (!graph) return
     const gr = graph.getBoundingClientRect()
@@ -213,16 +254,20 @@ export function ResolutionPanel() {
             const inc = INCIDENTS.find((i) => i.id === card.incident)!
             const color = INCIDENT_COLOR[card.incident]
             const matching = phase === 'matching'
+            const focus = card.incident === FOCUS_INCIDENT
             return (
-              <div key={card.id} ref={(el) => { cardRefs.current[card.id] = el }} className="p-res-row" data-kind={matching ? 'matching' : card.chipKind} style={{ ['--inc' as string]: color }}>
+              <div key={card.id} ref={(el) => { cardRefs.current[card.id] = el }} className="p-res-row" data-kind={matching ? 'matching' : card.chipKind} data-mini={!focus} style={{ ['--inc' as string]: color }}>
                 <div className="p-res-top">
                   <span className="p-res-dot" style={{ background: color }} />
                   <span className="p-res-incident" style={{ color }}>{card.incident} · {inc.asset}</span>
                   <span className="p-res-chip" data-kind={matching ? 'matching' : card.chipKind}>
-                    {matching ? 'matching graph…' : card.chip}
+                    {matching ? 'matching...' : card.chip}
                   </span>
+                  {!focus && !matching && <span className="p-res-tick">✓</span>}
                 </div>
-                {matching ? (
+                {/* Mini cards (reaffirm incidents) stop here — just the chip + ✓. Only the hero
+                    (INC-0537) shows the matching theater + the full entity breakdown. */}
+                {focus && (matching ? (
                   <div className="p-reveal"><span className="p-dots"><span /><span /><span /></span><span className="p-reveal-msg">resolving entities against the knowledge graph…</span></div>
                 ) : (
                   <ul className="p-ent-list">
@@ -234,7 +279,7 @@ export function ResolutionPanel() {
                       </li>
                     ))}
                   </ul>
-                )}
+                ))}
               </div>
             )
           })}

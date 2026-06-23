@@ -285,6 +285,24 @@ const WORK_ORDER_REVISED = {
   ],
 };
 
+// ── Quantified impact summary — replaces the W45 service report on Lim's final page (compact card → expand modal) ──
+const IMPACT_SUMMARY = {
+  headline: [
+    { k: 'Asset downtime', v: '~6h', note: 'BFP-3A offline · casing repair' },
+    { k: 'Revenue at risk', v: '~SGD 2.4M', note: 'if unmitigated' },
+  ],
+  rows: [
+    ['Asset offline', 'BFP-3A shut down · Block 2 feedwater isolated'],
+    ['Estimated downtime', '~6h · casing dye-penetrant NDT + crack repair'],
+    ['Generation impact', 'Block 2 derate ~50 MW if unmitigated'],
+    ['PSO commitment window', '09:00–18:00 SGT · 4h peak tariff exposure'],
+    ['Peak tariff', 'SGD 120/MWh'],
+    ['Revenue at risk', '~SGD 2.4M (50 MW × 4h × SGD 120/MWh) · illustrative'],
+    ['Action window', '45 min before T-zero PSO breach'],
+    ['Mitigation eligible', 'PSO curtailment notice · Q3 forward capacity hedge'],
+  ],
+};
+
 // ── W41 — Work Order provenance sources (AdvisorIQ-style "Sources" panel) ──
 // Each source maps to a region of the WO document via `color`; `records` lists the concrete artifacts.
 const WO_SOURCES = [
@@ -295,7 +313,7 @@ const WO_SOURCES = [
     records: ['BFP-3A · 90-day vibration RMS trend', 'NDE bearing · 30-day temperature trend', 'OSIsoft PI · 18-month telemetry', 'Bently Nevada 3500 · live machinery-protection feed'],
   },
   {
-    id: 's-cases', color: '#D97706', agent: 'Turbine Diagnostic Agent',
+    id: 's-cases', color: '#D97706', agent: 'Equipment Diagnostic Agent',
     label: 'Past cases · BFP fleet RCAs',
     desc: 'Initial diagnosis and root-cause inspection scope pattern-matched against prior boiler-feed-pump failures across the Sembcorp fleet.',
     records: ['RCA · Jurong-CCGT-2 BFP · 2025-08', 'RCA · Sakra-CCGT-1 BFP · 2024-11', 'RCA · Banyan-CHP BFP · 2024-05'],
@@ -869,7 +887,7 @@ function startScreenDRevealW39(summarySlot, actionSlot) {
           <div class="reveal-pending" data-stage="hypothesis">
             <div class="reveal-dots"><span></span><span></span><span></span></div>
             <div class="reveal-msg">
-              <span class="reveal-agent">Turbine Diagnostic Agent</span> ·
+              <span class="reveal-agent">Equipment Diagnostic Agent</span> ·
               Loading diagnosis hypothesis
             </div>
           </div>
@@ -1075,7 +1093,7 @@ function paintSOPRelevantInitial(actionSlot) {
       <div class="as-step-slot" data-step-slot="2"></div>
       <div class="as-step-slot" data-step-slot="3"></div>
       <button class="action-cta" disabled type="button">
-        Dispatch to fix · Lim Wei Jie
+        Assign to fix · Lim Wei Jie
       </button>
     </div>`;
 }
@@ -1144,7 +1162,7 @@ function revealStep1WithAddButton() {
     <div class="as-step" data-step="3" data-status="locked">
       <div class="as-step-head">
         <span class="as-step-num">○</span>
-        <span class="as-step-title">Step 3 · Find available engineer <span class="as-step-optional">(optional)</span></span>
+        <span class="as-step-title">Step 3 · Schedule optimisation and assignment of engineer <span class="as-step-optional">(optional)</span></span>
       </div>
       <div class="as-step-body">
         <span class="as-step-msg">Locked — create the work order first.</span>
@@ -1227,7 +1245,7 @@ function paintActionStepsInitial(actionSlot) {
       <div class="as-step" data-step="2" data-status="locked">
         <div class="as-step-head">
           <span class="as-step-num">○</span>
-          <span class="as-step-title">Step 2 · Find available engineer <span class="as-step-optional">(optional)</span></span>
+          <span class="as-step-title">Step 2 · Schedule optimisation and assignment of engineer <span class="as-step-optional">(optional)</span></span>
         </div>
         <div class="as-step-body">
           <span class="as-step-msg">Locked — complete Step 1 first.</span>
@@ -1276,7 +1294,7 @@ function paintActionStepsComplete(actionSlot) {
       <div class="as-step" data-step="3" data-status="selected">
         <div class="as-step-head">
           <span class="as-step-num">✓</span>
-          <span class="as-step-title">Step 3 · Find available engineer <span class="as-step-optional">(optional)</span></span>
+          <span class="as-step-title">Step 3 · Schedule optimisation and assignment of engineer <span class="as-step-optional">(optional)</span></span>
         </div>
         <div class="as-step-body">
           <span class="as-step-msg">Lim Wei Jie selected</span>
@@ -1405,41 +1423,39 @@ function wireEngineerCardClick() {
 // W19 — WO card markup (machine + initial diagnosis + works to complete). Reused by R3 for the regenerated WO.
 // `groups` (LIM_INSPECTION_CHECKLIST shape) renders grouped works; `checklist` (flat strings) renders a plain list.
 function buildWorkOrderCardHTML(wo) {
-  let worksHtml;
-  if (wo.groups && wo.groups.length) {
-    worksHtml = wo.groups.map(g => `
-      <div class="as-wo-group">
-        <div class="as-wo-group-lbl">${g.group}</div>
-        <ul class="as-wo-checklist">${g.items.map(it => `<li class="as-wo-check">${it.text}</li>`).join('')}</ul>
-      </div>`).join('');
-  } else {
-    worksHtml = `<ul class="as-wo-checklist">${(wo.checklist || []).map(c => `<li class="as-wo-check">${c}</li>`).join('')}</ul>`;
-  }
   const assetRow = wo.asset
     ? `<div class="as-wo-asset"><span class="as-wo-lbl">Machine</span> ${wo.asset}</div>`
     : '';
-  // W41 — Sources button + rich machine detail only on the initial grouped WO (authored for that scope).
   const isInitialWO = !!(wo.groups && wo.groups.length);
-  const sourcesBtn = isInitialWO
-    ? `<button class="as-wo-sources-btn" type="button">◆ Sources</button>`
-    : '';
-  const machineDetailHtml = isInitialWO ? `
-      <div class="as-wo-specs">
-        ${MACHINE_DETAIL.specs.map(([k, v]) => `<div class="as-wo-spec"><span class="as-wo-spec-k">${k}</span><span class="as-wo-spec-v">${v}</span></div>`).join('')}
-      </div>
-      <div class="as-wo-hist-lbl">Servicing &amp; replacement history</div>
-      <ul class="as-wo-hist">${MACHINE_DETAIL.history.map(([d, t]) => `<li><span class="as-wo-hist-date">${d}</span> ${t}</li>`).join('')}</ul>` : '';
+  // Initial grouped WO renders COMPACT — card first; machine spec, servicing history + grouped
+  // works live in the ◆ Sources modal (the expanded version).
+  if (isInitialWO) {
+    const stepCount = wo.groups.reduce((n, g) => n + g.items.length, 0);
+    return `
+      <div class="as-wo-card as-wo-card-compact">
+        <div class="as-wo-head">
+          <span class="as-wo-title">${wo.title}</span>
+          <span class="as-wo-head-right">
+            <span class="as-wo-id">${wo.id}</span>
+            <button class="as-wo-sources-btn" type="button">◆ Full version</button>
+          </span>
+        </div>
+        ${assetRow}
+        <div class="as-wo-diagnosis"><span class="as-wo-lbl">${wo.diagnosisHeading || 'Initial diagnosis'}</span> ${wo.diagnosisLabel}</div>
+        <div class="as-wo-compact-hint">${wo.groups.length} work groups · ${stepCount} steps · machine spec + servicing history → tap <strong>◆ Full version</strong> for the complete work order</div>
+      </div>`;
+  }
+  // Flat checklist (regenerated WO) — full detail inline.
+  const worksHtml = `<ul class="as-wo-checklist">${(wo.checklist || []).map(c => `<li class="as-wo-check">${c}</li>`).join('')}</ul>`;
   return `
     <div class="as-wo-card${wo.regenerated ? ' as-wo-card-regen' : ''}">
       <div class="as-wo-head">
         <span class="as-wo-title">${wo.title}</span>
         <span class="as-wo-head-right">
           <span class="as-wo-id">${wo.id}</span>
-          ${sourcesBtn}
         </span>
       </div>
       ${assetRow}
-      ${machineDetailHtml}
       <div class="as-wo-diagnosis"><span class="as-wo-lbl">${wo.diagnosisHeading || 'Initial diagnosis'}</span> ${wo.diagnosisLabel}</div>
       <div class="as-wo-checklist-lbl">Works to be completed</div>
       ${worksHtml}
@@ -1522,8 +1538,89 @@ function openSourcesModal(kind) {
     if (right) right.innerHTML = buildSourcesModalRight();
     if (sub) sub.textContent = 'Where each agent extracted this work order';
   }
+  const title = modal.querySelector('.sources-modal-title');
+  if (title) title.textContent = 'Sources';
+  modal.dataset.layout = 'two';
   modal.dataset.open = 'true';
   modal.setAttribute('aria-hidden', 'false');
+}
+
+// Single-column document modal — reuses the #sources-modal shell for the impact summary +
+// regenerated work order full docs (compact card → expand pattern, no provenance column).
+// NOTE: distinct from openDocModal() (the W3.6 OCR doc modal) — different shell.
+function openReportDocModal(kind) {
+  const modal = document.getElementById('sources-modal');
+  if (!modal) return;
+  const left = document.getElementById('sources-col-left');
+  const right = document.getElementById('sources-col-right');
+  const sub = modal.querySelector('.sources-modal-sub');
+  const title = modal.querySelector('.sources-modal-title');
+  if (left) left.innerHTML = '';
+  if (kind === 'impact') {
+    if (title) title.textContent = 'Quantified impact summary';
+    if (sub) sub.textContent = 'Operational + commercial exposure · routed to Faye Sit';
+    if (right) right.innerHTML = buildImpactDocHTML();
+  } else {
+    if (title) title.textContent = 'Regenerated work order';
+    if (sub) sub.textContent = `${WORK_ORDER_REVISED.id} · revised diagnosis + updated works`;
+    if (right) right.innerHTML = buildRegenWoDocHTML();
+  }
+  modal.dataset.layout = 'single';
+  modal.dataset.open = 'true';
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function buildImpactDocHTML() {
+  const rows = IMPACT_SUMMARY.rows.map(([k, v]) =>
+    `<div class="doc-kv"><span class="doc-k">${k}</span><span class="doc-v">${v}</span></div>`).join('');
+  return `
+    <div class="prov-doc-head">
+      <span class="prov-doc-title">Quantified impact</span>
+      <span class="prov-doc-id">INC-2026-0537</span>
+    </div>
+    <div class="doc-kv-list">${rows}</div>
+    <div class="prov-doc-note">Illustrative commercial figures · routed to <span class="dyn-name">Faye Sit</span> for ops + commercial action.</div>`;
+}
+
+function buildRegenWoDocHTML() {
+  const works = WORK_ORDER_REVISED.checklist.map(c => `<li>${c}</li>`).join('');
+  return `
+    <div class="prov-doc-head">
+      <span class="prov-doc-title">Work order regenerated</span>
+      <span class="prov-doc-id">${WORK_ORDER_REVISED.id}</span>
+    </div>
+    ${buildMachineProvBlock()}
+    <div class="doc-kv"><span class="doc-k">Supersedes</span><span class="doc-v">${WORK_ORDER.id}</span></div>
+    <div class="doc-kv"><span class="doc-k">Revised diagnosis</span><span class="doc-v">${WORK_ORDER_REVISED.diagnosis}</span></div>
+    ${buildCompletedWorksHTML()}
+    <div class="doc-section-lbl">Works to be completed</div>
+    <ul class="doc-list">${works}</ul>
+    <div class="prov-doc-note">Routed to <span class="dyn-name">Faye Sit</span> for ops + commercial action.</div>`;
+}
+
+// Completed works carried over from the first work order (WO-2026-1190) — Lim's onsite inspection,
+// drawn live from state (Safety = checked, Instrument = tick/cross/halted).
+function buildCompletedWorksHTML() {
+  const checked = state.lim.checked || {};
+  const instrResults = state.lim.instrumentResults || {};
+  const groups = LIM_INSPECTION_CHECKLIST.filter(g => g.group === 'Safety' || g.group === 'Instrument').map(g => {
+    const rows = g.items.map(it => {
+      let status, cls;
+      if (g.group === 'Safety') {
+        const done = !!checked[it.id];
+        status = done ? '✓ done' : '— not reached';
+        cls = done ? 'doc-st-done' : 'doc-st-pending';
+      } else {
+        const r = instrResults[it.id];
+        if (r === 'tick')      { status = '✓ done';    cls = 'doc-st-done'; }
+        else if (r === 'cross'){ status = '✗ skipped'; cls = 'doc-st-skip'; }
+        else                   { status = '— halted';  cls = 'doc-st-pending'; }
+      }
+      return `<li class="doc-check"><span class="doc-check-txt">${it.text}</span><span class="doc-check-st ${cls}">${status}</span></li>`;
+    }).join('');
+    return `<div class="doc-works-group-lbl">${g.group}</div><ul class="doc-list doc-check-list">${rows}</ul>`;
+  }).join('');
+  return `<div class="doc-section-lbl">Completed works · carried from ${WORK_ORDER.id}</div>${groups}`;
 }
 
 function closeSourcesModal() {
@@ -1537,6 +1634,8 @@ function initSourcesModal() {
   document.body.addEventListener('click', e => {
     if (e.target.closest('.as-wo-sources-btn')) { e.preventDefault(); openSourcesModal('wo'); return; }
     if (e.target.closest('.svr-sources-btn')) { e.preventDefault(); openSourcesModal('service-report'); return; }
+    if (e.target.closest('.lim-impact-card')) { e.preventDefault(); openReportDocModal('impact'); return; }
+    if (e.target.closest('.lim-regenwo-card')) { e.preventDefault(); openReportDocModal('regen-wo'); return; }
     if (e.target.closest('#sources-modal-close, #sources-modal-overlay')) { closeSourcesModal(); }
   });
   document.addEventListener('keydown', e => {
@@ -1550,7 +1649,7 @@ const SERVICE_REPORT_SOURCES = [
     label: 'Machine telemetry',
     desc: 'Live condition data plus the onsite temperature spike that reframed the incident.',
     records: ['OSIsoft PI · BFP-3A telemetry', 'Bently Nevada 3500 · vibration RMS', 'Honeywell Experion DCS · bearing temp'] },
-  { id: 'sr-diag', color: '#D97706', agent: 'Turbine Diagnostic Agent + Power Gen Critic',
+  { id: 'sr-diag', color: '#D97706', agent: 'Equipment Diagnostic Agent + Power Gen Critic',
     label: 'Diagnostic reasoning + fleet cases',
     desc: 'Ranked diagnoses with confidence, pattern-matched against prior BFP failures.',
     records: ['Hyperspace KG · differential diagnosis', 'RCA · Jurong-CCGT-2 / Sakra-CCGT-1 / Banyan-CHP'] },
@@ -1748,7 +1847,7 @@ function buildRecommendationBlock() {
         </div>
         <div class="reasoning-step">
           <span class="rs-num">3</span>
-          <span class="rs-body"><span class="rs-agent">Turbine Diagnostic Agent</span> pattern-matched against 3 prior RCAs across the fleet (Jurong-CCGT-2 &middot; 2025-08, Sakra-CCGT-1 &middot; 2025-11, Jurong-CCGT-1 &middot; 2024-09 &mdash; all compressor fouling, all humidity-correlated).</span>
+          <span class="rs-body"><span class="rs-agent">Equipment Diagnostic Agent</span> pattern-matched against 3 prior RCAs across the fleet (Jurong-CCGT-2 &middot; 2025-08, Sakra-CCGT-1 &middot; 2025-11, Jurong-CCGT-1 &middot; 2024-09 &mdash; all compressor fouling, all humidity-correlated).</span>
         </div>
         <div class="reasoning-step">
           <span class="rs-num">4</span>
@@ -2260,7 +2359,7 @@ const LIM_INSPECTION_CHECKLIST = [
 
 const LIM_CHECKLIST_THRESHOLD = 13;
 
-// W4.1 — group theater (HSE for Safety, Instrument Diagnostic, Sensor Anomaly Inspector + Turbine Diag for root-cause)
+// W4.1 — group theater (HSE for Safety, Instrument Diagnostic, Sensor Anomaly Inspector + Equipment Diag for root-cause)
 const GROUP_THEATER_AGENT = {
   'Safety': {
     source: 'hse',
@@ -2278,7 +2377,7 @@ const GROUP_THEATER_AGENT = {
   },
   'Root cause isolation': {
     source: 'triage',
-    displayName: 'Sensor Anomaly Inspector + Turbine Diagnostic Agent',
+    displayName: 'Sensor Anomaly Inspector + Equipment Diagnostic Agent',
     loadingText: 'Loading sleeve + rolling-element bearing isolation protocols',
     nodeChain: ['bearing-bfp-3a-nde', 'coupling-bfp-3a', 'shaft-bfp-3a'],
     cardAgentIds: ['inspection', 'triage'],
@@ -2382,8 +2481,8 @@ function renderOnsiteIncidentDetail(root) {
     const slot = document.getElementById('lim-ctas-slot');
     if (slot) {
       slot.innerHTML = '';
-      // W45 — comprehensive service report on Lim's final page (revised-diagnosis path).
-      if (state.lim.diagnosisRevised) spawnServiceReport(slot);
+      // Quantified impact summary + regenerated work order on Lim's final page (revised-diagnosis path).
+      if (state.lim.diagnosisRevised) spawnLimReportCards(slot);
     }
     setTimeout(() => {
       if (pill === 'DIAGNOSIS_CONFIRMED_WO_SUBMITTED') {
@@ -3610,8 +3709,41 @@ function appendRevisedDiagnosisCaptureFooter() {
   container.appendChild(lbl);
 }
 
-// W45 — comprehensive Service Report on Lim's final page. Documents every piece of knowledge
-// captured across the workflow, drawn entirely from live state (no new hardcoded narrative).
+// Lim's final page (revised-diagnosis path) — two compact cards, each expanding to a full
+// document modal: (1) Quantified impact summary, (2) Regenerated work order. Both routed to Faye.
+function spawnLimReportCards(slot) {
+  if (!slot || slot.querySelector('.lim-report-cards')) return;
+  slot.insertAdjacentHTML('beforeend', buildLimReportCardsHTML());
+}
+
+function buildLimReportCardsHTML() {
+  const stats = IMPACT_SUMMARY.headline.map(s =>
+    `<div class="lim-rc-stat"><span class="lim-rc-stat-v">${s.v}</span><span class="lim-rc-stat-k">${s.k}</span><span class="lim-rc-stat-note">${s.note}</span></div>`).join('');
+  return `
+    <div class="lim-report-cards">
+      <div class="lim-rc-eyebrow">◆ Compiled by Learning Engine</div>
+      <button class="lim-rc-card lim-impact-card" type="button">
+        <div class="lim-rc-head">
+          <span class="lim-rc-title">Quantified impact summary</span>
+          <span class="lim-rc-expand">expand ▸</span>
+        </div>
+        <div class="lim-rc-stats">${stats}</div>
+        <div class="lim-rc-sub">Block 2 ~50 MW derate · 45 min action window · tap to view full breakdown</div>
+      </button>
+      <button class="lim-rc-card lim-regenwo-card" type="button">
+        <div class="lim-rc-head">
+          <span class="lim-rc-title">Regenerated work order <span class="lim-rc-badge">R1</span></span>
+          <span class="lim-rc-expand">expand ▸</span>
+        </div>
+        <div class="lim-rc-woid">${WORK_ORDER_REVISED.id}</div>
+        <div class="lim-rc-sub">${WORK_ORDER_REVISED.diagnosis} · tap to view full work order</div>
+      </button>
+      <div class="lim-rc-foot">Both routed to <span class="dyn-name">Faye Sit</span> for ops + commercial impact · written back to Knowledge-Graph.</div>
+    </div>`;
+}
+
+// W45 (superseded) — comprehensive Service Report on Lim's final page. No longer rendered;
+// kept inert as the Sources path still references serviceReportSections().
 function spawnServiceReport(slot) {
   if (!slot || slot.querySelector('.service-report')) return;
   slot.insertAdjacentHTML('beforeend', buildServiceReportHTML());
@@ -3817,11 +3949,11 @@ function startIsmailScreenDReveal() {
   state.ismail.revealStarted = true;
   const slot = document.getElementById('ismail-summary-slot');
   if (!slot) return;
-  // W6 — Ismail loading reveal alias: Turbine Diagnostic Agent (institutional rotating-machinery knowledge)
+  // W6 — Ismail loading reveal alias: Equipment Diagnostic Agent (institutional rotating-machinery knowledge)
   slot.innerHTML = `
     <div class="reveal-pending ismail-loading" data-stage="ismail-summary">
       <span class="reveal-dots"><span></span><span></span><span></span></span>
-      <span class="reveal-msg"><span class="reveal-agent">Turbine Diagnostic Agent</span> · Loading institutional rotating-machinery knowledge for Dr. A. Ismail</span>
+      <span class="reveal-msg"><span class="reveal-agent">Equipment Diagnostic Agent</span> · Loading institutional rotating-machinery knowledge for Dr. A. Ismail</span>
     </div>`;
   // W6 — CTA deferred: spawn only on reveal complete (Section A)
   // W6 — fire right-pane card lifecycle (triage + power-gen critic in parallel)
@@ -3830,7 +3962,7 @@ function startIsmailScreenDReveal() {
     window.LOG.appendLine({
       ts: currentSGTLog(),
       source: 'triage',
-      text: 'Turbine Diagnostic Agent · pulling Ismail\'s 2023 Jurong-2 BFP casing field-experience pattern + prior RCA traversal',
+      text: 'Equipment Diagnostic Agent · pulling Ismail\'s 2023 Jurong-2 BFP casing field-experience pattern + prior RCA traversal',
       dataSource: 'Hyperspace OS',
       nodeChain: ['casing-rca-jrg-2023', 'pump-casing-crack-pattern', 'dr-ismail'],
     });
@@ -5676,7 +5808,7 @@ const P1_SECTION_1 = {
   num: 1, title: 'Criticality · Diagnosis · Summary',
   domain: [
     { name: 'Sensor Anomaly Inspector',      persistent: 'inspection', dataSource: 'Hyperspace' },
-    { name: 'Turbine Diagnostic Agent',      persistent: 'triage',     dataSource: 'Org Knowledge' },
+    { name: 'Equipment Diagnostic Agent',      persistent: 'triage',     dataSource: 'Org Knowledge' },
     { name: 'Criticality Scoring Agent',     persistent: null,         dataSource: 'Netscope' },
     { name: 'Incident Summary Synthesizer',  persistent: null,         dataSource: 'Hyperspace' },
   ],
@@ -5742,11 +5874,11 @@ const P1_WORKFLOWS = {
       tagline: 'Sensor anomaly · severity scoring · KG path-trace',
       durationMs: 24000,   // W14 R1 — 4x slower (was 6000)
       buckets: [
-        { name: 'Domain Experts',   agents: ['Sensor Anomaly Inspector', 'Turbine Diagnostic Agent', 'Criticality Scoring Agent', 'Incident Summary Synthesizer'], persistent: ['inspection', 'triage', null, null] },
+        { name: 'Domain Experts',   agents: ['Sensor Anomaly Inspector', 'Equipment Diagnostic Agent', 'Criticality Scoring Agent', 'Incident Summary Synthesizer'], persistent: ['inspection', 'triage', null, null] },
         { name: 'Critic',           agents: ['Critic · Power Gen', 'Criticality Standards Critic'],         persistent: ['critic-power-gen', null] },
-        { name: 'Orchestrator',     agents: ['Orchestrator', 'A2A Coordination Agent'],                     persistent: ['orchestrator', 'workflow'] },
+        { name: 'Orchestrator',     agents: ['Orchestrator', 'A2A Coordination Agent', 'Confidence Score Agent'], persistent: ['orchestrator', 'workflow', null] },
       ],
-      outputCaption: 'Triage Agent · 85% confidence · KG path traced',
+      outputCaption: '',   // green confidence bar removed — confidence now carried by the Confidence Score Agent
     },
     {
       num: 2,
@@ -5768,7 +5900,7 @@ const P1_WORKFLOWS = {
       durationMs: 20000,   // W14 R1 — 4x slower (was 5000)
       buckets: [
         // W42 — Schedule Integration Agent consumes existing crew roster + planned maint/outage calendar to optimize dispatch timing.
-        { name: 'Domain Experts',   agents: ['Roster Lookup Agent', 'Expertise Match Agent', 'Schedule Integration Agent'], persistent: [null, null, null] },
+        { name: 'Domain Experts',   agents: ['Roster Lookup Agent', 'Expertise Match Agent', 'Schedule Integration Agent', 'Criticality Scoring Agent'], persistent: [null, null, null, null] },
         { name: 'Critic',           agents: ['Certs Validator'],                                            persistent: [null] },
         { name: 'Orchestrator',     agents: ['Orchestrator', 'A2A Coordination Agent'],                     persistent: ['orchestrator', 'workflow'] },
       ],
@@ -5870,14 +6002,18 @@ function buildWorkflowStepCanvas(stepDef) {
     ? `<div class="wf-hitl-note"><span class="wf-hitl-badge">HITL</span><span>${stepDef.hitlNote}</span></div>`
     : '';
 
+  const outputHtml = stepDef.outputCaption
+    ? `<div class="wf-step-output">
+        <span class="wf-step-output-check">✓</span>
+        <span class="wf-step-output-caption">${stepDef.outputCaption}</span>
+      </div>`
+    : '';
+
   return `
     <div class="wf-step-card" data-step="${stepDef.num}">
       <div class="wf-step-tagline">${stepDef.tagline}</div>
       <div class="wf-buckets">${bucketsHtml}</div>
-      <div class="wf-step-output">
-        <span class="wf-step-output-check">✓</span>
-        <span class="wf-step-output-caption">${stepDef.outputCaption}</span>
-      </div>
+      ${outputHtml}
       ${hitlHtml}
     </div>
   `;
@@ -7652,7 +7788,7 @@ const LOG_SOURCE_COLORS = {
 const AGENT_DISPLAY_NAMES = {
   orchestrator:        'Orchestrator',
   inspection:            'Sensor Anomaly Inspector',
-  triage:                'Turbine Diagnostic Agent',
+  triage:                'Equipment Diagnostic Agent',
   'diag-hrsg':           'HRSG · Boiler Diagnostic Agent',
   'diag-electrical':     'Generator · Electrical Diagnostic Agent',
   playbook:              'BFP Maintenance Playbook Agent',
@@ -7943,7 +8079,7 @@ const INSPECTION_AGENT_SCRIPT = {
 };
 
 const ORCHESTRATOR_DISPATCH_LINES = [
-  { ts: '02:47:16', source: 'orchestrator', text: 'received inspection findings · handing to Turbine Diagnostic Agent', nodeChain: [] },
+  { ts: '02:47:16', source: 'orchestrator', text: 'received inspection findings · handing to Equipment Diagnostic Agent', nodeChain: [] },
 ];
 
 const TRIAGE_AGENT_SCRIPT = {

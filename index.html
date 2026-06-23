@@ -2906,6 +2906,73 @@
       font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
       color: var(--green-soft-text); margin-bottom: 3px;
     }
+    /* compact initial WO — full detail lives in the ◆ Sources modal */
+    .as-wo-compact-hint { margin-top: 4px; font-size: 11px; line-height: 1.45; color: var(--text-muted); }
+    .as-wo-compact-hint strong { color: var(--green-soft-text); }
+
+    /* Lim final-page report cards — compact → expand (replaces W45 service report) */
+    .lim-report-cards { margin: 14px 16px 0; display: flex; flex-direction: column; gap: 10px; }
+    .lim-rc-eyebrow {
+      font-size: 9.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted);
+    }
+    .lim-rc-card {
+      width: 100%; text-align: left; cursor: pointer;
+      background: #fff; border: 1px solid var(--border-subtle); border-left: 4px solid var(--green-vivid);
+      border-radius: 10px; padding: 12px 14px; box-shadow: var(--shadow-card);
+      transition: box-shadow .15s ease, transform .05s ease;
+    }
+    .lim-rc-card:hover { box-shadow: 0 4px 14px rgba(15,27,61,0.12); }
+    .lim-rc-card:active { transform: translateY(1px); }
+    .lim-regenwo-card { border-left-color: var(--amber, #F59E0B); }
+    .lim-rc-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+    .lim-rc-title { font-size: 13px; font-weight: 800; color: var(--text-primary); }
+    .lim-rc-badge {
+      font-family: var(--mono); font-size: 9.5px; font-weight: 700; color: #fff;
+      background: var(--amber, #F59E0B); border-radius: 4px; padding: 1px 5px; margin-left: 4px;
+    }
+    .lim-rc-expand { font-size: 10.5px; font-weight: 700; color: var(--green-soft-text); white-space: nowrap; }
+    .lim-rc-stats { display: flex; gap: 22px; margin-bottom: 8px; }
+    .lim-rc-stat { display: flex; flex-direction: column; }
+    .lim-rc-stat-v { font-size: 20px; font-weight: 800; color: var(--text-primary); line-height: 1.1; }
+    .lim-rc-stat-k { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); margin-top: 2px; }
+    .lim-rc-stat-note { font-size: 10px; color: var(--text-muted); }
+    .lim-rc-woid { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-bottom: 4px; }
+    .lim-rc-sub { font-size: 11.5px; line-height: 1.45; color: var(--text-secondary); }
+    .lim-rc-foot {
+      font-size: 11px; line-height: 1.5; color: var(--text-muted);
+      border-top: 1px dashed var(--border-subtle); padding-top: 8px; margin-top: 2px;
+    }
+
+    /* single-column document modal (impact summary + regen WO full docs) */
+    .sources-modal[data-layout="single"] .sources-modal-body { grid-template-columns: 1fr; }
+    .sources-modal[data-layout="single"] .sources-col-left { display: none; }
+    .doc-kv-list { display: flex; flex-direction: column; margin: 4px 0 10px; }
+    .doc-kv {
+      display: flex; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--border-subtle);
+      font-size: 12.5px; line-height: 1.45;
+    }
+    .doc-k { flex: 0 0 168px; color: var(--text-muted); font-weight: 700; }
+    .doc-v { color: var(--text-primary); }
+    .doc-section-lbl {
+      font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+      color: var(--text-muted); margin: 12px 0 6px;
+    }
+    .doc-list { margin: 0; padding-left: 18px; }
+    .doc-list li { font-size: 12.5px; line-height: 1.6; color: var(--text-secondary); }
+    .doc-works-group-lbl {
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+      color: var(--green-soft-text); margin: 8px 0 3px;
+    }
+    .doc-check-list { list-style: none; padding-left: 0; }
+    .doc-check {
+      display: flex; gap: 10px; align-items: baseline; justify-content: space-between;
+      padding: 4px 0; border-bottom: 1px dashed var(--border-subtle);
+    }
+    .doc-check-txt { flex: 1; }
+    .doc-check-st { flex: 0 0 auto; font-weight: 700; font-size: 11.5px; white-space: nowrap; }
+    .doc-st-done { color: var(--green-vivid); }
+    .doc-st-skip { color: var(--amber, #F59E0B); }
+    .doc-st-pending { color: var(--text-muted); }
 
     /* Notes standalone wrapper (W3.9 — notes section moved outside diag-hypothesis-card) */
     .notes-standalone {
@@ -6662,7 +6729,7 @@
                   </svg>
                 </div>
                 <div class="agent-info">
-                  <div class="agent-name">Turbine Diagnostic Agent</div>
+                  <div class="agent-name">Equipment Diagnostic Agent</div>
                   <div class="agent-role">GT · CCGT Diagnosis</div>
                 </div>
               </div>
