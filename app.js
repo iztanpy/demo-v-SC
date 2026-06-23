@@ -288,7 +288,7 @@ const WORK_ORDER_REVISED = {
 // ── Quantified impact summary — replaces the W45 service report on Lim's final page (compact card → expand modal) ──
 const IMPACT_SUMMARY = {
   headline: [
-    { k: 'Asset downtime', v: '~6h', note: 'BFP-3A offline · casing repair' },
+    { k: 'Asset downtime', v: '~4h', note: 'BFP-3A offline · casing repair' },
     { k: 'Revenue at risk', v: '~SGD 2.4M', note: 'if unmitigated' },
   ],
   rows: [

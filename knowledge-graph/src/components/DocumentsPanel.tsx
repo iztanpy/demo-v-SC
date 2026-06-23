@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { FEED, INCIDENTS, DOC_KIND_LABEL, DOC_KIND_COLOR, INCIDENT_COLOR, type DocKind } from '../data/feed'
+import { FEED, INCIDENTS, DOC_KIND_COLOR, INCIDENT_COLOR, type DocKind } from '../data/feed'
 import { useDemo } from '../demoStore'
 import { useFeed, type FeedPhase } from '../useFeed'
 
@@ -80,6 +80,8 @@ export function DocumentsPanel() {
             const rootPhase = phases.get(root.id) ?? 'pending'
             if (rootPhase === 'pending') return null // workflow trace not arrived yet → no card
             const color = INCIDENT_COLOR[inc.id]
+            // focus incident (INC-0537): all nested doc cards take the outer orange; others keep per-type colors
+            const kColor = (k: DocKind) => (inc.id === FOCUS_INCIDENT ? color : DOC_KIND_COLOR[k])
             const expanded = isExpanded(inc.id)
             const docs = [root, ...children]
             const doneDocs = docs.filter((d) => phases.get(d.id) === 'done').length
@@ -106,7 +108,7 @@ export function DocumentsPanel() {
                       </div>
                     )}
                     {rootPhase === 'done' && (
-                      <div className="p-doc-extract" style={{ ['--k' as string]: DOC_KIND_COLOR[root.kind] }}>
+                      <div className="p-doc-extract" style={{ ['--k' as string]: kColor(root.kind) }}>
                         <span className="p-doc-field">{root.field}</span>
                         <span className="p-doc-value">{root.value}</span>
                         <span className="p-doc-prov">via {root.agent} · {root.source}</span>
@@ -115,7 +117,7 @@ export function DocumentsPanel() {
                     {(subs.length > 0 || (rootPhase === 'done' && root.steps)) && (
                       <div className="p-wf-subs">
                         {rootPhase === 'done' && root.steps && (
-                          <div className="p-sub p-sub-steps" style={{ ['--k' as string]: '#6366F1' }}>
+                          <div className="p-sub p-sub-steps" style={{ ['--k' as string]: kColor('workflow-trace') }}>
                             <div className="p-sub-top">
                               <span className="p-sub-icon">
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -147,10 +149,10 @@ export function DocumentsPanel() {
                         {subs.map((c) => {
                           const ph = phases.get(c.id) ?? 'pending'
                           return (
-                            <div key={c.id} className="p-sub" data-phase={ph} data-kind={c.kind} style={{ ['--k' as string]: DOC_KIND_COLOR[c.kind] }}>
+                            <div key={c.id} className="p-sub" data-phase={ph} data-kind={c.kind} style={{ ['--k' as string]: kColor(c.kind) }}>
                               <div className="p-sub-top">
                                 <span className="p-sub-icon"><DocIcon kind={c.kind} /></span>
-                                <span className="p-sub-kind">{DOC_KIND_LABEL[c.kind]}</span>
+                                <span className="p-sub-kind">{c.label}</span>
                                 {isWorking(ph) && <span className="p-doc-spin"><span className="p-dots"><span /><span /><span /></span></span>}
                                 {ph === 'done' && <span className="p-doc-tick">✓</span>}
                               </div>

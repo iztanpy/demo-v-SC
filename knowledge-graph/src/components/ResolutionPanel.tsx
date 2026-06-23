@@ -90,42 +90,34 @@ const CARDS: ResCard[] = [
   // (symptom, asset, first-line tests), one over-confident edge to re-weight, and the casing-crack
   // entities that have no home on the graph (the gaps that flow to New Knowledge).
   {
-    id: 'c-0537-sym', incident: 'INC-0537', chip: 'matched', chipKind: 'reaffirm',
+    id: 'c-0537-sop', incident: 'INC-0537', chip: 'matched', chipKind: 'reaffirm',
     entities: [
-      { label: 'Symptom', detail: 'BFP NDE vib high → SYM-001', status: 'match' },
-      { label: 'Asset class', detail: 'Boiler feed pump → AC-BFP', status: 'match' },
+      { label: 'Workflow', detail: 'Workflows generated for the initial work order matched SOP standards', status: 'match' },
+      { label: 'Tests run', detail: 'Phase analysis + housing inspection on the graph’s path', status: 'match' },
     ],
-    matchedNodes: ['SYM-001', 'AC-BFP'],
-  },
-  {
-    id: 'c-0537-tests', incident: 'INC-0537', chip: 'matched', chipKind: 'reaffirm',
-    entities: [
-      { label: 'Tests run', detail: 'Phase analysis → DT-PHASE', status: 'match' },
-      { label: 'Tests run', detail: 'Housing inspection → DT-HOUSING-INSPECT', status: 'match' },
-    ],
-    matchedNodes: ['SYM-001', 'DT-PHASE', 'DT-HOUSING-INSPECT'],
+    matchedNodes: ['SYM-001', 'AC-BFP', 'DT-PHASE', 'DT-HOUSING-INSPECT'],
   },
   {
     id: 'c-0537-rw', incident: 'INC-0537', chip: 're-weight confidence', chipKind: 'reweight',
     entities: [
-      { label: 'Tests run', detail: 'Phase analysis → DT-PHASE', status: 'match' },
-      { label: 'Diagnosis', detail: 'Phase suggested bent shaft — ops overruled it', status: 'reweight' },
+      { label: 'Diagnosis', detail: 'Original proposed diagnosis was not selected', status: 'reweight' },
+      { label: 'Signature', detail: 'Specific temperature + vibration signature pointed to a bearing-related issue', status: 'reweight' },
     ],
     matchedNodes: ['SYM-001', 'DT-PHASE'],
     reweight: true,
   },
   {
-    id: 'c-0537-ndt', incident: 'INC-0537', chip: 'gap — off path', chipKind: 'gap',
+    id: 'c-0537-gap', incident: 'INC-0537', chip: 'gap — new knowledge', chipKind: 'gap',
     entities: [
-      { label: 'Tests run', detail: 'Casing NDT — run off the graph’s path', status: 'gap' },
+      { label: 'Root cause', detail: 'Casing crack identified as the root cause — no matching node on the graph', status: 'gap' },
     ],
     matchedNodes: [],
     gap: true,
   },
   {
-    id: 'c-0537-gap', incident: 'INC-0537', chip: 'gap — new knowledge', chipKind: 'gap',
+    id: 'c-0537-ndt', incident: 'INC-0537', chip: 'gap — new test', chipKind: 'gap',
     entities: [
-      { label: 'Diagnosis', detail: 'Casing weld-toe crack — no node on the graph', status: 'gap' },
+      { label: 'Test', detail: 'New test needed to confirm the casing crack — liquid-penetrant inspection, off the graph’s path', status: 'gap' },
     ],
     matchedNodes: [],
     gap: true,
@@ -140,6 +132,11 @@ const SHOW_PARTICLES = false
 // INC-0537 is the hero (the exception). Its re-weight + gap cards render full (entity lists);
 // every other (reaffirm) incident stays a compact mini card — just the incident + chip + ✓.
 const FOCUS_INCIDENT = 'INC-0537'
+
+// The hero emits several cards on ONE per-incident phase, so they'd all resolve at the same instant.
+// Once the incident resolves, cascade its cards one-by-one (in array order) for a sequenced reveal.
+const FOCUS_CARDS = CARDS.filter((c) => c.incident === FOCUS_INCIDENT)
+const HERO_STEP_MS = 600 // spacing between successive hero-card resolves
 
 // ── cross-panel particle flow: dots fly from a resolved card toward the graph (reaffirming it) ──
 let fxLayer: HTMLDivElement | null = null
@@ -178,6 +175,16 @@ export function ResolutionPanel() {
   const [open, setOpen] = useState(true)
   useEffect(() => { setOpen(true) }, [runId])
   const active = INCIDENTS.some((i) => (phases.get(i.id) ?? 'pending') !== 'pending')
+
+  // hero-card cascade: how many of INC-0537's cards have resolved so far (rest stay in matching)
+  const heroPhase = phases.get(FOCUS_INCIDENT) ?? 'pending'
+  const [heroResolved, setHeroResolved] = useState(0)
+  useEffect(() => { setHeroResolved(0) }, [runId])
+  useEffect(() => {
+    if (heroPhase !== 'resolved') { setHeroResolved(0); return }
+    const timers = FOCUS_CARDS.map((_, i) => setTimeout(() => setHeroResolved(i + 1), i * HERO_STEP_MS))
+    return () => timers.forEach(clearTimeout)
+  }, [heroPhase, runId])
 
   // push resolution outcomes to the graph (matched paths + re-weight) and Panel 3 (the gap)
   const phaseKey = INCIDENTS.map((i) => phases.get(i.id)).join(',')
@@ -253,8 +260,12 @@ export function ResolutionPanel() {
             const phase = phases.get(card.incident) ?? 'pending'
             const inc = INCIDENTS.find((i) => i.id === card.incident)!
             const color = INCIDENT_COLOR[card.incident]
-            const matching = phase === 'matching'
             const focus = card.incident === FOCUS_INCIDENT
+            // hero cards cascade: each stays in matching until its turn in the sequence comes up
+            const focusIndex = focus ? FOCUS_CARDS.findIndex((c) => c.id === card.id) : -1
+            const matching = focus
+              ? phase === 'matching' || (phase === 'resolved' && heroResolved <= focusIndex)
+              : phase === 'matching'
             return (
               <div key={card.id} ref={(el) => { cardRefs.current[card.id] = el }} className="p-res-row" data-kind={matching ? 'matching' : card.chipKind} data-mini={!focus} style={{ ['--inc' as string]: color }}>
                 <div className="p-res-top">
