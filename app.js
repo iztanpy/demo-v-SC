@@ -21,7 +21,7 @@ const state = {
   logDropdownOpen: false,
   graphWinOpen: false,
   graphWinPos: { x: null, y: null },
-  graphWinSize: { w: 460, h: 360 },
+  graphWinSize: { w: 80, h: 108 },
   // ── Wave 3.8 — right-pane drawer ──
   drawerOpen: false,
   // ── Wave 3.7 — Screen D tiered reveal + dispatch note ──
@@ -610,7 +610,7 @@ function fireAgentCardLifecycle(agentId, durationMs = 5000) {
       card.classList.remove('agent-card-pulse');
       card.dataset.state = 'done';
     }
-  }, durationMs);
+  }, scaleDelay(durationMs));
 }
 
 function fireAgentCardsParallel(agentIds, durationMs) {
@@ -955,7 +955,7 @@ function wireDiagnosisRationaleToggles() {
 function paintSOPRelevantInitial(actionSlot) {
   actionSlot.innerHTML = `
     <div class="action-steps" data-variant="sop-relevant">
-      <div class="as-heading">SOP Relevant next best actions</div>
+      <div class="as-heading">SCHEDULE OPTIMIZATION AND DISPATCH</div>
       <div class="as-sop-theater-slot"></div>
       <div class="as-step-slot" data-step-slot="1"></div>
       <div class="as-step-slot" data-step-slot="2"></div>
@@ -969,13 +969,6 @@ function playSOPAnticipationTheater() {
   const theaterSlot = document.querySelector('.as-sop-theater-slot');
   if (!theaterSlot) return;
   // Phase 1: SOP Compliance Agent checking SOP-specific steps (2s)
-  theaterSlot.innerHTML = `
-    <div class="sop-anticipation-theater" data-phase="checking">
-      <span class="reveal-dots"><span></span><span></span><span></span></span>
-      <span class="reveal-msg">
-        <span class="reveal-agent">SOP Compliance Agent</span> · confirming SOP specific steps for BFP vibration investigation
-      </span>
-    </div>`;
   if (window.LOG) {
     window.LOG.appendLine({
       ts: currentSGTLog(),
@@ -988,14 +981,29 @@ function playSOPAnticipationTheater() {
   fireAgentCardLifecycle('sop-action', 2000);
 
   pushReveal(() => {
-    // Phase 2: result lands · "SOP requires telemetry to be checked"
-    theaterSlot.innerHTML = `
-      <div class="sop-anticipation-result">
-        <span class="sar-icon">📋</span>
-        <span class="sar-text">SOP requires telemetry to be checked before on-site dispatch</span>
-      </div>`;
-    revealStep1WithAddButton();
+    // Phase 2: result lands. short-og-demo — telemetry step removed; go straight to engineer dispatch.
+    revealEngineerFindStep();
   }, 2000);
+}
+
+// short-og-demo — telemetry Step 1 removed. Engineer-find is now the only step (labeled "Step 1").
+// Internal data-step="2" preserved so unlockActionStep2 / wireEngineerCardClick selectors keep working.
+function revealEngineerFindStep() {
+  const slot1 = document.querySelector('.as-step-slot[data-step-slot="1"]');
+  const slot2 = document.querySelector('.as-step-slot[data-step-slot="2"]');
+  if (!slot1) return;
+  if (slot2) slot2.innerHTML = '';
+  slot1.innerHTML = `
+    <div class="as-step" data-step="2" data-status="locked">
+      <div class="as-step-head">
+        <span class="as-step-num">○</span>
+        <span class="as-step-title">Find available engineer</span>
+      </div>
+      <div class="as-step-body">
+        <span class="as-step-msg">Hyperspace OS · locating on-duty engineers…</span>
+      </div>
+    </div>`;
+  unlockActionStep2();
 }
 
 function revealStep1WithAddButton() {
@@ -1113,30 +1121,15 @@ function paintActionStepsInitial(actionSlot) {
 }
 
 function paintActionStepsComplete(actionSlot) {
-  // Already actioned (re-render after dispatch). Show both steps ✓.
-  // W13 R2 — heading "SOP Relevant next best actions"; Step 1 title "Inspect and confirm telemetry";
-  // notes re-attach block dropped (Faye onsite notes removed from Step 2).
+  // Already actioned (re-render after dispatch). short-og-demo — telemetry Step 1 removed;
+  // only the engineer-find step remains (labeled "Step 1", internal data-step="2").
   actionSlot.innerHTML = `
     <div class="action-steps" data-variant="sop-relevant">
-      <div class="as-heading">SOP Relevant next best actions</div>
-      <div class="as-step" data-step="1" data-status="done">
-        <div class="as-step-head">
-          <span class="as-step-num">✓</span>
-          <span class="as-step-title">Step 1 · Inspect and confirm telemetry</span>
-        </div>
-        <div class="as-step-body">
-          <span class="as-step-msg italic">Telemetry confirmed for INC-2026-0537</span>
-          <button class="as-step-attach" type="button" aria-label="View verified metrics">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
-              <path d="M16.5 6v11.5a4 4 0 0 1-8 0V5a2.5 2.5 0 0 1 5 0v10a1 1 0 0 1-2 0V6h-1.5v9a2.5 2.5 0 0 0 5 0V5a4 4 0 0 0-8 0v12.5a5.5 5.5 0 0 0 11 0V6z"/>
-            </svg>
-          </button>
-        </div>
-      </div>
+      <div class="as-heading">SCHEDULE OPTIMIZATION AND DISPATCH</div>
       <div class="as-step" data-step="2" data-status="selected">
         <div class="as-step-head">
           <span class="as-step-num">✓</span>
-          <span class="as-step-title">Step 2 · Find available engineer <span class="as-step-optional">(optional)</span></span>
+          <span class="as-step-title">Find available engineer</span>
         </div>
         <div class="as-step-body">
           <span class="as-step-msg">Lim Wei Jie selected</span>
@@ -1144,7 +1137,6 @@ function paintActionStepsComplete(actionSlot) {
       </div>
       <div class="dispatch-confirmed">✓ Dispatched at ${currentSGTTime()} · ${DISPATCH_LABEL[state.activePersona] || 'next persona'} notified</div>
     </div>`;
-  wireTelemetryModal();
 }
 
 function startActionStep1() {
@@ -1464,9 +1456,20 @@ function buildPendingPlaceholder(blockId) {
   return placeholder;
 }
 
+// short-og-demo — global loading-theater scale. 0.2 = 80% faster.
+// Applied centrally in pushReveal (tablet reveals) + scheduleArcStep (right-pane arc)
+// + fireAgentCardLifecycle (agent-card pulses) so left/right panes stay in sync.
+const THEATER_SCALE = 0.25;
+const scaleDelay = (ms) => Math.round((ms || 0) * THEATER_SCALE);
+// short-og-demo — right-pane agent arc gets its own (tighter) dial so it can be
+// snappier than the tablet dot-loaders without touching them.
+const ARC_SCALE = 0.05;
+// short-og-demo — notification banner dwell after tapping the top bar (was 3000).
+const BANNER_DWELL_MS = 900;
+
 // W3.9 — reveal timer tracking (cancellable on persona switch)
 function pushReveal(fn, delay) {
-  const h = setTimeout(fn, delay);
+  const h = setTimeout(fn, scaleDelay(delay));
   state.revealTimers.push(h);
   return h;
 }
@@ -2442,6 +2445,7 @@ function triggerGroupTheater(targetGroupName, opts = {}) {
   // W6 — fire right-pane card lifecycle synced with theater duration
   fireAgentCardsParallel(meta.cardAgentIds, 3000);
 
+  // short-og-demo — visible loading dots scaled to match the (scaled) card pulse (was raw 3000).
   setTimeout(() => {
     if (theater.parentNode) theater.parentNode.removeChild(theater);
     if (skipUnlock) return;
@@ -2458,7 +2462,7 @@ function triggerGroupTheater(targetGroupName, opts = {}) {
         wireInstrumentActions();   // W15 — newly-spawned Instrument items need tick/cross wiring
       }
     }
-  }, 3000);
+  }, scaleDelay(3000));
 }
 
 function logChecklistItem(itemId) {
@@ -2557,8 +2561,10 @@ function wireVerdictButtons() {
   }
 }
 
-// W7 — Reject = main path. W12 Section F — intermediate "SOP suggests calling <name>" dialogue.
-// Reject → dialogue spawns → user clicks Call → SOP-routing theater (3s) → in-call strip.
+// short-og-demo — "Connect to Senior Technical Expert" starts the call immediately.
+// Dropped the intermediate "SOP suggests calling" dialogue + Call button + 3s routing theater.
+// Right-pane SOP Action Agent log line + card pulse retained for credibility.
+// wireSOPSuggestDialogue / onSOPSuggestCallClick kept below as dead code (WA #5).
 function onVerdictReject() {
   if (state.lim.rejectClicked) return;
   state.lim.rejectClicked = true;
@@ -2566,20 +2572,21 @@ function onVerdictReject() {
 
   const slot = document.getElementById('lim-ctas-slot');
   if (!slot) return;
-  // Drop verdict section, spawn SOP-suggest dialogue
-  slot.innerHTML = `
-    <div class="sop-suggest-dialogue">
-      <div class="ssd-icon">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57a1 1 0 0 0-1.02.24l-2.2 2.2a15.05 15.05 0 0 1-6.59-6.58l2.2-2.21a1 1 0 0 0 .25-1.02A11.36 11.36 0 0 1 8.5 4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1c0 9.39 7.61 17 17 17a1 1 0 0 0 1-1v-3.5a1 1 0 0 0-1-1z"/></svg>
-      </div>
-      <div class="ssd-body">
-        <div class="ssd-text">SOP suggests calling <span class="dyn-name">Dr. A. Ismail</span></div>
-        <div class="ssd-sub">SOP-BFP-VIBR-001 · escalation playbook · Senior Engineer reference</div>
-      </div>
-      <button class="ssd-action" type="button">Call</button>
-    </div>`;
+  slot.innerHTML = '';
 
-  wireSOPSuggestDialogue();
+  if (window.LOG) {
+    window.LOG.appendLine({
+      ts: currentSGTLog(),
+      source: 'sop-action',
+      text: 'SOP Action Agent · Connecting to Dr. A. Ismail via call · routing through escalation playbook',
+      dataSource: 'Hyperspace OS',
+      nodeChain: ['dr-ismail', 'sop-bfp-vibration-investigation'],
+    });
+  }
+  fireAgentCardLifecycle('sop-action', 3000);
+
+  // Call starts immediately — straight to in-call strip.
+  spawnInCallStrip();
 }
 
 function wireSOPSuggestDialogue() {
@@ -2760,8 +2767,8 @@ function onCallEnd() {
       }
       // W8 E.4 — auto-trigger diagnosis morph + Revise diagnosis tile spawn (no user click).
       onDiagnosisConfirmedClick();
-    }, 3000);
-  }, 3000);
+    }, scaleDelay(3000)); // short-og-demo — analyzing-transcript stage scaled (was raw 3000)
+  }, scaleDelay(3000));   // short-og-demo — generating-transcript stage scaled (was raw 3000)
 }
 
 function paintPostCallStagesFromState() {
@@ -3828,6 +3835,8 @@ function fireWorkflowAgentArcLock() {
 function openTranscriptModal() {
   const m = document.getElementById('transcript-modal');
   if (m) { m.dataset.open = 'true'; m.setAttribute('aria-hidden', 'false'); }
+  // short-og-demo — surface the knowledge graph on the right when the transcript opens.
+  if (!state.graphWinOpen) toggleGraphWindow();
 }
 function closeTranscriptModal() {
   const m = document.getElementById('transcript-modal');
@@ -4091,11 +4100,11 @@ function onHeaderClick() {
     state.history.push('monitoring');
     state.screen = 'monitoring-notify';
     render();
-    state.notifyTimer = setTimeout(fadeBannerThenLand, 3000);
+    state.notifyTimer = setTimeout(fadeBannerThenLand, BANNER_DWELL_MS);
   } else {
     // Handoff click — banner only, no screen-state change (row already landed)
     render();
-    state.notifyTimer = setTimeout(fadeBannerOnly, 3000);
+    state.notifyTimer = setTimeout(fadeBannerOnly, BANNER_DWELL_MS);
   }
 
   fireArc(personaKey);
@@ -4104,11 +4113,14 @@ function onHeaderClick() {
 function fadeBannerThenLand() {
   const banner = document.querySelector('.mon-banner');
   if (banner) banner.classList.add('mon-banner-out');
-  setTimeout(() => {
+  // Track the inner timer in notifyTimer so openIncidentDetail can cancel it,
+  // and guard the callback so a tap into the incident during the fade can't bounce back.
+  state.notifyTimer = setTimeout(() => {
+    state.notifyTimer = null;
     state.bannerVisible = false;
+    if (state.screen === 'incident-detail') return;
     state.screen = 'monitoring-landed';
     state.incidentLanded = true;
-    state.notifyTimer = null;
     render();
   }, 500);
 }
@@ -4116,9 +4128,10 @@ function fadeBannerThenLand() {
 function fadeBannerOnly() {
   const banner = document.querySelector('.mon-banner');
   if (banner) banner.classList.add('mon-banner-out');
-  setTimeout(() => {
-    state.bannerVisible = false;
+  state.notifyTimer = setTimeout(() => {
     state.notifyTimer = null;
+    state.bannerVisible = false;
+    if (state.screen === 'incident-detail') return;
     render();
   }, 500);
 }
@@ -5097,7 +5110,7 @@ function playWorkflowStep(stepNum) {
 
   const reveals = Math.max(1, flatAgents.length);
   // W14 R1 — floor bumped 400 → 1200 (3x) to keep proportional cadence at 4x durationMs
-  const stagger = Math.max(1200, Math.floor((stepDef.durationMs - 6000) / reveals));
+  const stagger = 300;
   const dots = document.querySelectorAll('#wf-active-canvas .wf-agent-dot');
 
   dots.forEach((el, i) => {
@@ -5105,7 +5118,7 @@ function playWorkflowStep(stepNum) {
     const t = setTimeout(() => {
       el.classList.add('wf-agent-revealed');
       if (meta && meta.persistent) {
-        const remaining = Math.max(1500, stepDef.durationMs - i * stagger);
+        const remaining = 100
         fireAgentCardLifecycle(meta.persistent, remaining);
       }
     }, i * stagger);
@@ -7044,7 +7057,7 @@ function pulseAgentEngagement(source) {
   card.classList.remove('agent-engage-pulse');
   void card.offsetWidth;  // force reflow so animation re-triggers
   card.classList.add('agent-engage-pulse');
-  setTimeout(() => card.classList.remove('agent-engage-pulse'), 1550);
+  setTimeout(() => card.classList.remove('agent-engage-pulse'), 450);
 }
 
 window.LOG = {
@@ -7334,7 +7347,7 @@ function dispatchP1Arc(arcPersonaKey) {
 }
 
 function scheduleArcStep(delayMs, fn) {
-  const handle = setTimeout(fn, delayMs);
+  const handle = setTimeout(fn, Math.round((delayMs || 0) * ARC_SCALE));
   state.arcTimers.push(handle);
 }
 
