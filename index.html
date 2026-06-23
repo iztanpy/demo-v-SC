@@ -2304,6 +2304,51 @@
     .sr-alt-toggle[data-expanded="true"] .sr-alt-toggle-icon { transform: rotate(90deg); }
     .sr-alt-list { padding-top: 4px; }
 
+    /* Selectable diagnosis option cards (each with its own rationale) on Faye's Initial Diagnosis */
+    .sr-diag-prompt {
+      font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--text-muted); margin-bottom: 8px;
+    }
+    .sr-diag-cards { display: flex; flex-direction: column; gap: 8px; }
+    .sr-diag-card {
+      background: #fff; border: 1px solid var(--border-subtle); border-radius: 8px;
+      overflow: hidden; transition: border-color 120ms, background 120ms;
+    }
+    .sr-diag-card[data-selected="true"] { border-color: var(--green-vivid); background: var(--green-soft); }
+    .sr-diag-select {
+      display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+      background: transparent; border: none; padding: 11px 12px; cursor: pointer; font-family: inherit;
+    }
+    .sr-diag-card:hover:not([data-selected="true"]) .sr-diag-select:not([disabled]) { background: var(--bg-card-hover); }
+    .sr-diag-select[disabled] { cursor: default; }
+    .sr-diag-card[data-selected="false"] .sr-diag-select[disabled] { opacity: 0.5; }
+    .sr-diag-radio {
+      flex: 0 0 auto; width: 15px; height: 15px; border-radius: 50%;
+      border: 2px solid var(--text-muted); position: relative; transition: border-color 120ms;
+    }
+    .sr-diag-card[data-selected="true"] .sr-diag-radio { border-color: var(--green-vivid); }
+    .sr-diag-card[data-selected="true"] .sr-diag-radio::after {
+      content: ''; position: absolute; inset: 2px; border-radius: 50%; background: var(--green-vivid);
+    }
+    .sr-diag-name { flex: 1; font-size: 13.5px; font-weight: 700; color: var(--text-primary); }
+    .sr-diag-rec {
+      font-size: 9px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;
+      color: var(--green-soft-text); background: var(--green-soft);
+      padding: 2px 6px; border-radius: 999px; white-space: nowrap;
+    }
+    .sr-diag-card[data-selected="true"] .sr-diag-rec { background: #fff; }
+    .sr-diag-conf {
+      font-family: var(--mono); font-size: 11.5px; font-weight: 700;
+      color: var(--green-soft-text); white-space: nowrap;
+    }
+    /* per-card rationale dropdown — sits below the select row inside the card */
+    .sr-diag-rat-block { padding: 0 12px 4px; }
+    .sr-diag-rat-toggle { padding: 2px 0 8px; }
+    .sr-diag-rat-list { padding-bottom: 8px; }
+    .sr-rat-badge-against {
+      background: #FEE2E2; color: #B91C1C;
+    }
+
     /* W13 R2 — Rationale dropdown (replaces alt-hypotheses on Faye Summary) */
     .sr-rationale-block {
       margin-top: 12px;

@@ -54,6 +54,8 @@ const state = {
   faye: {
     diagnosisConfirmed: false,    // true after Faye clicks Confirm on Initial Diagnosis
     actionStepsSpawned: false,    // true after SOP Relevant section painted
+    selectedDiagnosisIdx: 0,      // which diagnosis option Faye picked (0 = AI-recommended primary)
+    overrideReason: '',           // required rationale when Faye picks a non-recommended option
   },
   // ── W4 — Lim curated Screen D state ──
   lim: {
@@ -790,18 +792,70 @@ function startScreenDRevealW39(summarySlot, actionSlot) {
   // Action Steps gated on Confirm click → onInitialDiagnosisConfirmClick → spawnSOPRelevantNextBestActions.
 }
 
-function paintSummaryComplete(summarySlot) {
-  // W13 R2 — heading "Initial Diagnosis", Rationale dropdown (replaces Alt-hypotheses),
-  // Confirm CTA pre-confirm OR locked pill post-confirm.
+// Per-diagnosis rationale shown inside each option card. Primary is the AI-recommended match (all
+// supporting signals); alternates list their partial supports plus the evidence that argues against
+// them — which is why their confidence is lower.
+// NOTE: alternate-diagnosis rationale rows are newly authored — credibility check needed before the ITP demo.
+const DIAGNOSIS_RATIONALE = {
+  'Shaft misalignment': [
+    { text: '2×RPM harmonic present but not dominant in NDE spectrum',     strength: 'partial', badgeLabel: 'partially met' },
+    { text: 'NDE–DE phase shift ~180° — consistent with misalignment',     strength: 'partial', badgeLabel: 'partially met' },
+    { text: 'Last laser shaft alignment within tolerance (2025-02)',       strength: 'against', badgeLabel: 'argues against' },
+    { text: 'No elevated axial vibration component observed',              strength: 'against', badgeLabel: 'argues against' },
+  ],
+  'Coupling wear': [
+    { text: '1×/2×RPM mix can indicate coupling-element degradation',      strength: 'partial', badgeLabel: 'partially met' },
+    { text: 'Coupling element inspected within tolerance at last service',  strength: 'against', badgeLabel: 'argues against' },
+    { text: 'No DE coupling-end bearing temperature rise',                 strength: 'against', badgeLabel: 'argues against' },
+  ],
+  'Impeller imbalance': [
+    { text: '1×RPM dominance is consistent with rotating imbalance',       strength: 'partial', badgeLabel: 'partially met' },
+    { text: 'Rotor refurbished + balanced at 2023-06 major overhaul',      strength: 'against', badgeLabel: 'argues against' },
+    { text: 'No vane-pass-frequency or broadband elevation in spectrum',   strength: 'against', badgeLabel: 'argues against' },
+  ],
+};
+
+// Diagnosis options surfaced on Faye's Initial Diagnosis card: AI-recommended primary + alternates,
+// each carrying its own rationale rows.
+function getDiagnosisOptions() {
   const hyp = INCIDENT.hypothesis;
-  const rationaleHtml = INITIAL_DIAGNOSIS_RATIONALE.map(r => `
-    <div class="sr-rationale-row" data-strength="${r.strength}">
-      <span class="sr-rat-bullet">·</span>
-      <span class="sr-rat-text">${r.text}</span>
-      <span class="sr-rat-badge sr-rat-badge-${r.strength}">${r.badgeLabel}</span>
-    </div>
-  `).join('');
+  return [
+    { name: hyp.primary, conf: hyp.confidence, recommended: true, rationale: INITIAL_DIAGNOSIS_RATIONALE },
+    ...INCIDENT.alternates.map(a => ({ name: a.name, conf: a.conf, recommended: false, rationale: DIAGNOSIS_RATIONALE[a.name] || [] })),
+  ];
+}
+
+function paintSummaryComplete(summarySlot) {
+  // Initial Diagnosis is a set of selectable option CARDS — each with its own collapsible rationale.
+  // AI-recommended primary pre-selected; Faye picks one, then Confirms (locked pill post-confirm).
   const confirmed = state.faye && state.faye.diagnosisConfirmed;
+  const selIdx = (state.faye && state.faye.selectedDiagnosisIdx) || 0;
+  const cardsHtml = getDiagnosisOptions().map((o, i) => {
+    const ratHtml = (o.rationale || []).map(r => `
+      <div class="sr-rationale-row" data-strength="${r.strength}">
+        <span class="sr-rat-bullet">·</span>
+        <span class="sr-rat-text">${r.text}</span>
+        <span class="sr-rat-badge sr-rat-badge-${r.strength}">${r.badgeLabel}</span>
+      </div>`).join('');
+    return `
+      <div class="sr-diag-card" data-idx="${i}" data-selected="${i === selIdx}">
+        <button class="sr-diag-select" type="button" data-idx="${i}" ${confirmed ? 'disabled' : ''}>
+          <span class="sr-diag-radio"></span>
+          <span class="sr-diag-name">${o.name}</span>
+          ${o.recommended ? '<span class="sr-diag-rec">AI recommended</span>' : ''}
+          <span class="sr-diag-conf">${o.conf}%</span>
+        </button>
+        <div class="sr-diag-rat-block">
+          <button class="sr-rationale-toggle sr-diag-rat-toggle" data-expanded="false" type="button">
+            <span class="sr-rationale-toggle-icon">▸</span>
+            <span class="sr-rationale-toggle-lbl">Rationale</span>
+          </button>
+          <div class="sr-rationale-list sr-diag-rat-list" style="display:none">
+            ${ratHtml}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
   const confirmRowHtml = confirmed
     ? `<span class="sr-confirmed-pill">✓ Initial diagnosis locked</span>`
     : `<button class="sr-confirm-btn" type="button">Confirm</button>`;
@@ -809,27 +863,49 @@ function paintSummaryComplete(summarySlot) {
     <div class="summary-report" data-block-real="summary">
       <div class="sr-heading">Initial Diagnosis</div>
       <div class="sr-section">
-        <div class="sr-hypothesis">
-          <div class="sr-hyp-row">
-            <span class="sr-hyp-name">${hyp.primary}</span>
-          </div>
-        </div>
-        <div class="sr-rationale-block">
-          <button class="sr-rationale-toggle" data-expanded="false" type="button">
-            <span class="sr-rationale-toggle-icon">▸</span>
-            <span class="sr-rationale-toggle-lbl">Rationale</span>
-          </button>
-          <div class="sr-rationale-list" style="display:none">
-            ${rationaleHtml}
-          </div>
+        <div class="sr-diag-prompt">Select the diagnosis to confirm</div>
+        <div class="sr-diag-cards">
+          ${cardsHtml}
         </div>
         <div class="sr-confirm-row">
           ${confirmRowHtml}
         </div>
       </div>
     </div>`;
-  wireRationaleToggle();
+  wireDiagnosisOptionSelect();
+  wireDiagnosisRationaleToggles();
   wireConfirmInitialDiagnosis();
+}
+
+// Pre-confirm: clicking a card's select row picks it (radio behavior). Disabled once diagnosis is locked.
+function wireDiagnosisOptionSelect() {
+  document.querySelectorAll('.sr-diag-select').forEach(btn => {
+    if (btn.dataset.wired === '1') return;
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', () => {
+      if (state.faye.diagnosisConfirmed) return;
+      state.faye.selectedDiagnosisIdx = parseInt(btn.dataset.idx, 10);
+      document.querySelectorAll('.sr-diag-card').forEach(card => {
+        card.dataset.selected = (parseInt(card.dataset.idx, 10) === state.faye.selectedDiagnosisIdx) ? 'true' : 'false';
+      });
+    });
+  });
+}
+
+// Each option card has its own Rationale dropdown — toggle the list within that card only.
+function wireDiagnosisRationaleToggles() {
+  document.querySelectorAll('.sr-diag-rat-toggle').forEach(btn => {
+    if (btn.dataset.wired === '1') return;
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', () => {
+      const expanded = btn.dataset.expanded === 'true';
+      btn.dataset.expanded = String(!expanded);
+      const icon = btn.querySelector('.sr-rationale-toggle-icon');
+      if (icon) icon.textContent = expanded ? '▸' : '▾';
+      const list = btn.parentElement.querySelector('.sr-diag-rat-list');
+      if (list) list.style.display = expanded ? 'none' : 'block';
+    });
+  });
 }
 
 // ── W13 R2 — SOP Relevant next best actions (replaces paintActionStepsInitial in live flow) ──
@@ -1500,6 +1576,9 @@ function wireConfirmInitialDiagnosis() {
 function onInitialDiagnosisConfirmClick() {
   if (state.faye.diagnosisConfirmed) return;
   state.faye.diagnosisConfirmed = true;
+
+  // Lock the diagnosis options to the picked one
+  document.querySelectorAll('.sr-diag-select').forEach(o => { o.disabled = true; });
 
   // Disable button + show "Locking in…"
   const btn = document.querySelector('.sr-confirm-btn');
@@ -4683,13 +4762,13 @@ function renderRightPaneFaye() {
   wrap.innerHTML = `
     <div class="pn-header">
       <div class="pn-h-title">Agents at work · 1 capability</div>
-      <div class="pn-h-sub">Stage-gated agentic workflows — triage · action planner · scheduling.</div>
+      <div class="pn-h-sub">Stage-gated agentic workflows — triage · scheduling.</div>
     </div>
     <div class="pn-section ${played ? 'pn-section-played' : ''}" data-section="workflows">
       <div class="pn-s-num">▸</div>
       <div class="pn-s-body">
         <div class="pn-s-title">Agentic workflows for Faye</div>
-        <div class="pn-s-sub">3 stage-gated workflows behind the scenes · click to walk through.</div>
+        <div class="pn-s-sub">2 stage-gated workflows behind the scenes · click to walk through.</div>
       </div>
       <button class="pn-s-play ${played ? 'pn-s-played' : ''}" type="button" data-section="workflows">
         <svg class="pn-s-play-icon" viewBox="0 0 12 12"><path d="M2 1 L10 6 L2 11 Z" fill="currentColor"/></svg>
@@ -4773,7 +4852,7 @@ const P1_SECTION_3 = {
 const P1_SECTION_BY_NUM = { '1': P1_SECTION_1, '2': P1_SECTION_2, '3': P1_SECTION_3 };
 
 // ═══════════════════════════════════════════════════════════════
-// W13 R3 — Single-section 3-workflow stage-gated modal (P1)
+// W13 R3 — Single-section stage-gated modal (P1) · 2 workflows (action planner removed)
 // Replaces the 3-section W10/W11 P1 narrative pattern.
 // ═══════════════════════════════════════════════════════════════
 
@@ -4794,19 +4873,6 @@ const P1_WORKFLOWS = {
     },
     {
       num: 2,
-      label: 'Action planner',
-      tagline: 'SOP retrieval · adherence check · telemetry pre-fetch',
-      durationMs: 28000,   // W14 R1 — 4x slower (was 7000)
-      buckets: [
-        { name: 'Domain Experts',   agents: ['SOP Retrieval Agent', 'Sensor Anomaly Inspector', 'Telemetry Snapshot Compiler', 'SOP Compliance Agent'], persistent: [null, 'inspection', null, 'sop-action'] },
-        { name: 'Critic',           agents: ['SOP Adherence Critic'],                                       persistent: [null] },
-        { name: 'Orchestrator',     agents: ['Orchestrator', 'A2A Coordination Agent'],                     persistent: ['orchestrator', 'workflow'] },
-      ],
-      outputCaption: 'Action planner · SOP-BFP-VIBR-001 selected · telemetry pre-fetched · awaiting Faye Review',
-      hitlNote: 'Human-in-the-loop · Faye must confirm telemetry (Step 1 Review)',
-    },
-    {
-      num: 3,
       label: 'Scheduling',
       tagline: 'Roster · expertise match · dispatch payload',
       durationMs: 20000,   // W14 R1 — 4x slower (was 5000)
