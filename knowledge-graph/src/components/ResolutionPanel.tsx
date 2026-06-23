@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { INCIDENTS, INCIDENT_COLOR } from '../data/feed'
 import { useDemo } from '../demoStore'
 import { useResolution } from '../useResolution'
@@ -142,6 +142,8 @@ export function ResolutionPanel() {
   const setGap = useDemo((s) => s.setGap)
   const phases = useResolution(started, runId)
 
+  const [open, setOpen] = useState(true)
+  useEffect(() => { setOpen(true) }, [runId])
   const active = INCIDENTS.some((i) => (phases.get(i.id) ?? 'pending') !== 'pending')
 
   // push resolution outcomes to the graph (matched paths + re-weight) and Panel 3 (the gap)
@@ -171,7 +173,7 @@ export function ResolutionPanel() {
   const bodyRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const el = bodyRef.current
-    if (el) requestAnimationFrame(() => { el.scrollTop = 0 })
+    if (el) requestAnimationFrame(() => { el.scrollTop = el.scrollHeight }) // follow the resolving stream down
   }, [phaseKey])
 
   // when a card resolves, fly particles from it toward the graph (reaffirming the knowledge graph)
@@ -196,14 +198,15 @@ export function ResolutionPanel() {
   }, [phaseKey])
 
   return (
-    <section className="p-panel p-resolution" data-active={active}>
-      <header className="p-panel-head">
+    <section className="p-panel p-resolution" data-active={active} data-collapsed={!open}>
+      <header className="p-panel-head" onClick={() => setOpen((o) => !o)}>
         <span className="p-panel-num">2</span>
         <span className="p-panel-title">Resolution</span>
-        <span className="p-panel-sub">{active ? 'match entities · check diagnosis vs. graph' : 'waiting for extracted findings'}</span>
+        <span className="p-panel-sub">{active ? 'match vs. graph' : 'waiting for findings'}</span>
+        <span className="p-caret" data-open={open}>▾</span>
       </header>
 
-      {active && (
+      {open && active && (
         <div className="p-res-body" ref={bodyRef}>
           {visibleCards.map((card) => {
             const phase = phases.get(card.incident) ?? 'pending'

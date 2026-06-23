@@ -22,6 +22,8 @@ export function NewKnowledgePanel() {
   const [addNode, setAddNode] = useState(true) // admin's choice: add the new node?
   const [recalc, setRecalc] = useState(true) // admin's choice: recalculate the edge confidence?
   const [done, setDone] = useState(false) // sign-off submitted
+  const [open, setOpen] = useState(true) // panel collapse/expand
+  useEffect(() => { setOpen(true) }, [runId])
 
   // nothing reaches the graph until the admin approves the specific changes they ticked
   const approve = () => {
@@ -51,14 +53,15 @@ export function NewKnowledgePanel() {
   }, [checked, stage, done])
 
   return (
-    <section className="p-panel p-newknow" data-active={active}>
-      <header className="p-panel-head">
+    <section className="p-panel p-newknow" data-active={active} data-collapsed={!open}>
+      <header className="p-panel-head" onClick={() => setOpen((o) => !o)}>
         <span className="p-panel-num">3</span>
         <span className="p-panel-title">New Knowledge</span>
-        <span className="p-panel-sub">{active ? 'SOP / safety check · sign-off' : 'waiting for a gap'}</span>
+        <span className="p-panel-sub">{active ? 'SOP check · sign-off' : 'waiting for a gap'}</span>
+        <span className="p-caret" data-open={open}>▾</span>
       </header>
 
-      {active && (
+      {open && active && (
         <div className="p-nk-body" ref={bodyRef}>
           <div className="p-nk-candidate" data-committed={committed}>
             <span className="p-nk-tag">{committed ? 'committed ✓' : 'candidate'}</span>

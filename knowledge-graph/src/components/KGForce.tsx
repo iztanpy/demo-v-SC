@@ -17,7 +17,6 @@ import './KGForce.css'
 // casing-crack node into the live simulation (it grows into the BFP region on sign-off).
 const SVGNS = 'http://www.w3.org/2000/svg'
 const W = 2040, H = 1260
-const PAD = 260 // viewBox margin so the (now denser) graph reads a bit zoomed-out
 const hubId = (key: string) => (key === 'BFP' ? 'AC-BFP' : `${key}-AC`)
 
 const SPREAD: [number, number][] = [[0.5, 0.52], [0.28, 0.3], [0.72, 0.3], [0.3, 0.74], [0.72, 0.74]]
@@ -26,6 +25,32 @@ CLUSTERS.forEach((c, i) => {
   const [fx, fy] = SPREAD[i % SPREAD.length]
   CENTERS[c.key] = { x: fx * W, y: fy * H }
 })
+
+// Center (cx,cy) in the viewBox at zoom z, with optional manual nudge (dx,dy) in viewBox units —
+// +dx shifts the view RIGHT, +dy shifts it DOWN. viewBox is "0 0 W H", so the view <g>'s transform
+// origin is the unambiguous user origin (0,0) — textbook centering: translate so cx*z lands at W/2.
+const centerTransform = (cx: number, cy: number, z: number, dx = 0, dy = 0) =>
+  `translate(${W / 2 - cx * z + dx}px, ${H / 2 - cy * z + dy}px) scale(${z})`
+
+// full-fleet resting view — a slight zoom-OUT (centred) gives the whole graph breathing room at the
+// edges; this is where the graph sits until resolution begins reaffirming.
+const FULL_Z = 0.82
+const FULL_TRANSFORM = centerTransform(W / 2, H / 2, FULL_Z)
+
+// reaffirm view — once resolution starts, zoom INTO the relevant (BFP) region where every
+// JRG-CCGT-1 incident lives. Commit pushes in further; uncommit returns to whatever base applies.
+const REST_Z = 1.5
+const REST_TRANSFORM = (() => {
+  const b = CENTERS['BFP'] ?? { x: W / 2, y: H / 2 }
+  return centerTransform(b.x, b.y, REST_Z)
+})()
+
+// ── COMMIT (final) ZOOM — manual tweak knobs. If the new-knowledge region isn't dead-centre when
+// the node commits, nudge these: bump COMMIT_DX to push RIGHT, COMMIT_DY to push DOWN (viewBox
+// units, ~2040 wide × 1260 tall). COMMIT_Z is how far in it zooms.
+const COMMIT_Z = 2.3
+const COMMIT_DX = 50
+const COMMIT_DY = 0
 
 type SimNode = SimNodeData & SimulationNodeDatum & { x: number; y: number }
 type SimLink = { source: SimNode | string; target: SimNode | string; type: string; context: boolean; cross?: boolean; loose?: boolean; isNew?: boolean }
@@ -54,7 +79,7 @@ function makeLinkEl(l: SimLink, isNew = false): SVGLineElement {
 
 export function KGForce() {
   const viewRef = useRef<SVGGElement>(null)
-  const zoomTimerRef = useRef<number | undefined>(undefined)
+  const zoomTimersRef = useRef<number[]>([]) // re-zoom passes as the new nodes settle
   const haloRef = useRef<SVGGElement>(null)
   const edgeRef = useRef<SVGGElement>(null)
   const nodeRef = useRef<SVGGElement>(null)
@@ -66,6 +91,8 @@ export function KGForce() {
   const rwLabelRef = useRef<SVGTextElement | null>(null)
   const newLabelsRef = useRef<{ el: SVGTextElement; id: string }[]>([])
   const newRingsRef = useRef<{ el: SVGCircleElement; id: string }[]>([])
+  const baseTransformRef = useRef(FULL_TRANSFORM) // base view the graph returns to when not committed
+  const committedRef = useRef(false)
   const matchedNodes = useDemo((s) => s.matchedNodes)
   const reweight = useDemo((s) => s.reweight)
   const reweightApplied = useDemo((s) => s.reweightApplied)
@@ -156,6 +183,11 @@ export function KGForce() {
   // light up confirmed paths green + show the edge re-weight (amber)
   useEffect(() => {
     const set = new Set(matchedNodes)
+    // zoom IN to the BFP region the moment resolution starts reaffirming (particles begin flying);
+    // back out to the full fleet view when there are no matches (reset).
+    const base = set.size ? REST_TRANSFORM : FULL_TRANSFORM
+    baseTransformRef.current = base
+    if (!committedRef.current && viewRef.current) viewRef.current.style.transform = base
     for (const [id, el] of Object.entries(nodeMapRef.current)) el.classList.toggle('kgf-match', set.has(id))
     for (const rec of edgeRecsRef.current) rec.el.classList.toggle('kgf-edge-match', set.has(rec.s) && set.has(rec.t))
 
@@ -184,9 +216,16 @@ export function KGForce() {
   // New Knowledge commit: grow the casing-crack node + weld-NDT test + edges into the live sim
   // on sign-off; remove them again on restart.
   useEffect(() => {
+    committedRef.current = committed
     const sim = simRef.current
     if (!sim) return
     const present = !!nodeMapRef.current['RC-CASING-CRACK']
+
+    // on commit, drop the green reaffirm highlights so the focus is purely on the new node(s)
+    if (committed) {
+      for (const el of Object.values(nodeMapRef.current)) el.classList.remove('kgf-match')
+      for (const rec of edgeRecsRef.current) rec.el.classList.remove('kgf-edge-match')
+    }
 
     if (committed && !present) {
       const nodeG = nodeRef.current!, edgeG = edgeRef.current!, labelG = labelRef.current!
@@ -218,21 +257,21 @@ export function KGForce() {
       ;(sim.force('link') as ReturnType<typeof forceLink<SimNode, SimLink>>).links(edgeRecsRef.current.map((r) => r.link))
       sim.alpha(0.7).restart()
 
-      // zoom into the new region once it begins settling
-      const focusIds = ['SYM-001', 'DT-PHASE', 'DT-WELD-NDT', 'RC-CASING-CRACK']
+      // zoom onto the NEW nodes only (not the old reaffirmed path). Re-run as the sim cools so it
+      // tracks them to their final positions and lands reliably centred.
+      const focusIds = PROPOSED_NODES.map((n) => n.id)
       const doZoom = () => {
         const focus = nodesRef.current.filter((n) => focusIds.includes(n.id))
         if (!focus.length || !viewRef.current) return
         let cx = 0, cy = 0
         for (const n of focus) { cx += n.x; cy += n.y }
         cx /= focus.length; cy /= focus.length
-        const z = 2.3
-        viewRef.current.style.transform = `translate(${W / 2 - cx * z}px, ${H / 2 - cy * z}px) scale(${z})`
+        viewRef.current.style.transform = centerTransform(cx, cy, COMMIT_Z, COMMIT_DX, COMMIT_DY)
       }
-      zoomTimerRef.current = window.setTimeout(() => { doZoom(); zoomTimerRef.current = window.setTimeout(doZoom, 900) }, 700)
+      zoomTimersRef.current = [700, 1600, 2700, 3800, 4900].map((d) => window.setTimeout(doZoom, d))
     } else if (!committed && present) {
-      clearTimeout(zoomTimerRef.current)
-      if (viewRef.current) viewRef.current.style.transform = ''
+      zoomTimersRef.current.forEach(clearTimeout); zoomTimersRef.current = []
+      if (viewRef.current) viewRef.current.style.transform = baseTransformRef.current
       const prop = new Set(PROPOSED_NODES.map((n) => n.id))
       nodesRef.current = nodesRef.current.filter((n) => !prop.has(n.id))
       for (const id of prop) { nodeMapRef.current[id]?.remove(); delete nodeMapRef.current[id] }
@@ -263,7 +302,7 @@ export function KGForce() {
           </div>
         ))}
       </div>
-      <svg className="kgf-svg" viewBox={`${-PAD} ${-PAD} ${W + 2 * PAD} ${H + 2 * PAD}`} preserveAspectRatio="xMidYMid meet">
+      <svg className="kgf-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet">
         <g ref={viewRef} style={{ transformBox: 'view-box', transformOrigin: '0 0', transition: 'transform 1000ms ease' }}>
           <g ref={haloRef} className="kgf-halos" />
           <g ref={edgeRef} className="kgf-edges" />
