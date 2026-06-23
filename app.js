@@ -54,6 +54,10 @@ const state = {
   faye: {
     diagnosisConfirmed: false,    // true after Faye clicks Confirm on Initial Diagnosis
     actionStepsSpawned: false,    // true after SOP Relevant section painted
+    selectedOption: null,         // W19 — diagnosis option id picked by Faye (defaults to recommended)
+    overrideReason: '',           // W40 — Faye's free-text reasoning when overriding the recommended diagnosis
+    woReassignedTo: null,         // W19 — technician Faye resent WO-2026-1190-R1 to (escalation report)
+    taskComplete: false,          // W19 — fast-forwarded to completion · RCA + service report generated
   },
   // ── W4 — Lim curated Screen D state ──
   lim: {
@@ -133,7 +137,7 @@ const BANNER_COPY = {
   },
   onsite: {
     label: 'INCOMING HANDOFF · Hyperspace OS',
-    body:  'INC-2026-0537 · Routed from <span class="dyn-name">Faye Sit</span> · onsite verification requested',
+    body:  'INC-2026-0537 · Routed from <span class="dyn-name">Faye Sit</span> · onsite fix dispatch · WO-2026-1190 attached',
   },
   offsite: {
     label: 'INCOMING HANDOFF · Hyperspace OS',
@@ -203,6 +207,20 @@ const INITIAL_DIAGNOSIS_RATIONALE = [
     strength: 'met',     badgeLabel: 'fully met' },
 ];
 
+// W40 — "Full reasoning" rows for the recommended diagnosis (Shaft misalignment).
+const SHAFT_MISALIGN_RATIONALE = [
+  { text: 'Elevated 2×RPM harmonic alongside 1×RPM — characteristic misalignment spectrum',
+    strength: 'met',     badgeLabel: 'fully met' },
+  { text: 'NDE-DE phase shift ~180° across the coupling',
+    strength: 'met',     badgeLabel: 'fully met' },
+  { text: 'Vibration RMS elevated on BOTH NDE and DE bearing housings',
+    strength: 'met',     badgeLabel: 'fully met' },
+  { text: 'Pattern-match · misalignment-driven vibration on fleet BFPs',
+    strength: 'partial', badgeLabel: 'partially met' },
+  { text: 'Axial vibration component present but not fully resolved by current sensor set',
+    strength: 'partial', badgeLabel: 'partially met' },
+];
+
 // ── Hardcoded incident data (Jurong-CCGT-1 BFP-3A) — W3.9 pivot ──
 const INCIDENT = {
   id: 'INC-2026-0537',
@@ -218,19 +236,105 @@ const INCIDENT = {
     { lbl: 'BEARING TEMP · NDE',  val: '78',    unit: '°C',   nom: 'Normal · trend rising',      tone: 'slate' },
     { lbl: 'SHAFT SPEED',         val: '2 985', unit: 'rpm',  nom: 'Nominal',                    tone: 'slate' },
   ],
+  // W40 — recommended diagnosis is now Shaft misalignment (85%); Faye overrides to bearing race spalling.
   hypothesis: {
-    primary: 'NDE bearing race spalling (early-stage)',
-    confidence: 78,
+    primary: 'Shaft misalignment',
+    confidence: 85,
     subtitle: 'Pending Onsite verification (Lim Wei Jie)',
+    rationale: 'Elevated 2×RPM harmonic + ~180° NDE-DE phase shift across coupling match misalignment signature · pattern-matched across fleet BFPs',
   },
+  // W19 — diagnosis options surfaced to Faye (primary = recommended). Each carries a one-line rationale
+  // + a short "Full reasoning" dropdown (`details`) showing the single partial-match signal.
+  // W40 — bearing race spalling demoted to a selectable alternate (Faye's override pick); keeps the full rationale.
   alternates: [
-    { name: 'Shaft misalignment', conf: 52 },
-    { name: 'Coupling wear',      conf: 31 },
-    { name: 'Impeller imbalance', conf: 19 },
+    { id: 'bearing-spalling', name: 'NDE bearing race spalling (early-stage)', conf: 78,
+      rationale: 'Vibration spectrum + 1×RPM dominance match race-spalling signature · pattern-matched to 3 prior BFP failures across fleet',
+      details: INITIAL_DIAGNOSIS_RATIONALE },
+    { id: 'coupling-wear', name: 'Coupling wear', conf: 31,
+      rationale: 'Coupling within last-service window · no sideband signature at coupling frequency',
+      details: [
+        { text: 'Vibration band partially overlaps coupling-wear signature', strength: 'partial', badgeLabel: 'partial match' },
+      ] },
+    { id: 'impeller-imbal', name: 'Impeller imbalance', conf: 19,
+      rationale: 'Synchronous 1×RPM present, but no flow/head deviation consistent with imbalance',
+      details: [
+        { text: 'Synchronous 1×RPM component present', strength: 'partial', badgeLabel: 'partial match' },
+      ] },
   ],
   chain: ['BFP-3A', 'HRSG-3', 'ST-3', 'GENERATOR-3', 'TRANSFORMER-3', 'SWITCHYARD-A'],
   vendor: 'Sulzer (BFP) · Bently Nevada 3500 (machinery protection)',
   historicalWOCount: 3,
+};
+
+// ── W19 — Work Order generated before dispatch ──
+// Works-to-complete mirror the LIM_INSPECTION_CHECKLIST groups (Safety / Instrument / Root cause isolation),
+// referenced at call time (LIM_INSPECTION_CHECKLIST is defined later in the file). R3 regenerates with the revised scope.
+const WORK_ORDER = {
+  id: 'WO-2026-1190',
+};
+
+// ── W19 — Regenerated Work Order after onsite deviation + revised diagnosis (pump casing crack) ──
+const WORK_ORDER_REVISED = {
+  id: 'WO-2026-1190-R1',
+  diagnosis: 'Crack in pump casing on BFP-3A (bearing damage secondary)',
+  checklist: [
+    'Shut down BFP-3A · isolate Block 2 feedwater',
+    'Casing NDT · dye-penetrant inspection at discharge weld',
+    'Assess secondary NDE/DE bearing damage extent',
+    'Escalate to Offsite Expert for sign-off per SOP-BFP-VIBR-001',
+  ],
+};
+
+// ── W41 — Work Order provenance sources (AdvisorIQ-style "Sources" panel) ──
+// Each source maps to a region of the WO document via `color`; `records` lists the concrete artifacts.
+const WO_SOURCES = [
+  {
+    id: 's-machine', color: '#2563EB', agent: 'Sensor Anomaly Inspector',
+    label: 'Machine history',
+    desc: 'Asset identity and live condition pulled from the plant historian. The NDE bearing-housing vibration exceedance opened this work order.',
+    records: ['BFP-3A · 90-day vibration RMS trend', 'NDE bearing · 30-day temperature trend', 'OSIsoft PI · 18-month telemetry', 'Bently Nevada 3500 · live machinery-protection feed'],
+  },
+  {
+    id: 's-cases', color: '#D97706', agent: 'Turbine Diagnostic Agent',
+    label: 'Past cases · BFP fleet RCAs',
+    desc: 'Initial diagnosis and root-cause inspection scope pattern-matched against prior boiler-feed-pump failures across the Sembcorp fleet.',
+    records: ['RCA · Jurong-CCGT-2 BFP · 2025-08', 'RCA · Sakra-CCGT-1 BFP · 2024-11', 'RCA · Banyan-CHP BFP · 2024-05'],
+  },
+  {
+    id: 's-sop', color: '#00A651', agent: 'SOP Action Agent',
+    label: 'SOP · BFP vibration investigation',
+    desc: 'Safety isolation steps drawn from the standard operating procedure for boiler-feed-pump vibration response.',
+    records: ['SOP-BFP-VIBR-001 · §2 Safety isolation', 'Lockout / tagout procedure', 'Confined-space + gas-check protocol'],
+  },
+  {
+    id: 's-manual', color: '#DB2777', agent: 'BFP Maintenance Playbook Agent',
+    label: 'Manuals & standards',
+    desc: 'Instrument cross-checks and alarm thresholds drawn from OEM manuals and machinery-vibration standards.',
+    records: ['Sulzer BFP · OEM maintenance manual', 'Bently Nevada 3500 · vibration-monitoring spec', 'ISO 10816-7 · alarm-zone thresholds'],
+  },
+];
+// W41 — which source each "works to be completed" group is attributed to.
+const WO_GROUP_SOURCE = { 'Safety': 's-sop', 'Instrument': 's-manual', 'Root cause isolation': 's-cases' };
+
+// W41b — richer machine detail for the WO "Machine" block (attributed to Machine history).
+// Duty/age figures illustrative; HPcp is Sulzer's barrel-casing boiler-feed-pump line.
+const MACHINE_DETAIL = {
+  asset: INCIDENT.asset,   // JRG-CCGT-1 · Block 2 · BFP-3A
+  specs: [
+    ['Equipment', 'Sulzer multi-stage barrel-casing boiler feed pump (HPcp series)'],
+    ['Driver', 'ABB ACS variable-speed drive · 6.6 kV induction motor'],
+    ['Rated duty', '720 m³/h · 1 980 m head · 7 stages · 2 985 rpm'],
+    ['Protection', 'Bently Nevada 3500 · NDE + DE radial probes · API 670'],
+    ['Commissioned', '2016-04 · 58 200 running hours'],
+    ['Last major overhaul', '2023-06 · rotor element refurbished + balanced'],
+  ],
+  history: [
+    ['2025-08', 'NDE bearing housing · lubrication service + vibration baseline reset'],
+    ['2025-02', 'Coupling element · inspected · laser alignment within tolerance'],
+    ['2024-09', 'Mechanical seal cartridge · replaced (Sulzer OEM)'],
+    ['2024-03', 'DE bearing set · SKF replacement at 24 000-hr planned interval'],
+    ['2023-06', 'Major overhaul · rotor refurbish · wear-ring + impeller clearance restored'],
+  ],
 };
 
 // ── Persona roster ──
@@ -790,38 +894,91 @@ function startScreenDRevealW39(summarySlot, actionSlot) {
   // Action Steps gated on Confirm click → onInitialDiagnosisConfirmClick → spawnSOPRelevantNextBestActions.
 }
 
-function paintSummaryComplete(summarySlot) {
-  // W13 R2 — heading "Initial Diagnosis", Rationale dropdown (replaces Alt-hypotheses),
-  // Confirm CTA pre-confirm OR locked pill post-confirm.
+// W19 — diagnosis options: primary (recommended) + 3 alternates, each w/ confidence + rationale + dropdown rows.
+// W40 — name of the diagnosis Faye actually captured (may differ from the AI recommendation after override).
+function capturedDiagnosisName() {
+  const id = (state.faye && state.faye.selectedOption) || 'primary';
+  const opt = getDiagnosisOptions().find(o => o.id === id);
+  return opt ? opt.name : INCIDENT.hypothesis.primary;
+}
+
+// W40 — minimal HTML escape for operator-typed override reasoning rendered into innerHTML.
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function getDiagnosisOptions() {
   const hyp = INCIDENT.hypothesis;
-  const rationaleHtml = INITIAL_DIAGNOSIS_RATIONALE.map(r => `
+  return [
+    { id: 'primary', name: hyp.primary, conf: hyp.confidence, rationale: hyp.rationale, recommended: true,
+      details: SHAFT_MISALIGN_RATIONALE, detailLabel: 'Full reasoning' },
+    ...INCIDENT.alternates.map(a => ({ id: a.id, name: a.name, conf: a.conf, rationale: a.rationale, recommended: false,
+      details: a.details || [], detailLabel: 'Full reasoning' })),
+  ];
+}
+
+// W19 — build the rationale rows (strength-badged) for an option's dropdown.
+function buildRationaleRows(details) {
+  return (details || []).map(r => `
     <div class="sr-rationale-row" data-strength="${r.strength}">
       <span class="sr-rat-bullet">·</span>
       <span class="sr-rat-text">${r.text}</span>
       <span class="sr-rat-badge sr-rat-badge-${r.strength}">${r.badgeLabel}</span>
     </div>
   `).join('');
+}
+
+function paintSummaryComplete(summarySlot) {
+  // W19 — heading "Initial Diagnosis" now lists ALL options (recommended + alternates) w/ confidence + rationale.
+  // User picks one (default = recommended); Confirm captures the choice. Primary keeps the detailed rationale dropdown.
+  const options = getDiagnosisOptions();
+  // Default-select the recommended option on first paint.
+  if (state.faye && !state.faye.selectedOption) state.faye.selectedOption = 'primary';
+  const selectedId = (state.faye && state.faye.selectedOption) || 'primary';
+
+  const optionsHtml = options.map(o => `
+    <div class="sr-option${o.id === selectedId ? ' sr-option-selected' : ''}" data-option-id="${o.id}" role="button" tabindex="0">
+      <span class="sr-opt-radio" aria-hidden="true"></span>
+      <div class="sr-opt-main">
+        <div class="sr-opt-row">
+          <span class="sr-opt-name">${o.name}</span>
+          ${o.recommended ? `<span class="sr-opt-rec">Recommended</span>` : ''}
+          <span class="sr-opt-conf">${o.conf}% confidence</span>
+        </div>
+        <div class="sr-opt-rationale">${o.rationale}</div>
+        ${(o.details && o.details.length) ? `
+        <div class="sr-rationale-block">
+          <button class="sr-rationale-toggle" data-expanded="false" type="button">
+            <span class="sr-rationale-toggle-icon">▸</span>
+            <span class="sr-rationale-toggle-lbl">${o.detailLabel}</span>
+          </button>
+          <div class="sr-rationale-list" style="display:none">
+            ${buildRationaleRows(o.details)}
+          </div>
+        </div>` : ''}
+      </div>
+    </div>
+  `).join('');
+
   const confirmed = state.faye && state.faye.diagnosisConfirmed;
+  // W40 — overriding = picking a non-recommended option; requires free-text reasoning before confirm.
+  const isOverride = isOverrideOption(selectedId);
+  const reason = (state.faye && state.faye.overrideReason) || '';
+  const confirmDisabled = isOverride && !reason.trim();
   const confirmRowHtml = confirmed
-    ? `<span class="sr-confirmed-pill">✓ Initial diagnosis locked</span>`
-    : `<button class="sr-confirm-btn" type="button">Confirm</button>`;
+    ? confirmedRowHtml(selectedId)
+    : `<button class="sr-confirm-btn" type="button"${confirmDisabled ? ' disabled' : ''}>Confirm selected diagnosis</button>`;
+
   summarySlot.innerHTML = `
     <div class="summary-report" data-block-real="summary">
       <div class="sr-heading">Initial Diagnosis</div>
       <div class="sr-section">
-        <div class="sr-hypothesis">
-          <div class="sr-hyp-row">
-            <span class="sr-hyp-name">${hyp.primary}</span>
-          </div>
+        <div class="sr-options">
+          ${optionsHtml}
         </div>
-        <div class="sr-rationale-block">
-          <button class="sr-rationale-toggle" data-expanded="false" type="button">
-            <span class="sr-rationale-toggle-icon">▸</span>
-            <span class="sr-rationale-toggle-lbl">Rationale</span>
-          </button>
-          <div class="sr-rationale-list" style="display:none">
-            ${rationaleHtml}
-          </div>
+        <div class="sr-override"${isOverride ? '' : ' style="display:none"'}>
+          <div class="sr-override-label">⚠ Override — you're selecting a lower-confidence diagnosis over the AI recommendation. Provide your reasoning before confirming.</div>
+          <textarea class="sr-override-input" placeholder="Why override the recommendation? e.g. onsite vibration trend + NDE bearing temp rise point to race spalling; misalignment 2×RPM signature weaker than the model weights it.">${escapeHtml(reason)}</textarea>
         </div>
         <div class="sr-confirm-row">
           ${confirmRowHtml}
@@ -830,6 +987,82 @@ function paintSummaryComplete(summarySlot) {
     </div>`;
   wireRationaleToggle();
   wireConfirmInitialDiagnosis();
+  if (!confirmed) {
+    wireDiagnosisOptionClick();
+    wireOverrideInput();
+  }
+}
+
+// W40 — true if the option id is a non-recommended diagnosis (override path).
+function isOverrideOption(optionId) {
+  const opt = getDiagnosisOptions().find(o => o.id === optionId);
+  return !!(opt && !opt.recommended);
+}
+
+// W40 — confirm-row markup once a diagnosis is captured (adds the override reasoning line if present).
+function confirmedRowHtml(selectedId) {
+  const reason = ((state.faye && state.faye.overrideReason) || '').trim();
+  let html = `<span class="sr-confirmed-pill">✓ Diagnosis captured: ${diagnosisOptionLabel(selectedId)}</span>`;
+  if (isOverrideOption(selectedId) && reason) {
+    html += `<div class="sr-override-captured"><span class="sr-override-captured-lbl">Override reasoning</span>${escapeHtml(reason)}</div>`;
+  }
+  return html;
+}
+
+// W40 — capture override reasoning + gate the Confirm button.
+function wireOverrideInput() {
+  const ta = document.querySelector('.sr-override-input');
+  if (!ta || ta.dataset.wired === '1') return;
+  ta.dataset.wired = '1';
+  ta.addEventListener('input', () => {
+    if (state.faye) state.faye.overrideReason = ta.value;
+    refreshConfirmEnabled();
+  });
+}
+
+// W40 — enable Confirm only when not in an unjustified override.
+function refreshConfirmEnabled() {
+  const btn = document.querySelector('.sr-confirm-btn');
+  if (!btn) return;
+  const selectedId = (state.faye && state.faye.selectedOption) || 'primary';
+  const reason = ((state.faye && state.faye.overrideReason) || '').trim();
+  btn.disabled = isOverrideOption(selectedId) && !reason;
+}
+
+// W19 — "Name (NN%)" label for the captured-choice pill.
+function diagnosisOptionLabel(optionId) {
+  const opt = getDiagnosisOptions().find(o => o.id === optionId) || getDiagnosisOptions()[0];
+  return `${opt.name} (${opt.conf}%)`;
+}
+
+// W19 — option select: highlight clicked row (DOM toggle only, no full render).
+function wireDiagnosisOptionClick() {
+  document.querySelectorAll('.sr-option').forEach(row => {
+    if (row.dataset.wired === '1') return;
+    row.dataset.wired = '1';
+    const handler = () => onDiagnosisOptionClick(row.dataset.optionId);
+    row.addEventListener('click', e => {
+      // let the Full-reasoning toggle work without changing selection
+      if (e.target.closest('.sr-rationale-toggle')) return;
+      handler();
+    });
+    row.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(); }
+    });
+  });
+}
+
+function onDiagnosisOptionClick(optionId) {
+  if (state.faye && state.faye.diagnosisConfirmed) return;   // locked
+  if (!optionId) return;
+  state.faye.selectedOption = optionId;
+  document.querySelectorAll('.sr-option').forEach(row => {
+    row.classList.toggle('sr-option-selected', row.dataset.optionId === optionId);
+  });
+  // W40 — reveal the reasoning prompt only when overriding the recommendation.
+  const overrideBlock = document.querySelector('.sr-override');
+  if (overrideBlock) overrideBlock.style.display = isOverrideOption(optionId) ? '' : 'none';
+  refreshConfirmEnabled();
 }
 
 // ── W13 R2 — SOP Relevant next best actions (replaces paintActionStepsInitial in live flow) ──
@@ -840,8 +1073,9 @@ function paintSOPRelevantInitial(actionSlot) {
       <div class="as-sop-theater-slot"></div>
       <div class="as-step-slot" data-step-slot="1"></div>
       <div class="as-step-slot" data-step-slot="2"></div>
+      <div class="as-step-slot" data-step-slot="3"></div>
       <button class="action-cta" disabled type="button">
-        Confirm on-site dispatch
+        Dispatch to fix · Lim Wei Jie
       </button>
     </div>`;
 }
@@ -873,7 +1107,7 @@ function playSOPAnticipationTheater() {
     theaterSlot.innerHTML = `
       <div class="sop-anticipation-result">
         <span class="sar-icon">📋</span>
-        <span class="sar-text">SOP requires telemetry to be checked before on-site dispatch</span>
+        <span class="sar-text">SOP requires telemetry to be checked before fix dispatch</span>
       </div>`;
     revealStep1WithAddButton();
   }, 2000);
@@ -882,7 +1116,8 @@ function playSOPAnticipationTheater() {
 function revealStep1WithAddButton() {
   const slot1 = document.querySelector('.as-step-slot[data-step-slot="1"]');
   const slot2 = document.querySelector('.as-step-slot[data-step-slot="2"]');
-  if (!slot1 || !slot2) return;
+  const slot3 = document.querySelector('.as-step-slot[data-step-slot="3"]');
+  if (!slot1 || !slot2 || !slot3) return;
   slot1.innerHTML = `
     <div class="as-step" data-step="1" data-status="awaiting-add">
       <div class="as-step-head">
@@ -894,14 +1129,25 @@ function revealStep1WithAddButton() {
         <button class="as-step-add-btn" type="button">Review</button>
       </div>
     </div>`;
+  // W19 — Step 2 = create work order (was "find engineer"); engineer moved to Step 3.
   slot2.innerHTML = `
     <div class="as-step" data-step="2" data-status="locked">
       <div class="as-step-head">
         <span class="as-step-num">○</span>
-        <span class="as-step-title">Step 2 · Find available engineer <span class="as-step-optional">(optional)</span></span>
+        <span class="as-step-title">Step 2 · Create work order</span>
       </div>
       <div class="as-step-body">
         <span class="as-step-msg">Locked — complete Step 1 first.</span>
+      </div>
+    </div>`;
+  slot3.innerHTML = `
+    <div class="as-step" data-step="3" data-status="locked">
+      <div class="as-step-head">
+        <span class="as-step-num">○</span>
+        <span class="as-step-title">Step 3 · Find available engineer <span class="as-step-optional">(optional)</span></span>
+      </div>
+      <div class="as-step-body">
+        <span class="as-step-msg">Locked — create the work order first.</span>
       </div>
     </div>`;
   wireAddTelemetryButton();
@@ -1014,16 +1260,29 @@ function paintActionStepsComplete(actionSlot) {
           </button>
         </div>
       </div>
-      <div class="as-step" data-step="2" data-status="selected">
+      <div class="as-step" data-step="2" data-status="done">
         <div class="as-step-head">
           <span class="as-step-num">✓</span>
-          <span class="as-step-title">Step 2 · Find available engineer <span class="as-step-optional">(optional)</span></span>
+          <span class="as-step-title">Step 2 · Create work order</span>
+        </div>
+        <div class="as-step-body">${buildWorkOrderCardHTML({
+          id: WORK_ORDER.id,
+          title: 'Work order created',
+          asset: INCIDENT.asset,
+          diagnosisLabel: diagnosisOptionLabel((state.faye && state.faye.selectedOption) || 'primary'),
+          groups: LIM_INSPECTION_CHECKLIST,
+        })}</div>
+      </div>
+      <div class="as-step" data-step="3" data-status="selected">
+        <div class="as-step-head">
+          <span class="as-step-num">✓</span>
+          <span class="as-step-title">Step 3 · Find available engineer <span class="as-step-optional">(optional)</span></span>
         </div>
         <div class="as-step-body">
           <span class="as-step-msg">Lim Wei Jie selected</span>
         </div>
       </div>
-      <div class="dispatch-confirmed">✓ Dispatched at ${currentSGTTime()} · ${DISPATCH_LABEL[state.activePersona] || 'next persona'} notified</div>
+      <div class="dispatch-confirmed">✓ Dispatched to fix at ${currentSGTTime()} · ${DISPATCH_LABEL[state.activePersona] || 'next persona'} notified</div>
     </div>`;
   wireTelemetryModal();
 }
@@ -1051,20 +1310,57 @@ function startActionStep1() {
   }, 2000);
 }
 
+// W19 — Step 2 = Create work order. Work Order Pre-fill Agent theater → WO card (machine + diagnosis + works) → unlock Step 3.
 function unlockActionStep2() {
   const step2 = document.querySelector('.as-step[data-step="2"]');
   if (!step2) return;
-  step2.dataset.status = 'finding';
-  state.actionSteps.step2.status = 'finding';
+  step2.dataset.status = 'generating';
   step2.querySelector('.as-step-body').innerHTML = `
+    <div class="as-wo-theater">
+      <span class="reveal-dots"><span></span><span></span><span></span></span>
+      <span class="reveal-msg">
+        <span class="reveal-agent">Work Order Pre-fill Agent</span> · generating work order · attaching machine + diagnosis + works to complete
+      </span>
+    </div>`;
+  if (window.LOG) {
+    window.LOG.appendLine({
+      ts: currentSGTLog(),
+      source: 'wo-prefill',
+      text: `${WORK_ORDER.id} generated · ${INCIDENT.asset} · initial diagnosis + works to complete attached`,
+      dataSource: 'Hyperspace OS',
+      nodeChain: ['sop-wo-creation', 'sop-bfp-vibration-investigation'],
+    });
+  }
+  fireAgentCardLifecycle('wo-prefill', 2000);
+  pushReveal(() => {
+    step2.dataset.status = 'done';
+    step2.querySelector('.as-step-num').textContent = '✓';
+    step2.querySelector('.as-step-body').innerHTML = buildWorkOrderCardHTML({
+      id: WORK_ORDER.id,
+      title: 'Work order created',
+      asset: INCIDENT.asset,
+      diagnosisLabel: diagnosisOptionLabel((state.faye && state.faye.selectedOption) || 'primary'),
+      groups: LIM_INSPECTION_CHECKLIST,
+    });
+    unlockActionStep3();
+  }, 2000);
+}
+
+// W19 — Step 3 = Find available engineer (was Step 2). Find theater (5s) → engineer card → select → enable dispatch.
+function unlockActionStep3() {
+  const step3 = document.querySelector('.as-step[data-step="3"]');
+  if (!step3) return;
+  step3.dataset.status = 'finding';
+  state.actionSteps.step2.status = 'finding';
+  step3.querySelector('.as-step-body').innerHTML = `
     <span class="as-step-spinner"><span class="reveal-dots"><span></span><span></span><span></span></span></span>
     <span class="as-step-msg">Hyperspace OS · finding on-duty engineers…</span>`;
-  // W6 — fire Workflow Agent card synced with Step 2 (5s find)
+  // W6 — fire Workflow Agent card synced with the find step (5s)
   fireAgentCardLifecycle('workflow', 5000);
   pushReveal(() => {
-    step2.dataset.status = 'selecting';
+    step3.dataset.status = 'selecting';
     state.actionSteps.step2.status = 'selecting';
-    step2.querySelector('.as-step-body').innerHTML = `
+    step3.querySelector('.as-step-body').innerHTML = `
       <div class="as-engineer-card" data-engineer="lim-wei-jie">
         <div class="as-eng-status-pill">AVAILABLE</div>
         <div class="as-eng-name">Lim Wei Jie</div>
@@ -1072,7 +1368,6 @@ function unlockActionStep2() {
         <div class="as-eng-hint">Click to select</div>
       </div>`;
     wireEngineerCardClick();
-    // W13 R2 — Faye onsite notes tile DROPPED from Step 2. `insertOpsNotesIntoStep2` kept as dead code per WA #5.
   }, 5000);
 }
 
@@ -1098,12 +1393,211 @@ function wireEngineerCardClick() {
   card.addEventListener('click', () => {
     state.actionSteps.step2.selectedEngineer = 'lim-wei-jie';
     state.actionSteps.step2.status = 'selected';
-    const step2 = document.querySelector('.as-step[data-step="2"]');
-    step2.dataset.status = 'selected';
-    step2.querySelector('.as-step-num').textContent = '✓';
-    step2.querySelector('.as-step-body').innerHTML = `<span class="as-step-msg">Lim Wei Jie selected</span>`;
+    const step3 = document.querySelector('.as-step[data-step="3"]');
+    if (!step3) return;
+    step3.dataset.status = 'selected';
+    step3.querySelector('.as-step-num').textContent = '✓';
+    step3.querySelector('.as-step-body').innerHTML = `<span class="as-step-msg">Lim Wei Jie selected</span>`;
     enableActionCTA();
   });
+}
+
+// W19 — WO card markup (machine + initial diagnosis + works to complete). Reused by R3 for the regenerated WO.
+// `groups` (LIM_INSPECTION_CHECKLIST shape) renders grouped works; `checklist` (flat strings) renders a plain list.
+function buildWorkOrderCardHTML(wo) {
+  let worksHtml;
+  if (wo.groups && wo.groups.length) {
+    worksHtml = wo.groups.map(g => `
+      <div class="as-wo-group">
+        <div class="as-wo-group-lbl">${g.group}</div>
+        <ul class="as-wo-checklist">${g.items.map(it => `<li class="as-wo-check">${it.text}</li>`).join('')}</ul>
+      </div>`).join('');
+  } else {
+    worksHtml = `<ul class="as-wo-checklist">${(wo.checklist || []).map(c => `<li class="as-wo-check">${c}</li>`).join('')}</ul>`;
+  }
+  const assetRow = wo.asset
+    ? `<div class="as-wo-asset"><span class="as-wo-lbl">Machine</span> ${wo.asset}</div>`
+    : '';
+  // W41 — Sources button + rich machine detail only on the initial grouped WO (authored for that scope).
+  const isInitialWO = !!(wo.groups && wo.groups.length);
+  const sourcesBtn = isInitialWO
+    ? `<button class="as-wo-sources-btn" type="button">◆ Sources</button>`
+    : '';
+  const machineDetailHtml = isInitialWO ? `
+      <div class="as-wo-specs">
+        ${MACHINE_DETAIL.specs.map(([k, v]) => `<div class="as-wo-spec"><span class="as-wo-spec-k">${k}</span><span class="as-wo-spec-v">${v}</span></div>`).join('')}
+      </div>
+      <div class="as-wo-hist-lbl">Servicing &amp; replacement history</div>
+      <ul class="as-wo-hist">${MACHINE_DETAIL.history.map(([d, t]) => `<li><span class="as-wo-hist-date">${d}</span> ${t}</li>`).join('')}</ul>` : '';
+  return `
+    <div class="as-wo-card${wo.regenerated ? ' as-wo-card-regen' : ''}">
+      <div class="as-wo-head">
+        <span class="as-wo-title">${wo.title}</span>
+        <span class="as-wo-head-right">
+          <span class="as-wo-id">${wo.id}</span>
+          ${sourcesBtn}
+        </span>
+      </div>
+      ${assetRow}
+      ${machineDetailHtml}
+      <div class="as-wo-diagnosis"><span class="as-wo-lbl">${wo.diagnosisHeading || 'Initial diagnosis'}</span> ${wo.diagnosisLabel}</div>
+      <div class="as-wo-checklist-lbl">Works to be completed</div>
+      ${worksHtml}
+    </div>`;
+}
+
+// ── W41 — Work Order "Sources" provenance modal (two-column: source cards + color-coded WO doc) ──
+function provSource(id) { return WO_SOURCES.find(s => s.id === id) || WO_SOURCES[0]; }
+
+function buildSourcesModalLeft() {
+  return WO_SOURCES.map(s => `
+    <div class="prov-card" style="--prov:${s.color}">
+      <span class="prov-card-agent">${s.agent}</span>
+      <div class="prov-card-title">${s.label}</div>
+      <div class="prov-card-desc">${s.desc}</div>
+      <ul class="prov-card-records">${s.records.map(r => `<li>${r}</li>`).join('')}</ul>
+    </div>`).join('');
+}
+
+// W41b — rich Machine block: asset + spec grid + servicing/replacement history.
+function buildMachineProvBlock() {
+  const s = provSource('s-machine');
+  const specRows = MACHINE_DETAIL.specs.map(([k, v]) =>
+    `<div class="prov-spec-row"><span class="prov-spec-k">${k}</span><span class="prov-spec-v">${v}</span></div>`).join('');
+  const histRows = MACHINE_DETAIL.history.map(([d, t]) =>
+    `<li><span class="prov-hist-date">${d}</span> ${t}</li>`).join('');
+  return `
+    <div class="prov-block" style="--prov:${s.color}">
+      <span class="prov-block-via">via ${s.agent}</span>
+      <div class="prov-block-lbl">Machine</div>
+      <div class="prov-block-val prov-machine-asset">${MACHINE_DETAIL.asset}</div>
+      <div class="prov-spec-grid">${specRows}</div>
+      <div class="prov-hist-lbl">Servicing &amp; replacement history</div>
+      <ul class="prov-hist-list">${histRows}</ul>
+    </div>`;
+}
+
+function buildSourcesModalRight() {
+  const diagLabel = diagnosisOptionLabel((state.faye && state.faye.selectedOption) || 'primary');
+  const sCases = provSource('s-cases');
+  const fieldBlock = (src, lbl, val) => `
+    <div class="prov-block" style="--prov:${src.color}">
+      <span class="prov-block-via">via ${src.agent}</span>
+      <div class="prov-block-lbl">${lbl}</div>
+      <div class="prov-block-val">${val}</div>
+    </div>`;
+  const worksHtml = LIM_INSPECTION_CHECKLIST.map(g => {
+    const src = provSource(WO_GROUP_SOURCE[g.group] || 's-cases');
+    return `
+      <div class="prov-block" style="--prov:${src.color}">
+        <span class="prov-block-via">via ${src.agent}</span>
+        <div class="prov-works-group-lbl">${g.group}</div>
+        <ul class="prov-works-list">${g.items.map(it => `<li>${it.text}</li>`).join('')}</ul>
+      </div>`;
+  }).join('');
+  return `
+    <div class="prov-doc-note">Each highlighted section maps to a source on the left.</div>
+    <div class="prov-doc-head">
+      <span class="prov-doc-title">Work order created</span>
+      <span class="prov-doc-id">${WORK_ORDER.id}</span>
+    </div>
+    ${buildMachineProvBlock()}
+    ${fieldBlock(sCases, 'Initial diagnosis', diagLabel)}
+    <div class="prov-works-lbl">Works to be completed</div>
+    ${worksHtml}`;
+}
+
+function openSourcesModal(kind) {
+  const modal = document.getElementById('sources-modal');
+  if (!modal) return;
+  const left = document.getElementById('sources-col-left');
+  const right = document.getElementById('sources-col-right');
+  const sub = modal.querySelector('.sources-modal-sub');
+  if (kind === 'service-report') {
+    if (left) left.innerHTML = buildServiceSourcesLeft();
+    if (right) right.innerHTML = buildServiceSourcesRight();
+    if (sub) sub.textContent = 'Where each agent captured this service report';
+  } else {
+    if (left) left.innerHTML = buildSourcesModalLeft();
+    if (right) right.innerHTML = buildSourcesModalRight();
+    if (sub) sub.textContent = 'Where each agent extracted this work order';
+  }
+  modal.dataset.open = 'true';
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeSourcesModal() {
+  const modal = document.getElementById('sources-modal');
+  if (!modal) return;
+  modal.dataset.open = 'false';
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+function initSourcesModal() {
+  document.body.addEventListener('click', e => {
+    if (e.target.closest('.as-wo-sources-btn')) { e.preventDefault(); openSourcesModal('wo'); return; }
+    if (e.target.closest('.svr-sources-btn')) { e.preventDefault(); openSourcesModal('service-report'); return; }
+    if (e.target.closest('#sources-modal-close, #sources-modal-overlay')) { closeSourcesModal(); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeSourcesModal();
+  });
+}
+
+// ── W46 — provenance sources for the service report (mirrors the WO sources panel) ──
+const SERVICE_REPORT_SOURCES = [
+  { id: 'sr-machine', color: '#2563EB', agent: 'Sensor Anomaly Inspector',
+    label: 'Machine telemetry',
+    desc: 'Live condition data plus the onsite temperature spike that reframed the incident.',
+    records: ['OSIsoft PI · BFP-3A telemetry', 'Bently Nevada 3500 · vibration RMS', 'Honeywell Experion DCS · bearing temp'] },
+  { id: 'sr-diag', color: '#D97706', agent: 'Turbine Diagnostic Agent + Power Gen Critic',
+    label: 'Diagnostic reasoning + fleet cases',
+    desc: 'Ranked diagnoses with confidence, pattern-matched against prior BFP failures.',
+    records: ['Hyperspace KG · differential diagnosis', 'RCA · Jurong-CCGT-2 / Sakra-CCGT-1 / Banyan-CHP'] },
+  { id: 'sr-human', color: '#DB2777', agent: 'Faye Sit + Lim Wei Jie',
+    label: 'Human-in-the-loop decisions',
+    desc: 'Ops override rationale and onsite safety + instrument checks captured in-workflow.',
+    records: ['Faye Sit · diagnosis override + reasoning', 'Lim Wei Jie · safety 5/5 · instrument 2/3'] },
+  { id: 'sr-call', color: '#00A5A8', agent: 'Audio-transcription Agent',
+    label: 'Escalation call transcript',
+    desc: 'Diarised Lim ↔ Dr. Ismail call that confirmed the revised failure mode.',
+    records: ['Call · Lim Wei Jie ↔ Dr. A. Ismail', 'Transcript · 6 exchanges · auto-attached'] },
+  { id: 'sr-sop', color: '#00A651', agent: 'Work Order Pre-fill + SOP Action Agent',
+    label: 'SOP + work order',
+    desc: 'Remediation steps drawn from the regenerated work order and the BFP SOP.',
+    records: ['WO-2026-1190-R1 · revised works', 'SOP-BFP-VIBR-001 · escalation playbook'] },
+];
+
+function svcSource(id) { return SERVICE_REPORT_SOURCES.find(s => s.id === id) || SERVICE_REPORT_SOURCES[0]; }
+
+function buildServiceSourcesLeft() {
+  return SERVICE_REPORT_SOURCES.map(s => `
+    <div class="prov-card" style="--prov:${s.color}">
+      <span class="prov-card-agent">${s.agent}</span>
+      <div class="prov-card-title">${s.label}</div>
+      <div class="prov-card-desc">${s.desc}</div>
+      <ul class="prov-card-records">${s.records.map(r => `<li>${r}</li>`).join('')}</ul>
+    </div>`).join('');
+}
+
+// W46 — right column = the FULL service report, each section highlighted/tinted by its source.
+function buildServiceSourcesRight() {
+  const blocks = serviceReportSections().map(sec => {
+    const src = svcSource(sec.sourceId);
+    return `
+      <div class="prov-block" style="--prov:${src.color}">
+        <span class="prov-block-via">via ${src.agent}</span>
+        <div class="prov-block-lbl">${sec.label}</div>
+        <div class="svr-prov-body">${sec.html}</div>
+      </div>`;
+  }).join('');
+  return `
+    <div class="prov-doc-note">The full service report — each section highlighted by its source on the left.</div>
+    <div class="prov-doc-head">
+      <span class="prov-doc-title">Service Report</span>
+      <span class="prov-doc-id">INC-2026-0537</span>
+    </div>
+    ${blocks}`;
 }
 
 function enableActionCTA() {
@@ -1499,13 +1993,17 @@ function wireConfirmInitialDiagnosis() {
 
 function onInitialDiagnosisConfirmClick() {
   if (state.faye.diagnosisConfirmed) return;
+  // W40 — block confirm if overriding without reasoning (button should already be disabled).
+  const selId = (state.faye && state.faye.selectedOption) || 'primary';
+  const overrideReason = ((state.faye && state.faye.overrideReason) || '').trim();
+  if (isOverrideOption(selId) && !overrideReason) return;
   state.faye.diagnosisConfirmed = true;
 
-  // Disable button + show "Locking in…"
-  const btn = document.querySelector('.sr-confirm-btn');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Locking in…';
+  // W42b — replace the whole confirm row with a fresh "Locking in…" pill (a NEW element, not the
+  // mutated button) so there's no transition/disabled repaint artifact on the live button.
+  const lockRow = document.querySelector('.sr-confirm-row');
+  if (lockRow) {
+    lockRow.innerHTML = `<span class="sr-locking-pill"><span class="sr-locking-dots"><span></span><span></span><span></span></span>Locking in…</span>`;
   }
 
   // 2s lock-in theater — 3 agent pulses + KG flash on diagnosis-related nodes
@@ -1514,22 +2012,31 @@ function onInitialDiagnosisConfirmClick() {
   fireAgentCardLifecycle('critic-power-gen',  2000);
   flashKGDiagnosisNodes();
 
+  // W19 — lock the option list (no further re-selection) + log the captured choice.
+  const selectedId = (state.faye && state.faye.selectedOption) || 'primary';
+  document.querySelectorAll('.sr-option').forEach(row => row.classList.add('sr-option-locked'));
+
   if (window.LOG) {
+    const overrideNote = (isOverrideOption(selectedId) && overrideReason)
+      ? ` · OVERRIDE of recommendation (${diagnosisOptionLabel('primary')}) — Faye's reasoning: "${overrideReason}"`
+      : '';
     window.LOG.appendLine({
       ts: currentSGTLog(),
       source: 'orchestrator',
-      text: 'Initial diagnosis confirmed by Faye Sit · workflow handoff to SOP-relevant next-best actions',
+      text: `Diagnosis captured by Faye Sit · ${diagnosisOptionLabel(selectedId)}${overrideNote} · workflow handoff to SOP-relevant next-best actions`,
       dataSource: 'Hyperspace OS',
       nodeChain: ['bearing-spalling-pattern', 'sop-bfp-vibration-investigation'],
     });
   }
 
   pushReveal(() => {
-    // Replace Confirm button row w/ locked pill
+    // Replace Confirm button row w/ captured-choice pill (+ override reasoning line if present)
     const row = document.querySelector('.sr-confirm-row');
     if (row) {
-      row.innerHTML = `<span class="sr-confirmed-pill">✓ Initial diagnosis locked</span>`;
+      row.innerHTML = confirmedRowHtml(selectedId);
     }
+    const overrideBlock = document.querySelector('.sr-override');
+    if (overrideBlock) overrideBlock.style.display = 'none';
     spawnSOPRelevantNextBestActions();
   }, 2000);
 }
@@ -1558,18 +2065,21 @@ function spawnSOPRelevantNextBestActions() {
   playSOPAnticipationTheater();
 }
 
-// ── W13 R2 — Rationale collapsible (Faye Initial Diagnosis summary) ──
+// ── W13 R2 / W19 — Rationale collapsible(s). W19: every diagnosis option has its own dropdown,
+// so wire ALL toggles, scoping the open/close to each toggle's own .sr-rationale-block. ──
 function wireRationaleToggle() {
-  const btn = document.querySelector('.sr-rationale-toggle');
-  if (!btn || btn.dataset.wired === '1') return;
-  btn.dataset.wired = '1';
-  btn.addEventListener('click', () => {
-    const expanded = btn.dataset.expanded === 'true';
-    btn.dataset.expanded = String(!expanded);
-    const icon = btn.querySelector('.sr-rationale-toggle-icon');
-    if (icon) icon.textContent = expanded ? '▸' : '▾';
-    const list = document.querySelector('.sr-rationale-list');
-    if (list) list.style.display = expanded ? 'none' : 'block';
+  document.querySelectorAll('.sr-rationale-toggle').forEach(btn => {
+    if (btn.dataset.wired === '1') return;
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', () => {
+      const expanded = btn.dataset.expanded === 'true';
+      btn.dataset.expanded = String(!expanded);
+      const icon = btn.querySelector('.sr-rationale-toggle-icon');
+      if (icon) icon.textContent = expanded ? '▸' : '▾';
+      const block = btn.closest('.sr-rationale-block') || btn.parentElement;
+      const list = block && block.querySelector('.sr-rationale-list');
+      if (list) list.style.display = expanded ? 'none' : 'block';
+    });
   });
 }
 
@@ -1647,7 +2157,7 @@ function appendDispatchCaptureFooter() {
   footer.innerHTML = `
     <div class="dcf-line">
       <span class="dcf-ic">✓</span>
-      <span class="dcf-txt"><strong>Hyperspace OS</strong> confirms SOP followed</span>
+      <span class="dcf-txt"><strong>${WORK_ORDER.id}</strong> created · diagnosis + fix checklist attached</span>
     </div>
     <div class="dcf-line">
       <span class="dcf-ic">✓</span>
@@ -1660,7 +2170,7 @@ function appendDispatchCaptureFooter() {
   container.appendChild(footer);
   const lbl = el('div', 'dispatched-to-label');
   const nextName = DISPATCH_LABEL[state.activePersona] || 'next persona';
-  lbl.innerHTML = `Dispatched to <span class="dyn-name">${nextName}</span> · 02:47 SGT`;
+  lbl.innerHTML = `Dispatched to fix · <span class="dyn-name">${nextName}</span> · 02:47 SGT`;
   container.appendChild(lbl);
 }
 
@@ -1870,7 +2380,11 @@ function renderOnsiteIncidentDetail(root) {
     paintLimSummaryComplete(state.lim.diagnosisRevised);
     paintLimChecklistComplete();
     const slot = document.getElementById('lim-ctas-slot');
-    if (slot) slot.innerHTML = '';
+    if (slot) {
+      slot.innerHTML = '';
+      // W45 — comprehensive service report on Lim's final page (revised-diagnosis path).
+      if (state.lim.diagnosisRevised) spawnServiceReport(slot);
+    }
     setTimeout(() => {
       if (pill === 'DIAGNOSIS_CONFIRMED_WO_SUBMITTED') {
         appendConfirmedCaptureFooter();
@@ -1922,7 +2436,6 @@ function startLimScreenDReveal() {
 function paintLimSummaryComplete(revised) {
   const slot = document.getElementById('lim-summary-slot');
   if (!slot) return;
-  const hyp = INCIDENT.hypothesis;
   // W14 R2 — Rationale dropdown replaces Alt-hypotheses dropdown · re-uses W13 R2 INITIAL_DIAGNOSIS_RATIONALE + wireRationaleToggle (Faye-consistent).
   const rationaleHtml = INITIAL_DIAGNOSIS_RATIONALE.map(r => `
     <div class="sr-rationale-row" data-strength="${r.strength}">
@@ -1940,7 +2453,7 @@ function paintLimSummaryComplete(revised) {
     tileHtml = `
       <div class="sr-hypothesis">
         <div class="sr-hyp-row">
-          <span class="sr-hyp-name">${hyp.primary}</span>
+          <span class="sr-hyp-name">${capturedDiagnosisName()}</span>
           <span class="sr-hyp-status-pill">pending onsite verification</span>
         </div>
       </div>
@@ -1955,6 +2468,7 @@ function paintLimSummaryComplete(revised) {
       </div>`;
   }
 
+  // W19 — Lim does NOT see the regenerated work order; that lives in Faye's escalation report only.
   slot.innerHTML = `
     <div class="summary-report">
       <div class="sr-heading">Diagnosis</div>
@@ -1967,12 +2481,11 @@ function paintLimSummaryComplete(revised) {
 }
 
 function buildRevisedDiagnosisTileHTML() {
-  const hyp = INCIDENT.hypothesis;
   const ts = state.lim.revisionTimestamp || '02:55 SGT';
   return `
     <div class="sr-hypothesis sr-hypothesis-revised">
       <div class="sr-hyp-row sr-hyp-original">
-        <span class="sr-hyp-name strikethrough">${hyp.primary}</span>
+        <span class="sr-hyp-name strikethrough">${capturedDiagnosisName()}</span>
         <span class="sr-hyp-flag">SUPERSEDED</span>
       </div>
       <div class="sr-hyp-row sr-hyp-revised">
@@ -2007,6 +2520,17 @@ function buildLimGroupHTML(grp, locked) {
       // W15 — Instrument items use tick/cross UX (text input on cross click).
       const result = (state.lim.instrumentResults || {})[it.id];   // 'tick' | 'cross' | undefined
       const crossReason = (state.lim.instrumentReasons || {})[it.id];
+      // W43 — after a temperature spike is detected, remaining unchecked instrument items are
+      // struck through (no longer required — escalating to offsite expert instead).
+      if (state.lim.tempSpikeTriggered && !result) {
+        return `
+        <div class="ic-item ic-item-instrument ic-item-struck" data-item-id="${it.id}" data-result="">
+          <div class="ic-instr-row">
+            <span class="ic-text">${it.text}</span>
+            <span class="ic-instr-superseded">superseded</span>
+          </div>
+        </div>`;
+      }
       return `
         <div class="ic-item ic-item-instrument" data-item-id="${it.id}" data-result="${result || ''}">
           <div class="ic-instr-row">
@@ -2037,10 +2561,20 @@ function buildLimGroupHTML(grp, locked) {
         <span class="ic-text">${it.text}</span>
       </div>`;
   }).join('');
+  // W43 — temperature spike: surface a new "contact offsite expert" item in the Instrument group.
+  const escalateHtml = (isInstrument && state.lim.tempSpikeTriggered) ? `
+      <div class="ic-escalate-item" data-item-id="contact-offsite-expert">
+        <span class="ic-escalate-arrow">→</span>
+        <div class="ic-escalate-body">
+          <span class="ic-escalate-text">Contact offsite expert · <span class="dyn-name">Dr. A. Ismail</span></span>
+          <span class="ic-escalate-sub">Component temperature spiking — remote vibration phase analysis required</span>
+        </div>
+      </div>` : '';
   return `
     <div class="ic-group" data-group="${grp.group}" data-locked="false">
       <div class="ic-group-label">${grp.group} · ${checkedCount}/${grp.items.length}</div>
       ${itemsHtml}
+      ${escalateHtml}
     </div>`;
 }
 
@@ -2064,12 +2598,22 @@ function paintLimChecklist() {
   }).join('');
   const total = LIM_INSPECTION_CHECKLIST.reduce((n, g) => n + g.items.length, 0);
   const checked = Object.keys(state.lim.checked).length;
+  let progressText;
+  if (state.lim.tempSpikeTriggered) {
+    // W46 — escalated path: show per-group progress (Safety 5/5 · Instrument 2/3), not the 13-item aggregate.
+    const grpProg = g => `${g.group} ${g.items.filter(it => state.lim.checked[it.id]).length}/${g.items.length}`;
+    const safety = LIM_INSPECTION_CHECKLIST.find(g => g.group === 'Safety');
+    const instr = LIM_INSPECTION_CHECKLIST.find(g => g.group === 'Instrument');
+    progressText = `${grpProg(safety)} · ${grpProg(instr)} · escalated to offsite expert`;
+  } else {
+    progressText = `${checked}/${total} checks complete`;
+  }
   slot.innerHTML = `
     <div class="inspection-checklist">
       <div class="ic-heading">Inspection workflow (INC-2026-0537 · per the SOP)</div>
       <div class="ic-sub">Complete safety + instrument + root-cause checks sequentially.</div>
       ${groupsHtml}
-      <div class="ic-progress"><span class="ic-progress-num">${checked}/${total} checks complete</span></div>
+      <div class="ic-progress"><span class="ic-progress-num">${progressText}</span></div>
     </div>`;
   wireInspectionChecklist();
   wireInstrumentActions();
@@ -2082,13 +2626,17 @@ function paintLimChecklist() {
 }
 
 function paintLimChecklistComplete() {
-  // All items rendered as checked (post-escalation re-entry)
-  LIM_INSPECTION_CHECKLIST.forEach(g => g.items.forEach(it => { state.lim.checked[it.id] = true; }));
-  // W15 — also mirror Instrument tick results so post-action re-entry shows ✓ Done
-  state.lim.instrumentResults = state.lim.instrumentResults || {};
-  LIM_INSPECTION_CHECKLIST.find(g => g.group === 'Instrument').items.forEach(it => {
-    if (!state.lim.instrumentResults[it.id]) state.lim.instrumentResults[it.id] = 'tick';
-  });
+  // W43 — temp-spike path: Lim escalated early (safety + 2 instrument checks, rest superseded).
+  // Do NOT force-complete the checklist — render the real state so progress isn't wrongly 13/13.
+  if (!state.lim.tempSpikeTriggered) {
+    // Legacy/confirm path: all items rendered as checked (post-escalation re-entry)
+    LIM_INSPECTION_CHECKLIST.forEach(g => g.items.forEach(it => { state.lim.checked[it.id] = true; }));
+    // W15 — also mirror Instrument tick results so post-action re-entry shows ✓ Done
+    state.lim.instrumentResults = state.lim.instrumentResults || {};
+    LIM_INSPECTION_CHECKLIST.find(g => g.group === 'Instrument').items.forEach(it => {
+      if (!state.lim.instrumentResults[it.id]) state.lim.instrumentResults[it.id] = 'tick';
+    });
+  }
   paintLimChecklist();
   // W8 C.5 — re-entry path also shows truncated groups.
   truncateInspectionGroupsToCompleted();
@@ -2111,6 +2659,12 @@ function wireInstrumentActions() {
     btn.dataset.wired = '1';
     btn.addEventListener('click', e => { e.stopPropagation(); onCrossReasonSubmit(btn.dataset.item); });
   });
+  // W43 — "Contact offsite expert" escalation item → open the call screen.
+  document.querySelectorAll('.ic-escalate-item').forEach(item => {
+    if (item.dataset.wired === '1') return;
+    item.dataset.wired = '1';
+    item.addEventListener('click', onContactOffsiteExpert);
+  });
   // Stop generic ic-item click handler on instrument rows (tick/cross owns toggle)
   document.querySelectorAll('.ic-item-instrument').forEach(row => {
     if (row.dataset.wiredInstr === '1') return;
@@ -2125,8 +2679,52 @@ function onInstrumentTick(itemId) {
   state.lim.instrumentResults[itemId] = 'tick';
   state.lim.checked[itemId] = true;
   logChecklistItem(itemId);
+  // W43 — ticking transducer cabling (instr-2) surfaces a component-temperature spike: strike the
+  // remaining instrument item(s) + insert the "contact offsite expert" item, then pop the alert.
+  const triggerSpike = itemId === 'instr-2' && !state.lim.tempSpikeTriggered;
+  if (triggerSpike) state.lim.tempSpikeTriggered = true;
   paintLimChecklist();
   updateChecklistProgress();
+  if (triggerSpike) showTempSpikeAlert();
+}
+
+// W43 — component temperature-spike alert (pops over the tablet; Acknowledge dismisses).
+function showTempSpikeAlert() {
+  if (document.querySelector('.ts-alert')) return;
+  const host = document.getElementById('tablet') || document.body;
+  const modal = document.createElement('div');
+  modal.className = 'ts-alert';
+  modal.innerHTML = `
+    <div class="ts-alert-backdrop"></div>
+    <div class="ts-alert-card" role="alertdialog" aria-modal="true">
+      <div class="ts-alert-icon">⚠</div>
+      <div class="ts-alert-label">DCS Alert · Temperature spike</div>
+      <div class="ts-alert-title">NDE bearing housing temperature spiking</div>
+      <div class="ts-alert-body">BFP-3A NDE bearing housing temperature is rising rapidly — <strong>94 °C and climbing</strong> (was 78 °C · +16 °C over 4 min). Remaining instrument checks halted. Escalate to the offsite expert for remote vibration phase analysis.</div>
+      <button class="ts-alert-ack" type="button">Acknowledge</button>
+    </div>`;
+  host.appendChild(modal);
+  const close = () => modal.remove();
+  modal.querySelector('.ts-alert-ack').addEventListener('click', close);
+  modal.querySelector('.ts-alert-backdrop').addEventListener('click', close);
+  if (window.LOG) {
+    window.LOG.appendLine({
+      ts: currentSGTLog(),
+      source: 'inspection',
+      text: 'DCS alert · BFP-3A NDE bearing housing temperature spike (94 °C, rising) · onsite instrument checks halted · escalation to offsite expert prompted',
+      dataSource: 'Honeywell Experion DCS',
+      nodeChain: ['bearing-bfp-3a-nde', 'bearing-temp-30d'],
+    });
+  }
+}
+
+// W43 — "Contact offsite expert" item → same effect as the Assistant "Call" button:
+// set the verdict-reject flags, then run the SOP-routing theater (3s) → in-call strip.
+function onContactOffsiteExpert() {
+  if (state.lim.callStarted) return;
+  state.lim.rejectClicked = true;
+  state.lim.callStarted = true;
+  onSOPSuggestCallClick();
 }
 
 function onInstrumentCross(itemId) {
@@ -2261,10 +2859,23 @@ function truncateInspectionGroupsToCompleted() {
     const grpDef = LIM_INSPECTION_CHECKLIST.find(g => g.group === groupName);
     if (!grpDef) return;
     const total = grpDef.items.length;
+    // W47 — reflect ACTUAL per-group completion (temp-spike path supersedes some checks),
+    // so the collapsed headers stay consistent with the progress line.
+    const done = grpDef.items.filter(it => state.lim.checked[it.id]).length;
+    let status, statusCls = '';
+    if (done === total) {
+      status = `✓ ${done}/${total} completed`;
+    } else if (done > 0) {
+      status = `${done}/${total} · ${total - done} superseded`;
+      statusCls = ' ic-group-label-status-partial';
+    } else {
+      status = `superseded · escalated to offsite expert`;
+      statusCls = ' ic-group-label-status-superseded';
+    }
     grpEl.innerHTML = `
       <div class="ic-group-label ic-group-label-completed">
         <span class="ic-group-label-text">${groupName}</span>
-        <span class="ic-group-label-status">✓ ${total}/${total} completed</span>
+        <span class="ic-group-label-status${statusCls}">${status}</span>
       </div>`;
     grpEl.dataset.collapsed = 'true';
     grpEl.dataset.locked = 'false';
@@ -2564,6 +3175,10 @@ function spawnInCallStrip() {
     if (label) label.textContent = `Call ended · transcript captured · ${state.lim.revisionTimestamp || '02:55 SGT'}`;
     const endBtn = strip.querySelector('.in-call-end-btn');
     if (endBtn) endBtn.remove();
+  } else if (!state.lim.callTranscriptStarted) {
+    // W44 — fresh call: stream the live transcript (typewriter) once.
+    state.lim.callTranscriptStarted = true;
+    startLiveCallTranscript();
   }
 }
 
@@ -2586,9 +3201,76 @@ function wireInCallEnd() {
   endBtn.addEventListener('click', onCallEnd);
 }
 
+// W44 — live call transcript: real-time typewriter, alternating speakers, "typing" theater between lines.
+// Dialogue mirrors the post-call transcript modal (index.html #transcript-modal) so they stay in sync.
+const ISMAIL_CALL_SCRIPT = [
+  { spk: 'lim',    name: 'L. Lim',     text: `Ismail-sir — NDE bearing housing temp on BFP-3A just spiked to 94°C and it's still climbing. Vibration's well into Zone C. But the checks don't fit bearing spalling — lube oil's clean, no spall pattern on the inspection port. Something else is driving this.` },
+  { spk: 'ismail', name: 'Dr. Ismail', text: `Rapid temp rise with that vibration signature — don't fixate on the bearing. Pull up the casing inspection from your station. Look for hairline cracking around the volute weld near the discharge flange.` },
+  { spk: 'lim',    name: 'L. Lim',     text: `... I see it. Faint discontinuity at the 4-o'clock position on the casing, about 60mm from the discharge weld. Liquid penetrant would confirm.` },
+  { spk: 'ismail', name: 'Dr. Ismail', text: `That's a casing crack — same failure mode I saw on Jurong-CCGT-2 BFP three years ago. Pump casing fatigue under cyclic pressure load. The bearing heat and vibration are secondary — symptoms, not the root cause.` },
+  { spk: 'lim',    name: 'L. Lim',     text: `Updating diagnosis: pump casing crack · BFP-3A. Bearing damage and temp rise look like secondary effects from imbalanced loading.` },
+  { spk: 'ismail', name: 'Dr. Ismail', text: `Confirmed. Shutdown required — can't run with a propagating casing crack. Escalating back to Faye for ops + commercial impact routing.` },
+];
+
+function startLiveCallTranscript() {
+  const slot = document.getElementById('lim-ctas-slot');
+  if (!slot || slot.querySelector('.call-transcript')) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'call-transcript';
+  const strip = slot.querySelector('.in-call-strip');
+  if (strip) strip.after(wrap); else slot.appendChild(wrap);
+  state.lim.callTimers = [];
+  playCallLine(0, wrap);
+}
+
+function playCallLine(idx, wrap) {
+  if (!wrap.isConnected || idx >= ISMAIL_CALL_SCRIPT.length) return;
+  const line = ISMAIL_CALL_SCRIPT[idx];
+  const bubble = document.createElement('div');
+  bubble.className = `call-bubble call-bubble-${line.spk}`;
+  bubble.innerHTML = `<span class="call-bubble-spk">${line.name}</span><span class="call-typing-dots"><span></span><span></span><span></span></span>`;
+  wrap.appendChild(bubble);
+  bubble.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  // theater: ~1200ms of "speaking" dots before the words stream in
+  const t1 = setTimeout(() => {
+    if (!bubble.isConnected) return;
+    const body = document.createElement('span');
+    body.className = 'call-bubble-txt call-caret';
+    const dots = bubble.querySelector('.call-typing-dots');
+    if (dots) dots.replaceWith(body); else bubble.appendChild(body);
+    typeCallText(body, line.text, () => {
+      body.classList.remove('call-caret');
+      const t2 = setTimeout(() => playCallLine(idx + 1, wrap), 1100);
+      state.lim.callTimers.push(t2);
+    });
+  }, 1200);
+  state.lim.callTimers.push(t1);
+}
+
+function typeCallText(el, text, done) {
+  let n = 0;
+  const iv = setInterval(() => {
+    if (!el.isConnected) { clearInterval(iv); return; }
+    n += 1;   // 1 char per tick (slowed for a deliberate real-time-transcription feel)
+    el.textContent = text.slice(0, n);
+    if (n >= text.length) {
+      clearInterval(iv);
+      el.textContent = text;
+      if (done) done();
+    }
+  }, 30);
+  state.lim.callTimers.push(iv);
+}
+
+function cancelCallTranscript() {
+  (state.lim.callTimers || []).forEach(id => { clearTimeout(id); clearInterval(id); });
+  state.lim.callTimers = [];
+}
+
 function onCallEnd() {
   if (state.lim.callEnded) return;
   state.lim.callEnded = true;
+  cancelCallTranscript();   // W44 — stop any in-progress live typing
   const endBtn = document.querySelector('.in-call-end-btn');
   const strip = document.querySelector('.in-call-strip');
   if (!strip) return;
@@ -2618,6 +3300,13 @@ function onCallEnd() {
       strip.style.transition = 'opacity 0.3s ease-out';
       strip.style.opacity = '0';
       setTimeout(() => strip.remove(), 320);
+    }
+    // W44 — fade the live transcript bubbles once it's captured into the attached transcript.
+    const liveTx = document.querySelector('.call-transcript');
+    if (liveTx) {
+      liveTx.style.transition = 'opacity 0.3s ease-out';
+      liveTx.style.opacity = '0';
+      setTimeout(() => liveTx.remove(), 320);
     }
 
     if (window.LOG) {
@@ -2716,6 +3405,8 @@ function onDiagnosisConfirmedClick() {
   if (state.lim.diagnosisRevised) return;
   state.lim.diagnosisRevised = true;
   state.lim.revisionTimestamp = '02:55 SGT';
+  // W19 — explicit workflow deviation: onsite findings diverge from the dispatched WO; show + log it.
+  spawnDeviationNotice();
   // Replace diagnosis hypothesis tile inline
   morphDiagnosisTile();
   // W8 E.2 — spawn Revise diagnosis TILE w/ inline Confirm button (replaces W7 standalone button)
@@ -2775,6 +3466,29 @@ function morphDiagnosisTile() {
 // W7 — dead code path (W4.1 escalate-ready morph removed; kept for re-entry safety, no-op).
 function morphConfirmCTAToEscalate() {
   spawnReviseDiagnosisTile();
+}
+
+// W19 — explicit workflow-deviation notice (logged by the system) shown above the revise-diagnosis tile.
+function spawnDeviationNotice() {
+  const slot = document.getElementById('lim-ctas-slot');
+  if (!slot || slot.querySelector('.deviation-notice')) return;
+  slot.insertAdjacentHTML('beforeend', `
+    <div class="deviation-notice">
+      <span class="dn-icon">⚠</span>
+      <div class="dn-body">
+        <div class="dn-heading">Workflow deviation detected</div>
+        <div class="dn-text">Onsite findings diverge from <strong>${WORK_ORDER.id}</strong> (bearing fix). Logged by <strong>Hyperspace OS</strong> · re-diagnosis triggered.</div>
+      </div>
+    </div>`);
+  if (window.LOG) {
+    window.LOG.appendLine({
+      ts: currentSGTLog(),
+      source: 'workflow',
+      text: `Workflow deviation logged · ${WORK_ORDER.id} · onsite findings ≠ planned bearing fix · re-diagnosis triggered`,
+      dataSource: 'Hyperspace OS',
+      nodeChain: ['sop-bfp-vibration-investigation', 'pump-casing-crack-pattern'],
+    });
+  }
 }
 
 // W8 E.2 — Revise diagnosis TILE w/ heading + body + inline Confirm button (replaces W7 standalone button).
@@ -2853,6 +3567,8 @@ function onConfirmRevisedDiagnosisClick() {
   setTimeout(() => {
     document.querySelector('.sop-review-theater')?.remove();
     document.querySelector('.revise-diagnosis-tile')?.remove();
+    document.querySelector('.deviation-notice')?.remove();
+    // W19 — the work order is regenerated server-side + surfaced in Faye's escalation report; Lim just routes it back.
     advanceToRoutedRevisedDiagnosis();
   }, 3000);
 }
@@ -2870,9 +3586,12 @@ function advanceToRoutedRevisedDiagnosis() {
 
   if (window.LOG) {
     window.LOG.appendLine({ ts: currentSGTLog(), source: 'workflow', text: 'State advance · REVISED_DIAGNOSIS_ROUTED · routed to Faye Sit for ops + commercial impact', dataSource: 'Hyperspace OS', nodeChain: ['r-kumar'] });
+    window.LOG.appendLine({ ts: currentSGTLog(), source: 'wo-prefill', text: `${WORK_ORDER.id} superseded · ${WORK_ORDER_REVISED.id} regenerated · revised diagnosis + updated works · surfaced to Faye Sit`, dataSource: 'Hyperspace OS', nodeChain: ['sop-wo-creation', 'pump-casing-crack-pattern'] });
     window.LOG.appendLine({ ts: currentSGTLog(), source: 'workflow', text: 'KG enriched · revised diagnosis + call transcript attached to incident', dataSource: 'Hyperspace OS', nodeChain: ['pump-casing-crack-pattern'] });
+    window.LOG.appendLine({ ts: currentSGTLog(), source: 'learning', text: 'Learning Engine · service report compiled from full incident knowledge (telemetry · diagnoses · override · onsite checks · Dr. Ismail transcript · revised failure mode · remediation) · ready for Lim Wei Jie review', dataSource: 'Hyperspace OS', nodeChain: ['pump-casing-crack-pattern', 'sop-bfp-vibration-investigation'] });
   }
   fireAgentCardLifecycle('workflow', 2000);
+  fireAgentCardLifecycle('learning', 2500);
   render();
 }
 
@@ -2889,6 +3608,93 @@ function appendRevisedDiagnosisCaptureFooter() {
   const lbl = el('div', 'dispatched-to-label');
   lbl.innerHTML = `Routed back to <span class="dyn-name">Faye Sit</span> · ${currentSGTLog()}`;
   container.appendChild(lbl);
+}
+
+// W45 — comprehensive Service Report on Lim's final page. Documents every piece of knowledge
+// captured across the workflow, drawn entirely from live state (no new hardcoded narrative).
+function spawnServiceReport(slot) {
+  if (!slot || slot.querySelector('.service-report')) return;
+  slot.insertAdjacentHTML('beforeend', buildServiceReportHTML());
+}
+
+// W45/W46 — single source of truth for the report's 7 sections (label + sourceId + content html).
+// Both the plain report (Lim's page) and the highlighted Sources view render from this.
+function serviceReportSections() {
+  const opts = getDiagnosisOptions();
+  const rec = opts.find(o => o.recommended) || opts[0];
+  const capId = (state.faye && state.faye.selectedOption) || 'primary';
+  const captured = opts.find(o => o.id === capId) || rec;
+  const overrideReason = ((state.faye && state.faye.overrideReason) || '').trim();
+  const isOverride = captured && !captured.recommended;
+
+  const telemetryRows = INCIDENT.metrics.map(m =>
+    `<div class="svr-kv"><span class="svr-k">${m.lbl}</span><span class="svr-v">${m.val} ${m.unit}<span class="svr-note"> · ${m.nom}</span></span></div>`).join('');
+
+  const diagRows = opts.map(o =>
+    `<div class="svr-kv"><span class="svr-k">${o.name}${o.recommended ? ' <span class="svr-tag">AI recommended</span>' : ''}</span><span class="svr-v">${o.conf}%</span></div>`).join('');
+
+  const overrideHtml = isOverride
+    ? `<p class="svr-p">Ops (<span class="dyn-name">Faye Sit</span>) overrode the AI's top recommendation
+         (<strong>${rec.name} · ${rec.conf}%</strong>) and captured <strong>${captured.name} · ${captured.conf}%</strong>.</p>
+       <div class="svr-quote">${overrideReason ? '“' + escapeHtml(overrideReason) + '”' : '<em>No rationale recorded.</em>'}</div>`
+    : `<p class="svr-p">Ops (<span class="dyn-name">Faye Sit</span>) confirmed the AI recommendation: <strong>${captured.name} · ${captured.conf}%</strong>.</p>`;
+
+  const safetyGrp = LIM_INSPECTION_CHECKLIST.find(g => g.group === 'Safety');
+  const instrGrp = LIM_INSPECTION_CHECKLIST.find(g => g.group === 'Instrument');
+  const safetyDone = safetyGrp.items.filter(it => state.lim.checked[it.id]).length;
+  const instrRows = instrGrp.items.map(it => {
+    const r = (state.lim.instrumentResults || {})[it.id];
+    const status = r === 'tick' ? '<span class="svr-ok">✓ done</span>'
+      : r === 'cross' ? '<span class="svr-skip">✗ skipped</span>'
+      : '<span class="svr-sup">superseded</span>';
+    return `<div class="svr-kv"><span class="svr-k">${it.text}</span><span class="svr-v">${status}</span></div>`;
+  }).join('');
+
+  const txRows = ISMAIL_CALL_SCRIPT.map(l =>
+    `<div class="svr-tx"><span class="svr-tx-spk svr-tx-${l.spk}">${l.name}</span><span class="svr-tx-txt">${l.text}</span></div>`).join('');
+
+  const remediationRows = WORK_ORDER_REVISED.checklist.map(c => `<li>${c}</li>`).join('');
+
+  return [
+    { sourceId: 'sr-machine', label: '1 · Initial telemetry readings',
+      html: `${telemetryRows}<div class="svr-kv"><span class="svr-k">NDE bearing housing temp (onsite)</span><span class="svr-v">94 °C<span class="svr-note"> · spiking, +16 °C / 4 min</span></span></div>` },
+    { sourceId: 'sr-diag', label: '2 · AI-generated diagnoses + confidence', html: diagRows },
+    { sourceId: 'sr-human', label: '3 · Ops override rationale', html: overrideHtml },
+    { sourceId: 'sr-human', label: '4 · Onsite safety + instrument checks · <span class="dyn-name">Lim Wei Jie</span>',
+      html: `<div class="svr-kv"><span class="svr-k">Safety checks</span><span class="svr-v"><span class="svr-ok">${safetyDone}/${safetyGrp.items.length} complete</span></span></div>${instrRows}<p class="svr-p svr-muted">Temperature spike on NDE bearing housing halted remaining instrument checks → escalation to offsite expert.</p>` },
+    { sourceId: 'sr-call', label: '5 · Escalation exchange · <span class="dyn-name">Dr. A. Ismail</span> (offsite)',
+      html: `<div class="svr-transcript">${txRows}</div>` },
+    { sourceId: 'sr-call', label: '6 · Revised failure mode',
+      html: `<p class="svr-p"><strong>Crack in pump casing on BFP-3A</strong> — 60 mm hairline at the 4-o'clock volute position, near the discharge weld. NDE/DE bearing damage secondary (fatigue from imbalanced loading). Confirmed via Dr. A. Ismail field-experience pattern-match (Jurong-CCGT-2 BFP, 2023).</p>` },
+    { sourceId: 'sr-sop', label: '7 · Final remediation steps', html: `<ul class="svr-list">${remediationRows}</ul>` },
+  ];
+}
+
+function buildServiceReportHTML() {
+  const sectionsHtml = serviceReportSections().map(s =>
+    `<div class="svr-section"><div class="svr-label">${s.label}</div>${s.html}</div>`).join('');
+  const summaryHtml = `
+      <div class="svr-summary">
+        <div class="svr-summary-eyebrow">Work completed</div>
+        <div class="svr-summary-title">Pump casing crack repair · BFP-3A</div>
+        <p class="svr-summary-text"><strong>${WORK_ORDER_REVISED.id}</strong> · revised diagnosis confirmed a <strong>crack in the pump casing on BFP-3A</strong> (60 mm hairline at the discharge weld), with secondary NDE/DE bearing damage. BFP-3A was shut down and Block 2 feedwater isolated; casing dye-penetrant NDT and bearing-damage assessment completed, and the work order escalated to the offsite expert for sign-off per SOP-BFP-VIBR-001.</p>
+      </div>`;
+  return `
+    <div class="service-report">
+      <div class="svr-head">
+        <div>
+          <div class="svr-title">Service Report</div>
+          <div class="svr-sub">INC-2026-0537 · JRG-CCGT-1 · Block 2 · BFP-3A</div>
+        </div>
+        <div class="svr-head-right">
+          <span class="svr-gen">Compiled by Learning Engine</span>
+          <button class="svr-sources-btn" type="button">◆ Sources</button>
+        </div>
+      </div>
+      ${summaryHtml}
+      ${sectionsHtml}
+      <div class="svr-foot">Severity escalated AMBER → CRITICAL · routed to <span class="dyn-name">Faye Sit</span> for ops + commercial impact · transcript + revised diagnosis written back to Knowledge-Graph.</div>
+    </div>`;
 }
 
 function onEscalateForApprovalClick() {
@@ -3048,7 +3854,7 @@ function paintIsmailSummaryComplete() {
       </div>
       <div class="sr-hypothesis sr-hypothesis-revised ismail-revised">
         <div class="sr-hyp-row sr-hyp-original">
-          <span class="sr-hyp-name strikethrough">${INCIDENT.hypothesis.primary}</span>
+          <span class="sr-hyp-name strikethrough">${capturedDiagnosisName()}</span>
           <span class="sr-hyp-flag">SUPERSEDED</span>
         </div>
         <div class="sr-hyp-row sr-hyp-revised">
@@ -3256,6 +4062,7 @@ function spawnEscalationReportContent() {
           <div class="oer-imp-body">50 MW Block 2 derate · PSO commitment window 09:00–18:00 SGT · 4h peak tariff exposure · ~SGD 2.4M revenue at risk · curtailment / hedge eligible</div>
         </div>
       </div>
+      ${buildReassignSectionHTML()}
     </div>
     <button class="oer-cta" type="button" disabled>
       Notify trading desk · route to <span class="dyn-name-on-green">Priya Sundaram</span>
@@ -3263,11 +4070,197 @@ function spawnEscalationReportContent() {
   card.insertAdjacentHTML('beforeend', contentHTML);
 }
 
+// W19 — Reassign work order section: resend regenerated WO-2026-1190-R1 to a new technician for the casing-crack repair.
+// After reassignment, a "Fast forward to task complete" button generates the RCA + service report (from both WOs).
+function buildReassignSectionHTML() {
+  const f = state.faye || {};
+  let slotHtml;
+  if (f.taskComplete) {
+    slotHtml = `<div class="oer-reassign-done">✓ <strong>${WORK_ORDER_REVISED.id}</strong> reassigned to <span class="dyn-name">${f.woReassignedTo}</span> · repair complete</div>`;
+  } else if (f.woReassignedTo) {
+    slotHtml = `
+      <div class="oer-reassign-done">✓ <strong>${WORK_ORDER_REVISED.id}</strong> reassigned to <span class="dyn-name">${f.woReassignedTo}</span> · dispatched for casing crack repair</div>
+      <button class="oer-ff-btn" type="button">⏩ Fast forward to task complete</button>`;
+  } else {
+    slotHtml = `<button class="oer-reassign-btn" type="button">Reassign work order to a technician →</button>`;
+  }
+  const regenWoCard = buildWorkOrderCardHTML({
+    id: WORK_ORDER_REVISED.id,
+    title: 'Work order regenerated',
+    regenerated: true,
+    asset: INCIDENT.asset,
+    diagnosisHeading: 'Revised diagnosis',
+    diagnosisLabel: WORK_ORDER_REVISED.diagnosis,
+    checklist: WORK_ORDER_REVISED.checklist,
+  });
+  const reassignSection = `
+    <div class="oer-section oer-reassign-section">
+      <div class="oer-section-label">Reassign work order</div>
+      ${regenWoCard}
+      <div class="oer-reassign-slot">${slotHtml}</div>
+    </div>`;
+  return reassignSection + (f.taskComplete ? buildTaskCompleteReportHTML() : '');
+}
+
+// W19 — Root cause analysis + service report generated on task completion · draws from BOTH work orders.
+function buildTaskCompleteReportHTML() {
+  const tech = (state.faye && state.faye.woReassignedTo) || 'assigned technician';
+  return `
+    <div class="oer-section oer-rca-section">
+      <div class="oer-complete-banner">✓ Task complete · BFP-3A casing crack rectified · ready for review</div>
+
+      <div class="oer-section-label">Root cause analysis</div>
+      <div class="oer-rca-body">
+        <div class="oer-rca-row"><span class="oer-rca-lbl">Root cause</span> Pump casing fatigue crack on BFP-3A — 60mm hairline at 4-o'clock volute, near discharge weld</div>
+        <div class="oer-rca-row"><span class="oer-rca-lbl">Contributing</span> Imbalanced loading under casing fatigue → secondary NDE/DE bearing wear</div>
+        <div class="oer-rca-row"><span class="oer-rca-lbl">Evidence</span> <strong>${WORK_ORDER.id}</strong> telemetry + bearing inspection · <strong>${WORK_ORDER_REVISED.id}</strong> casing NDT + dial-indicator runout · Dr. A. Ismail call + 3-incident fleet RCA pattern-match</div>
+      </div>
+      <button class="oer-report-link" data-report="rca" type="button">View RCA report (PDF)</button>
+
+      <div class="oer-section-label" style="margin-top:12px;">Service report</div>
+      <div class="oer-svc-body">
+        <div class="oer-svc-wo"><span class="oer-svc-id">${WORK_ORDER.id}</span> Initial inspection · bearing-spalling hypothesis · Lim Wei Jie · deviation logged</div>
+        <div class="oer-svc-wo"><span class="oer-svc-id">${WORK_ORDER_REVISED.id}</span> Casing crack repair · ${tech} · completed</div>
+        <div class="oer-svc-meta">Personnel: Lim Wei Jie · Dr. A. Ismail · ${tech} · Downtime ~6h · Status: ready for review</div>
+      </div>
+      <button class="oer-report-link" data-report="service" type="button">View service report (PDF)</button>
+    </div>`;
+}
+
+function wireReassignWOButton() {
+  const btn = document.querySelector('.oer-reassign-btn');
+  if (!btn || btn.dataset.wired === '1') return;
+  btn.dataset.wired = '1';
+  btn.addEventListener('click', onReassignWOClick);
+}
+
+const REASSIGN_TECHNICIANS = [
+  { name: 'S. Ibrahim',     pill: 'ON-CALL',   meta: 'Rotating-equipment repair · casing / weld specialist', recommended: true },
+  { name: 'P. Subramaniam', pill: 'AVAILABLE', meta: 'Senior mechanical fitter · Block 2 · on-duty',          recommended: false },
+];
+
+function onReassignWOClick() {
+  const slot = document.querySelector('.oer-reassign-slot');
+  if (!slot) return;
+  slot.innerHTML = `
+    <div class="oer-reassign-theater">
+      <span class="reveal-dots"><span></span><span></span><span></span></span>
+      <span class="reveal-msg">
+        <span class="reveal-agent">Work Order Pre-fill Agent</span> · finding available technicians for casing crack repair…
+      </span>
+    </div>`;
+  if (window.LOG) {
+    window.LOG.appendLine({
+      ts: currentSGTLog(),
+      source: 'wo-prefill',
+      text: `${WORK_ORDER_REVISED.id} reassignment · Faye Sit · finding on-call technicians for casing crack repair`,
+      dataSource: 'Hyperspace OS',
+      nodeChain: ['sop-wo-creation', 'pump-casing-crack-pattern'],
+    });
+  }
+  fireAgentCardLifecycle('wo-prefill', 2000);
+  pushReveal(() => {
+    const cards = REASSIGN_TECHNICIANS.map(t => `
+      <div class="oer-tech-card" data-tech="${t.name}">
+        <div class="oer-tech-pill">${t.pill}</div>
+        <div class="oer-tech-name">${t.name}${t.recommended ? ` <span class="oer-tech-rec">Recommended</span>` : ''}</div>
+        <div class="oer-tech-meta">${t.meta}</div>
+        <div class="oer-tech-hint">Click to reassign</div>
+      </div>`).join('');
+    slot.innerHTML = `<div class="oer-tech-list">${cards}</div>`;
+    wireReassignTechCards();
+  }, 2000);
+}
+
+function wireReassignTechCards() {
+  document.querySelectorAll('.oer-tech-card').forEach(card => {
+    if (card.dataset.wired === '1') return;
+    card.dataset.wired = '1';
+    card.addEventListener('click', () => onReassignTechSelect(card.dataset.tech));
+  });
+}
+
+function onReassignTechSelect(name) {
+  if (!name || (state.faye && state.faye.woReassignedTo)) return;
+  state.faye.woReassignedTo = name;
+  const slot = document.querySelector('.oer-reassign-slot');
+  if (slot) {
+    slot.innerHTML = `
+      <div class="oer-reassign-done">✓ <strong>${WORK_ORDER_REVISED.id}</strong> reassigned to <span class="dyn-name">${name}</span> · dispatched for casing crack repair</div>
+      <button class="oer-ff-btn" type="button">⏩ Fast forward to task complete</button>`;
+    wireFastForwardButton();
+  }
+  if (window.LOG) {
+    window.LOG.appendLine({
+      ts: currentSGTLog(),
+      source: 'wo-prefill',
+      text: `${WORK_ORDER_REVISED.id} reassigned · ${name} dispatched for casing crack repair · routed by Faye Sit`,
+      dataSource: 'Hyperspace OS',
+      nodeChain: ['sop-wo-creation', 'pump-casing-crack-pattern'],
+    });
+  }
+  fireAgentCardLifecycle('wo-prefill', 1500);
+}
+
+// W19 — Fast forward to task complete → generate RCA + service report from both work orders.
+function wireFastForwardButton() {
+  const btn = document.querySelector('.oer-ff-btn');
+  if (!btn || btn.dataset.wired === '1') return;
+  btn.dataset.wired = '1';
+  btn.addEventListener('click', onFastForwardComplete);
+}
+
+function onFastForwardComplete() {
+  if (state.faye.taskComplete) return;
+  const slot = document.querySelector('.oer-reassign-slot');
+  const ffBtn = document.querySelector('.oer-ff-btn');
+  if (ffBtn) ffBtn.remove();
+  if (slot) {
+    slot.insertAdjacentHTML('beforeend', `
+      <div class="oer-ff-theater">
+        <span class="reveal-dots"><span></span><span></span><span></span></span>
+        <span class="reveal-msg">
+          <span class="reveal-agent">Learning Engine</span> · ${state.faye.woReassignedTo || 'Technician'} completing repair · generating root cause analysis + service report from ${WORK_ORDER.id} + ${WORK_ORDER_REVISED.id}
+        </span>
+      </div>`);
+  }
+  if (window.LOG) {
+    window.LOG.appendLine({
+      ts: currentSGTLog(),
+      source: 'workflow',
+      text: `Repair complete · BFP-3A casing crack rectified by ${state.faye.woReassignedTo || 'technician'} · ${WORK_ORDER_REVISED.id} closed`,
+      dataSource: 'Hyperspace OS',
+      nodeChain: ['pump-casing-crack-pattern', 'casing-bfp-3a'],
+    });
+    window.LOG.appendLine({
+      ts: currentSGTLog(),
+      source: 'workflow',
+      text: `Learning Engine · RCA + service report generated from ${WORK_ORDER.id} + ${WORK_ORDER_REVISED.id} · ready for review`,
+      dataSource: 'Hyperspace OS',
+      nodeChain: ['casing-rca-jrg-2023', 'pump-casing-crack-pattern'],
+    });
+  }
+  fireAgentCardLifecycle('workflow', 2500);
+  pushReveal(() => {
+    state.faye.taskComplete = true;
+    document.querySelector('.oer-ff-theater')?.remove();
+    if (slot) {
+      slot.innerHTML = `<div class="oer-reassign-done">✓ <strong>${WORK_ORDER_REVISED.id}</strong> reassigned to <span class="dyn-name">${state.faye.woReassignedTo}</span> · repair complete</div>`;
+    }
+    const section = document.querySelector('.oer-reassign-section');
+    if (section && !document.querySelector('.oer-rca-section')) {
+      section.insertAdjacentHTML('afterend', buildTaskCompleteReportHTML());
+    }
+  }, 2500);
+}
+
 function revealEscalationReportInstant() {
   const loading = document.querySelector('.oer-loading');
   if (loading) loading.remove();
   spawnEscalationReportContent();
   wireTranscriptModalLinks();
+  wireReassignWOButton();    // W19 — resend WO to a new technician
+  wireFastForwardButton();   // W19 — fast-forward to task complete (RCA + service report)
 }
 
 function paintEscalationReportCTAActioned() {
@@ -4753,7 +5746,7 @@ const P1_WORKFLOWS = {
         { name: 'Critic',           agents: ['Critic · Power Gen', 'Criticality Standards Critic'],         persistent: ['critic-power-gen', null] },
         { name: 'Orchestrator',     agents: ['Orchestrator', 'A2A Coordination Agent'],                     persistent: ['orchestrator', 'workflow'] },
       ],
-      outputCaption: 'Triage Agent · 78% confidence · KG path traced',
+      outputCaption: 'Triage Agent · 85% confidence · KG path traced',
     },
     {
       num: 2,
@@ -4771,14 +5764,15 @@ const P1_WORKFLOWS = {
     {
       num: 3,
       label: 'Scheduling',
-      tagline: 'Roster · expertise match · dispatch payload',
+      tagline: 'Roster · planned-outage calendar · schedule-optimized dispatch',
       durationMs: 20000,   // W14 R1 — 4x slower (was 5000)
       buckets: [
-        { name: 'Domain Experts',   agents: ['Roster Lookup Agent', 'Expertise Match Agent'],               persistent: [null, null] },
+        // W42 — Schedule Integration Agent consumes existing crew roster + planned maint/outage calendar to optimize dispatch timing.
+        { name: 'Domain Experts',   agents: ['Roster Lookup Agent', 'Expertise Match Agent', 'Schedule Integration Agent'], persistent: [null, null, null] },
         { name: 'Critic',           agents: ['Certs Validator'],                                            persistent: [null] },
         { name: 'Orchestrator',     agents: ['Orchestrator', 'A2A Coordination Agent'],                     persistent: ['orchestrator', 'workflow'] },
       ],
-      outputCaption: 'A2A Coordination Agent · dispatching to Lim Wei Jie · payload pre-attached',
+      outputCaption: 'Schedule Integration Agent · BFP-3A fix co-scheduled into next planned maintenance window · crew roster aligned · dispatching to Lim Wei Jie',
     },
   ],
 };
@@ -6955,25 +7949,25 @@ const ORCHESTRATOR_DISPATCH_LINES = [
 const TRIAGE_AGENT_SCRIPT = {
   agentId: 'triage',
   durationMs: 3500,
-  taskTreeLabel: 'Bearing Hypothesis · Pattern-Match',
+  taskTreeLabel: 'Misalignment Hypothesis · Spectral Match',
   steps: [
     {
-      log: { ts: '02:47:19', source: 'triage', text: 'pattern-match · 3 prior BFP bearing failures · Jurong-CCGT-2 / Sakra-CCGT-1 / Banyan-CHP', dataSource: 'Hyperspace KG', nodeChain: ['rca-bfp-jrg-2025','rca-bfp-skr-2024','rca-bfp-banyan-2024','bearing-spalling-pattern'] },
-      treeLabel: 'Pattern-match prior RCAs',
+      log: { ts: '02:47:19', source: 'triage', text: 'spectral analysis · elevated 2×RPM harmonic + ~180° NDE-DE phase shift across coupling', dataSource: 'Hyperspace KG', nodeChain: ['shaft-bfp-3a','coupling-bfp-3a','failure-mode-misalignment'] },
+      treeLabel: 'Analyze vibration spectrum',
       delayMs: 200,
     },
     {
-      log: { ts: '02:47:20', source: 'triage', text: 'diagnosis hypothesis · NDE bearing race spalling (early-stage) · 78% confidence', dataSource: 'Hyperspace OS', nodeChain: ['bearing-spalling-pattern','bearing-bfp-3a-nde'] },
+      log: { ts: '02:47:20', source: 'triage', text: 'diagnosis hypothesis · shaft misalignment · 85% confidence', dataSource: 'Hyperspace OS', nodeChain: ['failure-mode-misalignment','shaft-bfp-3a'] },
       treeLabel: 'Form hypothesis',
       delayMs: 900,
     },
     {
-      log: { ts: '02:47:21', source: 'triage', text: 'alternatives considered · shaft misalignment 52% · coupling wear 31% · impeller imbalance 19%', dataSource: 'Hyperspace OS', nodeChain: ['shaft-bfp-3a','coupling-bfp-3a'] },
+      log: { ts: '02:47:21', source: 'triage', text: 'alternatives considered · NDE bearing race spalling 78% · coupling wear 31% · impeller imbalance 19%', dataSource: 'Hyperspace OS', nodeChain: ['bearing-spalling-pattern','coupling-bfp-3a'] },
       treeLabel: 'Consider alternatives',
       delayMs: 900,
     },
     {
-      log: { ts: '02:47:22', source: 'triage', text: 'synthesis · 78% confidence · passing to Power Gen Critic', dataSource: 'Hyperspace OS', nodeChain: ['bearing-spalling-pattern'] },
+      log: { ts: '02:47:22', source: 'triage', text: 'synthesis · 85% confidence · passing to Power Gen Critic', dataSource: 'Hyperspace OS', nodeChain: ['failure-mode-misalignment'] },
       treeLabel: 'Pass to critic',
       delayMs: 800,
     },
@@ -6983,10 +7977,10 @@ const TRIAGE_AGENT_SCRIPT = {
 const POWER_GEN_CRITIC_SCRIPT = {
   agentId: 'critic-power-gen',
   durationMs: 2400,
-  taskTreeLabel: 'Validate Bearing Hypothesis',
+  taskTreeLabel: 'Validate Misalignment Hypothesis',
   steps: [
     {
-      log: { ts: '02:47:22', source: 'critic-power-gen', text: 'KG path validated · bearing-spalling-pattern matches Sulzer BFP degradation profile ✓', dataSource: 'Hyperspace KG', nodeChain: ['bearing-spalling-pattern','sulzer-bfp-manual'] },
+      log: { ts: '02:47:22', source: 'critic-power-gen', text: 'KG path validated · failure-mode-misalignment within Sulzer BFP coupling-alignment tolerance ✓', dataSource: 'Hyperspace KG', nodeChain: ['failure-mode-misalignment','sulzer-bfp-manual'] },
       treeLabel: 'Walk KG path backwards',
       delayMs: 200,
     },
@@ -6996,7 +7990,7 @@ const POWER_GEN_CRITIC_SCRIPT = {
       delayMs: 1000,
     },
     {
-      log: { ts: '02:47:24', source: 'critic-power-gen', text: 'diagnosis VALIDATED · surfacing to tablet', nodeChain: ['bearing-spalling-pattern','bfp-3a'] },
+      log: { ts: '02:47:24', source: 'critic-power-gen', text: 'diagnosis VALIDATED · surfacing to tablet', nodeChain: ['failure-mode-misalignment','bfp-3a'] },
       treeLabel: 'Validate + surface',
       delayMs: 1000,
     },
@@ -8244,6 +9238,7 @@ function init() {
   initRightPaneToolbar();
   initDrawer();
   initDocModal();
+  initSourcesModal();
   initTranscriptModal();
   // W3.10 — telemetry modal ESC-to-close
   document.addEventListener('keydown', e => {
