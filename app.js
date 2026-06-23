@@ -3673,6 +3673,12 @@ function serviceReportSections() {
 function buildServiceReportHTML() {
   const sectionsHtml = serviceReportSections().map(s =>
     `<div class="svr-section"><div class="svr-label">${s.label}</div>${s.html}</div>`).join('');
+  const summaryHtml = `
+      <div class="svr-summary">
+        <div class="svr-summary-eyebrow">Work completed</div>
+        <div class="svr-summary-title">Pump casing crack repair · BFP-3A</div>
+        <p class="svr-summary-text"><strong>${WORK_ORDER_REVISED.id}</strong> · revised diagnosis confirmed a <strong>crack in the pump casing on BFP-3A</strong> (60 mm hairline at the discharge weld), with secondary NDE/DE bearing damage. BFP-3A was shut down and Block 2 feedwater isolated; casing dye-penetrant NDT and bearing-damage assessment completed, and the work order escalated to the offsite expert for sign-off per SOP-BFP-VIBR-001.</p>
+      </div>`;
   return `
     <div class="service-report">
       <div class="svr-head">
@@ -3685,6 +3691,7 @@ function buildServiceReportHTML() {
           <button class="svr-sources-btn" type="button">◆ Sources</button>
         </div>
       </div>
+      ${summaryHtml}
       ${sectionsHtml}
       <div class="svr-foot">Severity escalated AMBER → CRITICAL · routed to <span class="dyn-name">Faye Sit</span> for ops + commercial impact · transcript + revised diagnosis written back to Knowledge-Graph.</div>
     </div>`;
