@@ -152,6 +152,8 @@ export function ResolutionPanel() {
     for (const card of CARDS) {
       if (phases.get(card.incident) !== 'resolved') continue
       card.matchedNodes.forEach((n) => matched.add(n))
+      const inc = INCIDENTS.find((i) => i.id === card.incident)
+      if (inc) matched.add(inc.asset) // light up the incident's own machine (green unit node)
       if (card.reweight) reweight = true
       if (card.gap) gap = true
     }

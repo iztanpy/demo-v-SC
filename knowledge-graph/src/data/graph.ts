@@ -17,13 +17,14 @@ export const COLS = { asset: 1150, symptom: 1430, l1: 1710, l2: 2000, cause: 235
 
 export const NODE_COLORS: Record<NodeLabel, string> = {
   AssetClass: '#64748B',     // slate — the equipment class
+  Machine: '#16A34A',        // green — a physical unit (instance of the class)
   Symptom: '#F59E0B',        // amber — the alert
   DiagnosticTest: '#2563EB', // blue — the tests
   RootCause: '#DC2626',      // red — the culprits
   Inconclusive: '#7C3AED',   // violet — the "more info needed" escalation sink
 }
 
-export const NODE_LABELS: NodeLabel[] = ['AssetClass', 'Symptom', 'DiagnosticTest', 'RootCause', 'Inconclusive']
+export const NODE_LABELS: NodeLabel[] = ['AssetClass', 'Machine', 'Symptom', 'DiagnosticTest', 'RootCause', 'Inconclusive']
 
 // Column headers drawn across the top of the graph.
 export const COL_HEADERS: { x: number; label: string }[] = [

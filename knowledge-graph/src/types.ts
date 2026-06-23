@@ -51,14 +51,14 @@ export interface StepCopy {
 }
 
 // ── Pure-knowledge graph model (mirrors knowlede-graph-v2/references/knowledge_graph_1.cypher, trimmed) ──
-export type NodeLabel = 'AssetClass' | 'Symptom' | 'DiagnosticTest' | 'RootCause' | 'Inconclusive'
+export type NodeLabel = 'AssetClass' | 'Machine' | 'Symptom' | 'DiagnosticTest' | 'RootCause' | 'Inconclusive'
 
 // Two-layer diagnostic model, root causes LAST (clearer than the cypher's THEN_IF chaining):
 //   Symptom -TRIGGERS-> triage test -FOLLOW_UP-> (sometimes) confirmatory test -CONFIRMS/RULES_OUT-> RootCause
 // 1 layer when a triage test is decisive; 2 layers when it escalates via a single FOLLOW_UP hop.
 // SIMILAR_TO = a cross-asset-class bridge (same failure mode / test recurring on another class) —
 // what makes the fleet graph one interconnected web while each class stays its own region.
-export type RelType = 'OCCURS_IN' | 'TRIGGERS' | 'FOLLOW_UP' | 'CONFIRMS' | 'RULES_OUT' | 'INCONCLUSIVE' | 'SHORTCUT' | 'SIMILAR_TO'
+export type RelType = 'OCCURS_IN' | 'TRIGGERS' | 'FOLLOW_UP' | 'CONFIRMS' | 'RULES_OUT' | 'INCONCLUSIVE' | 'SHORTCUT' | 'SIMILAR_TO' | 'INSTANCE_OF'
 
 export type PropVal = string | number | boolean | string[]
 

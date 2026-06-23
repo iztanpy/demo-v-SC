@@ -17,6 +17,7 @@ import './KGForce.css'
 // casing-crack node into the live simulation (it grows into the BFP region on sign-off).
 const SVGNS = 'http://www.w3.org/2000/svg'
 const W = 2040, H = 1260
+const PAD = 260 // viewBox margin so the (now denser) graph reads a bit zoomed-out
 const hubId = (key: string) => (key === 'BFP' ? 'AC-BFP' : `${key}-AC`)
 
 const SPREAD: [number, number][] = [[0.5, 0.52], [0.28, 0.3], [0.72, 0.3], [0.3, 0.74], [0.72, 0.74]]
@@ -251,7 +252,18 @@ export function KGForce() {
 
   return (
     <div className="kgf-stage">
-      <svg className="kgf-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet">
+      <div className="kgf-legend">
+        {([
+          ['AssetClass', 'Asset class'], ['Machine', 'Machine'], ['Symptom', 'Symptom'],
+          ['DiagnosticTest', 'Test'], ['RootCause', 'Root cause'],
+        ] as const).map(([label, text]) => (
+          <div key={label} className="kgf-legend-row">
+            <span className="kgf-legend-dot" style={{ background: NODE_COLORS[label] }} />
+            {text}
+          </div>
+        ))}
+      </div>
+      <svg className="kgf-svg" viewBox={`${-PAD} ${-PAD} ${W + 2 * PAD} ${H + 2 * PAD}`} preserveAspectRatio="xMidYMid meet">
         <g ref={viewRef} style={{ transformBox: 'view-box', transformOrigin: '0 0', transition: 'transform 1000ms ease' }}>
           <g ref={haloRef} className="kgf-halos" />
           <g ref={edgeRef} className="kgf-edges" />

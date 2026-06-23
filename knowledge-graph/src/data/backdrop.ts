@@ -56,6 +56,9 @@ export const CLUSTER_COLOR: Record<string, string> = Object.fromEntries(CLUSTERS
 
 const seeded = (n: number) => { const x = Math.sin(n * 12.9898) * 43758.5453; return x - Math.floor(x) }
 
+// the real BFP units (match the incident assets so a reaffirm can light its own machine green)
+const BFP_UNITS = ['BFP-1A', 'BFP-2A', 'BFP-3A', 'BFP-4A', 'BFP-5A', 'BFP-1B', 'BFP-2B', 'BFP-3B']
+
 // shared FAMILIES (not shared nodes) — each class gets its OWN node of a family; the families
 // are what we bridge across classes with SIMILAR_TO.
 const TEST_KINDS = ['vibration', 'thermal', 'oil', 'alignment', 'ndt']
@@ -70,6 +73,13 @@ function buildBackdrop(): { nodes: SimNodeData[]; edges: SimEdgeData[] } {
 
   for (const c of CLUSTERS) {
     nodes.push({ id: `${c.key}-AC`, label: 'AssetClass', cluster: c.key, r: 28, context: true, title: c.label })
+    // physical machines (units) per asset class — green instance nodes off the hub. The BFP units
+    // are the REAL incident assets, so a reaffirming incident can light up its own machine.
+    const units = c.key === 'BFP' ? BFP_UNITS : Array.from({ length: 2 + Math.floor(rnd() * 3) }, (_, m) => `${c.key}-M${m}`)
+    for (const mid of units) {
+      nodes.push({ id: mid, label: 'Machine', cluster: c.key, r: c.key === 'BFP' ? 13 : 11 + rnd() * 3, context: true, title: c.key === 'BFP' ? mid : undefined })
+      edges.push({ source: mid, target: `${c.key}-AC`, type: 'INSTANCE_OF', context: true })
+    }
     for (let s = 0; s < c.syms; s++) {
       const symId = `${c.key}-S${s}`
       nodes.push({ id: symId, label: 'Symptom', cluster: c.key, r: 15 + rnd() * 5, context: true })
@@ -137,9 +147,15 @@ export const PROPOSED_EDGES: SimEdgeData[] = FOCUS_EDGES
 
 // drop the generated BFP hub in favour of the real AC-BFP; reroute generated BFP symptoms to it
 const SIM_NODES: SimNodeData[] = [...backdrop.nodes.filter((n) => n.id !== 'BFP-AC'), ...focusNodes]
+
+// integrate the BFP units INTO the diagnostic pathway: each unit exhibits the SYM-001 symptom, so
+// a reaffirming incident lights its machine → SYM-001 → test → cause as one connected green chain.
+const machineSymptomEdges: SimEdgeData[] = BFP_UNITS.map((u) => ({ source: u, target: 'SYM-001', type: 'OCCURS_IN', context: true }))
+
 const SIM_EDGES: SimEdgeData[] = [
   ...backdrop.edges.map((e) => (e.target === 'BFP-AC' ? { ...e, target: 'AC-BFP' } : e)),
   ...focusEdges,
+  ...machineSymptomEdges,
 ]
 
 export const FLEET_NODES = SIM_NODES
