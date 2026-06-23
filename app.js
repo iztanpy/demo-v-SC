@@ -496,7 +496,8 @@ function renderPersonasPanel() {
   const row = document.getElementById('personas-row');
   if (!row) return;
   const ticket = getCanonicalTicket();
-  const visiblePersonas = PERSONAS.filter(p => p.key !== 'offsite');
+  // W7 — offsite hidden (reached via workflow). short-og-demo — analyst (Priya) removed: demo ends earlier.
+  const visiblePersonas = PERSONAS.filter(p => p.key !== 'offsite' && p.key !== 'analyst');
 
   // Lazy build — first call only.
   if (!row.dataset.built) {
