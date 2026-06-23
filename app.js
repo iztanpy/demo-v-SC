@@ -1715,8 +1715,7 @@ function stubView(root, label) {
 // + inspection checklist + binary CTAs + call flow + diagnosis morph + escalate
 // ─────────────────────────────────────────────
 
-// W15 — Restored grouped 3-group structure from commit 17cd4c3.
-// Safety 5 items / Instrument 3 items / Root cause isolation EXPANDED 2→5 items = 13 total.
+// W18 — Instrument group removed (per request). Safety 5 items / Root cause isolation 5 items = 10 total.
 const LIM_INSPECTION_CHECKLIST = [
   {
     group: 'Safety',
@@ -1726,14 +1725,6 @@ const LIM_INSPECTION_CHECKLIST = [
       { id: 'safety-3', text: 'Confirm vibration levels are stable enough for safe inspection.' },
       { id: 'safety-4', text: 'Check casing temperature is within safe handling range.' },
       { id: 'safety-5', text: 'Confirm lockout/tagout is in place before close inspection.' },
-    ],
-  },
-  {
-    group: 'Instrument',
-    items: [
-      { id: 'instr-1', text: 'Cross-check Bently Nevada 3500 readings against handheld vibration meter.' },
-      { id: 'instr-2', text: 'Inspect vibration transducer cabling + mounts for any loose connections.' },
-      { id: 'instr-3', text: 'Verify vibration readings using a handheld vibration meter if available.' },
     ],
   },
   {
@@ -1748,7 +1739,7 @@ const LIM_INSPECTION_CHECKLIST = [
   },
 ];
 
-const LIM_CHECKLIST_THRESHOLD = 13;
+const LIM_CHECKLIST_THRESHOLD = 10;
 
 // W4.1 — group theater (HSE for Safety, Instrument Diagnostic, Sensor Anomaly Inspector + Turbine Diag for root-cause)
 const GROUP_THEATER_AGENT = {
@@ -1778,7 +1769,7 @@ const GROUP_THEATER_AGENT = {
 const GROUP_LOCKED_HINT = {
   'Safety': '',
   'Instrument': '🔒 awaiting safety completion',
-  'Root cause isolation': '🔒 awaiting instrument completion',
+  'Root cause isolation': '🔒 awaiting safety completion',
 };
 
 function buildLimDetailScaffold() {
@@ -1877,6 +1868,8 @@ function renderOnsiteIncidentDetail(root) {
       } else {
         appendRevisedDiagnosisCaptureFooter();
       }
+      // W18 — read-only escalation report appended below Lim's completed view.
+      appendLimEscalationReport();
     }, 200);
     return;
   }
@@ -2082,13 +2075,7 @@ function paintLimChecklist() {
 }
 
 function paintLimChecklistComplete() {
-  // All items rendered as checked (post-escalation re-entry)
-  LIM_INSPECTION_CHECKLIST.forEach(g => g.items.forEach(it => { state.lim.checked[it.id] = true; }));
-  // W15 — also mirror Instrument tick results so post-action re-entry shows ✓ Done
-  state.lim.instrumentResults = state.lim.instrumentResults || {};
-  LIM_INSPECTION_CHECKLIST.find(g => g.group === 'Instrument').items.forEach(it => {
-    if (!state.lim.instrumentResults[it.id]) state.lim.instrumentResults[it.id] = 'tick';
-  });
+  // W18 — render the ACTUAL ticked state (force-complete removed); counts now reflect what Lim ticked.
   paintLimChecklist();
   // W8 C.5 — re-entry path also shows truncated groups.
   truncateInspectionGroupsToCompleted();
@@ -2261,10 +2248,11 @@ function truncateInspectionGroupsToCompleted() {
     const grpDef = LIM_INSPECTION_CHECKLIST.find(g => g.group === groupName);
     if (!grpDef) return;
     const total = grpDef.items.length;
+    const done = grpDef.items.filter(it => state.lim.checked[it.id]).length;
     grpEl.innerHTML = `
       <div class="ic-group-label ic-group-label-completed">
         <span class="ic-group-label-text">${groupName}</span>
-        <span class="ic-group-label-status">✓ ${total}/${total} completed</span>
+        <span class="ic-group-label-status">✓ ${done}/${total} checks</span>
       </div>`;
     grpEl.dataset.collapsed = 'true';
     grpEl.dataset.locked = 'false';
@@ -2384,12 +2372,8 @@ function updateChecklistProgress() {
     if (grpChecked === grpDef.items.length) groupCompleted[groupName] = true;
   });
 
-  // W4.1 — chain theater triggers on prior-group completion
-  if (groupCompleted['Safety'] && !state.lim.instrumentTheaterFired) {
-    state.lim.instrumentTheaterFired = true;
-    triggerGroupTheater('Instrument');
-  }
-  if (groupCompleted['Instrument'] && !state.lim.rciTheaterFired) {
+  // W18 — Instrument group removed; Safety completion now fires Root cause isolation theater directly.
+  if (groupCompleted['Safety'] && !state.lim.rciTheaterFired) {
     state.lim.rciTheaterFired = true;
     triggerGroupTheater('Root cause isolation');
   }
@@ -2891,6 +2875,36 @@ function appendRevisedDiagnosisCaptureFooter() {
   container.appendChild(lbl);
 }
 
+// W18 — read-only escalation report mirrored onto Lim's screen after his works complete.
+// Same content + A2A loading theater as Faye's renderOpsEscalationReport, but NO Notify-trading-desk CTA.
+function appendLimEscalationReport() {
+  const container = document.getElementById('incident-detail-view');
+  if (!container) return;
+  if (container.querySelector('.ops-escalation-report')) return;
+  const wrap = el('div', 'ops-escalation-report');
+  wrap.innerHTML = `
+    <div class="oer-card">
+      <div class="oer-heading">Escalation report</div>
+      <div class="reveal-pending oer-loading" data-stage="oer-summary">
+        <span class="reveal-dots"><span></span><span></span><span></span></span>
+        <span class="reveal-msg"><span class="reveal-agent">A2A Coordination Agent</span> · Loading escalation report for <span class="dyn-name">Faye Sit</span></span>
+      </div>
+    </div>`;
+  container.appendChild(wrap);
+  fireAgentCardLifecycle('workflow', 5000);
+  pushReveal(revealLimEscalationReport, 5000);
+}
+
+function revealLimEscalationReport() {
+  const card = document.querySelector('.ops-escalation-report .oer-card');
+  if (!card) return;
+  const loading = card.querySelector('.oer-loading');
+  if (loading) loading.remove();
+  if (card.querySelector('.oer-content')) return;
+  card.insertAdjacentHTML('beforeend', escalationReportSectionsHTML());
+  wireTranscriptModalLinks();
+}
+
 function onEscalateForApprovalClick() {
   const ticket = getCanonicalTicket();
   if (ticket.byPersona.onsite.actioned) return;
@@ -3214,13 +3228,43 @@ function renderOpsEscalationReport(root) {
   startEscalationReportReveal();
 }
 
-// W6 — spawn 4 sections + CTA on reveal (deferred from initial paint)
-function spawnEscalationReportContent() {
-  const card = document.querySelector('.ops-escalation-report .oer-card');
-  if (!card) return;
-  if (card.querySelector('.oer-content')) return;
-  const contentHTML = `
+// W18 — per-group check recap reflects the ACTUAL ticked items (not hardcoded 5/5).
+function limWorkflowCheckLinesHTML() {
+  return LIM_INSPECTION_CHECKLIST.map(g => {
+    const done = g.items.filter(it => state.lim.checked[it.id]).length;
+    return `<div class="oer-wl-item">✓ ${done}/${g.items.length} ${g.group} checks</div>`;
+  }).join('');
+}
+
+// W18 — escalation report sections extracted so Faye (with CTA) + Lim (read-only) share identical content.
+// W18 — Immediate-action block leads the report (above diagnosis).
+function escalationReportSectionsHTML() {
+  return `
     <div class="oer-content reveal-in">
+      <div class="oer-section oer-section-action">
+        <div class="oer-action-banner">
+          <span class="oer-ab-icon">⚠</span>
+          <div class="oer-ab-body">
+            <div class="oer-ab-label">Immediate action</div>
+            <div class="oer-ab-text">Shut down BFP-3A · isolate Block 2 feedwater</div>
+          </div>
+        </div>
+        <div class="oer-impact-card">
+          <div class="oer-imp-label">Impact</div>
+          <div class="oer-imp-chips">
+            <div class="oer-imp-chip">
+              <span class="oer-chip-val">50 MW</span>
+              <span class="oer-chip-lbl">Block 2 derate</span>
+            </div>
+            <div class="oer-imp-chip oer-imp-chip-money">
+              <span class="oer-chip-val">~SGD 2.4M</span>
+              <span class="oer-chip-lbl">revenue at risk</span>
+            </div>
+          </div>
+          <div class="oer-imp-note">PSO commitment window 09:00–18:00 SGT · 4h peak tariff exposure · curtailment / hedge eligible</div>
+        </div>
+      </div>
+
       <div class="oer-section">
         <div class="oer-section-label">Correct diagnosis (revised)</div>
         <div class="oer-diagnosis"><span class="dyn-name">Crack in pump casing on BFP-3A</span></div>
@@ -3232,9 +3276,7 @@ function spawnEscalationReportContent() {
       <div class="oer-section">
         <div class="oer-section-label"><span class="dyn-name">Lim Wei Jie</span>'s completed workflow</div>
         <div class="oer-workflow-list">
-          <div class="oer-wl-item">✓ 5/5 Safety checks</div>
-          <div class="oer-wl-item">✓ 3/3 Instrument checks</div>
-          <div class="oer-wl-item">✓ 2/2 Root cause isolation checks</div>
+          ${limWorkflowCheckLinesHTML()}
           <div class="oer-wl-item">✓ Initial bearing-spalling hypothesis rejected</div>
           <div class="oer-wl-item">✓ Call with <span class="dyn-name">Dr. A. Ismail</span> · 7m 23s · transcript captured</div>
           <div class="oer-wl-item">✓ Transcript captured · <span class="dyn-name">Dr. A. Ismail</span> + <span class="dyn-name">Lim Wei Jie</span> discussed and agreed <button class="oer-tx-inline" type="button">(see transcript)</button></div>
@@ -3245,22 +3287,18 @@ function spawnEscalationReportContent() {
         <div class="oer-section-label">Source</div>
         <button class="oer-transcript-link" type="button">View call transcript + summary</button>
       </div>
+    </div>`;
+}
 
-      <div class="oer-section oer-section-action">
-        <div class="oer-recommendation">
-          <div class="oer-rec-label">Recommendation</div>
-          <div class="oer-rec-body">Shut down BFP-3A immediately · isolate Block 2 feedwater</div>
-        </div>
-        <div class="oer-impact">
-          <div class="oer-imp-label">Impact</div>
-          <div class="oer-imp-body">50 MW Block 2 derate · PSO commitment window 09:00–18:00 SGT · 4h peak tariff exposure · ~SGD 2.4M revenue at risk · curtailment / hedge eligible</div>
-        </div>
-      </div>
-    </div>
+// W6 — spawn 4 sections + CTA on reveal (deferred from initial paint)
+function spawnEscalationReportContent() {
+  const card = document.querySelector('.ops-escalation-report .oer-card');
+  if (!card) return;
+  if (card.querySelector('.oer-content')) return;
+  card.insertAdjacentHTML('beforeend', escalationReportSectionsHTML() + `
     <button class="oer-cta" type="button" disabled>
       Notify trading desk · route to <span class="dyn-name-on-green">Priya Sundaram</span>
-    </button>`;
-  card.insertAdjacentHTML('beforeend', contentHTML);
+    </button>`);
 }
 
 function revealEscalationReportInstant() {

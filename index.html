@@ -3704,18 +3704,57 @@
       border-color: var(--green-vivid);
       color: var(--green-vivid);
     }
+    /* W18 — shutdown impact: red command banner (leads report) + glowing figure chips */
     .oer-section-action {
-      background: var(--amber-soft);
-      padding: 10px 12px; border-radius: 8px; margin-top: 10px;
-      border-bottom: none;
+      background: transparent; padding: 0; margin: 2px 0 10px; border-bottom: none;
     }
-    .oer-recommendation, .oer-impact { padding: 4px 0; }
-    .oer-rec-label, .oer-imp-label {
-      font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
-      color: var(--amber-soft-text);
+    .oer-action-banner {
+      display: flex; align-items: center; gap: 10px;
+      background: #DC2626; color: #FFFFFF;
+      padding: 9px 13px; border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(220,38,38,0.26);
+      animation: oer-alarm-pulse 2.4s ease-in-out infinite;
     }
-    .oer-rec-body, .oer-imp-body {
-      font-size: 12px; line-height: 1.45; color: var(--text-primary); margin-top: 2px;
+    @keyframes oer-alarm-pulse {
+      0%, 100% { box-shadow: 0 1px 4px rgba(220,38,38,0.24); }
+      50%      { box-shadow: 0 2px 9px rgba(220,38,38,0.46); }
+    }
+    .oer-ab-icon { font-size: 16px; line-height: 1; flex-shrink: 0; }
+    .oer-ab-label {
+      font-size: 9.5px; font-weight: 800; letter-spacing: 0.12em;
+      text-transform: uppercase; opacity: 0.92;
+    }
+    .oer-ab-text { font-size: 13px; font-weight: 700; line-height: 1.35; margin-top: 2px; }
+    .oer-impact-card {
+      margin-top: 8px; background: #FEF2F2; border: 1px solid #FECACA;
+      border-radius: 8px; padding: 10px 12px;
+    }
+    .oer-impact-card .oer-imp-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: #B91C1C;
+    }
+    .oer-imp-chips { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .oer-imp-chip {
+      flex: 1 1 0; min-width: 118px;
+      display: flex; flex-direction: column;
+      background: #FFFFFF; border: 1px solid #FCA5A5;
+      border-radius: 7px; padding: 8px 10px;
+    }
+    .oer-chip-val {
+      font-family: var(--mono); font-size: 18px; font-weight: 800;
+      color: #DC2626; line-height: 1.1;
+    }
+    .oer-chip-lbl { font-size: 10px; font-weight: 600; color: #7F1D1D; margin-top: 3px; }
+    .oer-imp-chip-money {
+      border-color: #DC2626;
+      animation: oer-chip-glow 1.8s ease-in-out infinite;
+    }
+    @keyframes oer-chip-glow {
+      0%, 100% { box-shadow: 0 0 4px rgba(220,38,38,0.22); border-color: #FCA5A5; }
+      50%      { box-shadow: 0 0 15px rgba(220,38,38,0.58); border-color: #DC2626; }
+    }
+    .oer-imp-note {
+      font-size: 11.5px; line-height: 1.45; color: var(--text-primary); margin-top: 8px;
     }
     .oer-cta {
       display: block; width: calc(100% - 32px);
@@ -6616,6 +6655,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=w18a"></script>
+  <script src="app.js?v=w18e"></script>
 </body>
 </html>
