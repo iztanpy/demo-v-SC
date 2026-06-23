@@ -2436,7 +2436,6 @@ function startLimScreenDReveal() {
 function paintLimSummaryComplete(revised) {
   const slot = document.getElementById('lim-summary-slot');
   if (!slot) return;
-  const hyp = INCIDENT.hypothesis;
   // W14 R2 — Rationale dropdown replaces Alt-hypotheses dropdown · re-uses W13 R2 INITIAL_DIAGNOSIS_RATIONALE + wireRationaleToggle (Faye-consistent).
   const rationaleHtml = INITIAL_DIAGNOSIS_RATIONALE.map(r => `
     <div class="sr-rationale-row" data-strength="${r.strength}">
@@ -2454,7 +2453,7 @@ function paintLimSummaryComplete(revised) {
     tileHtml = `
       <div class="sr-hypothesis">
         <div class="sr-hyp-row">
-          <span class="sr-hyp-name">${hyp.primary}</span>
+          <span class="sr-hyp-name">${capturedDiagnosisName()}</span>
           <span class="sr-hyp-status-pill">pending onsite verification</span>
         </div>
       </div>
@@ -2482,12 +2481,11 @@ function paintLimSummaryComplete(revised) {
 }
 
 function buildRevisedDiagnosisTileHTML() {
-  const hyp = INCIDENT.hypothesis;
   const ts = state.lim.revisionTimestamp || '02:55 SGT';
   return `
     <div class="sr-hypothesis sr-hypothesis-revised">
       <div class="sr-hyp-row sr-hyp-original">
-        <span class="sr-hyp-name strikethrough">${hyp.primary}</span>
+        <span class="sr-hyp-name strikethrough">${capturedDiagnosisName()}</span>
         <span class="sr-hyp-flag">SUPERSEDED</span>
       </div>
       <div class="sr-hyp-row sr-hyp-revised">
