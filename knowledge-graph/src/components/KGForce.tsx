@@ -91,12 +91,13 @@ export function KGForce() {
   const rwLabelRef = useRef<SVGTextElement | null>(null)
   const newLabelsRef = useRef<{ el: SVGTextElement; id: string }[]>([])
   const newRingsRef = useRef<{ el: SVGCircleElement; id: string }[]>([])
+  const addedEdgesRef = useRef<Set<string>>(new Set()) // proposed edges already drawn (per-node commit)
   const baseTransformRef = useRef(FULL_TRANSFORM) // base view the graph returns to when not committed
   const committedRef = useRef(false)
   const matchedNodes = useDemo((s) => s.matchedNodes)
   const reweight = useDemo((s) => s.reweight)
   const reweightApplied = useDemo((s) => s.reweightApplied)
-  const committed = useDemo((s) => s.committed)
+  const committedNodes = useDemo((s) => s.committedNodes)
 
   useEffect(() => {
     const haloG = haloRef.current!, edgeG = edgeRef.current!, nodeG = nodeRef.current!, labelG = labelRef.current!
@@ -213,81 +214,103 @@ export function KGForce() {
     }
   }, [matchedNodes, reweight, reweightApplied])
 
-  // New Knowledge commit: grow the casing-crack node + weld-NDT test + edges into the live sim
-  // on sign-off; remove them again on restart.
+  // New Knowledge commit: each APPROVED proposed node (per Panel 3 sign-off) grows into the live
+  // sim individually; rejected ones never appear. Edges are drawn only once both endpoints exist.
+  // Everything is torn down again on restart (committedNodes back to empty).
   useEffect(() => {
-    committedRef.current = committed
+    committedRef.current = committedNodes.length > 0
     const sim = simRef.current
     if (!sim) return
-    const present = !!nodeMapRef.current['RC-CASING-CRACK']
+    const want = new Set(committedNodes)
+    const proposedIds = new Set(PROPOSED_NODES.map((n) => n.id))
+    const anyPresent = PROPOSED_NODES.some((pn) => nodeMapRef.current[pn.id])
 
-    // on commit, drop the green reaffirm highlights so the focus is purely on the new node(s)
-    if (committed) {
-      for (const el of Object.values(nodeMapRef.current)) el.classList.remove('kgf-match')
-      for (const rec of edgeRecsRef.current) rec.el.classList.remove('kgf-edge-match')
-    }
-
-    if (committed && !present) {
-      const nodeG = nodeRef.current!, edgeG = edgeRef.current!, labelG = labelRef.current!
-      const anchor = nodesRef.current.find((n) => n.id === 'DT-PHASE') ?? nodesRef.current.find((n) => n.id === 'AC-BFP')
-      const px = anchor?.x ?? W / 2, py = anchor?.y ?? H / 2
-      for (const pn of PROPOSED_NODES) {
-        if (nodeMapRef.current[pn.id]) continue
-        const bigR = pn.r * 1.6 // enlarge the new nodes so they stand out
-        const sn = { ...pn, r: bigR, x: px + (Math.random() - 0.5) * 90, y: py + (Math.random() - 0.5) * 90 } as SimNode
-        nodesRef.current.push(sn)
-        const el = makeNodeEl(sn, true); nodeG.appendChild(el); nodeMapRef.current[pn.id] = el
-        // animated outline ring (marching-ants) around the new node
-        const ring = document.createElementNS(SVGNS, 'circle')
-        ring.setAttribute('class', 'kgf-newring'); ring.setAttribute('fill', 'none'); ring.setAttribute('r', String(bigR + 12))
-        nodeG.appendChild(ring); newRingsRef.current.push({ el: ring, id: pn.id })
-        // identifier label so the newly-added knowledge is unmistakable
-        const t = document.createElementNS(SVGNS, 'text')
-        t.setAttribute('class', 'kgf-newlabel'); t.setAttribute('text-anchor', 'middle')
-        t.textContent = pn.title ?? 'new'
-        labelG.appendChild(t); newLabelsRef.current.push({ el: t, id: pn.id })
-      }
-      for (const pe of PROPOSED_EDGES) {
-        if (pe.type === 'SHORTCUT') continue // focus the commit on the casing-crack knowledge
-        const link: SimLink = { ...pe }
-        const el = makeLinkEl(link, true); edgeG.appendChild(el)
-        edgeRecsRef.current.push({ link, el, s: pe.source, t: pe.target })
-      }
-      sim.nodes(nodesRef.current)
-      ;(sim.force('link') as ReturnType<typeof forceLink<SimNode, SimLink>>).links(edgeRecsRef.current.map((r) => r.link))
-      sim.alpha(0.7).restart()
-
-      // zoom onto the NEW nodes only (not the old reaffirmed path). Re-run as the sim cools so it
-      // tracks them to their final positions and lands reliably centred.
-      const focusIds = PROPOSED_NODES.map((n) => n.id)
-      const doZoom = () => {
-        const focus = nodesRef.current.filter((n) => focusIds.includes(n.id))
-        if (!focus.length || !viewRef.current) return
-        let cx = 0, cy = 0
-        for (const n of focus) { cx += n.x; cy += n.y }
-        cx /= focus.length; cy /= focus.length
-        viewRef.current.style.transform = centerTransform(cx, cy, COMMIT_Z, COMMIT_DX, COMMIT_DY)
-      }
-      zoomTimersRef.current = [700, 1600, 2700, 3800, 4900].map((d) => window.setTimeout(doZoom, d))
-    } else if (!committed && present) {
+    // RESET — nothing approved but proposed nodes are on the graph → tear them all down
+    if (want.size === 0) {
+      if (!anyPresent) return
       zoomTimersRef.current.forEach(clearTimeout); zoomTimersRef.current = []
       if (viewRef.current) viewRef.current.style.transform = baseTransformRef.current
-      const prop = new Set(PROPOSED_NODES.map((n) => n.id))
-      nodesRef.current = nodesRef.current.filter((n) => !prop.has(n.id))
-      for (const id of prop) { nodeMapRef.current[id]?.remove(); delete nodeMapRef.current[id] }
-      for (const nl of newLabelsRef.current) nl.el.remove()
-      newLabelsRef.current = []
-      for (const nr of newRingsRef.current) nr.el.remove()
-      newRingsRef.current = []
+      nodesRef.current = nodesRef.current.filter((n) => !proposedIds.has(n.id))
+      for (const id of proposedIds) { nodeMapRef.current[id]?.remove(); delete nodeMapRef.current[id] }
+      for (const nl of newLabelsRef.current) nl.el.remove(); newLabelsRef.current = []
+      for (const nr of newRingsRef.current) nr.el.remove(); newRingsRef.current = []
       edgeRecsRef.current = edgeRecsRef.current.filter((r) => {
-        if (prop.has(r.s) || prop.has(r.t)) { r.el.remove(); return false }
+        if (proposedIds.has(r.s) || proposedIds.has(r.t)) { r.el.remove(); return false }
         return true
       })
+      addedEdgesRef.current.clear()
       sim.nodes(nodesRef.current)
       ;(sim.force('link') as ReturnType<typeof forceLink<SimNode, SimLink>>).links(edgeRecsRef.current.map((r) => r.link))
       sim.alpha(0.4).restart()
+      return
     }
-  }, [committed])
+
+    // first approval drops the green reaffirm highlights so focus is purely on the new node(s)
+    for (const el of Object.values(nodeMapRef.current)) el.classList.remove('kgf-match')
+    for (const rec of edgeRecsRef.current) rec.el.classList.remove('kgf-edge-match')
+
+    const nodeG = nodeRef.current!, edgeG = edgeRef.current!, labelG = labelRef.current!
+    const anchor = nodesRef.current.find((n) => n.id === 'DT-PHASE') ?? nodesRef.current.find((n) => n.id === 'AC-BFP')
+    const px = anchor?.x ?? W / 2, py = anchor?.y ?? H / 2
+
+    // add any APPROVED proposed node not yet present
+    for (const pn of PROPOSED_NODES) {
+      if (!want.has(pn.id) || nodeMapRef.current[pn.id]) continue
+      const bigR = pn.r * 1.6 // enlarge the new nodes so they stand out
+      const sn = { ...pn, r: bigR, x: px + (Math.random() - 0.5) * 90, y: py + (Math.random() - 0.5) * 90 } as SimNode
+      nodesRef.current.push(sn)
+      const el = makeNodeEl(sn, true); nodeG.appendChild(el); nodeMapRef.current[pn.id] = el
+      const ring = document.createElementNS(SVGNS, 'circle')
+      ring.setAttribute('class', 'kgf-newring'); ring.setAttribute('fill', 'none'); ring.setAttribute('r', String(bigR + 12))
+      nodeG.appendChild(ring); newRingsRef.current.push({ el: ring, id: pn.id })
+      const t = document.createElementNS(SVGNS, 'text')
+      t.setAttribute('class', 'kgf-newlabel'); t.setAttribute('text-anchor', 'middle')
+      t.textContent = pn.title ?? 'new'
+      labelG.appendChild(t); newLabelsRef.current.push({ el: t, id: pn.id })
+    }
+
+    // draw proposed edges once BOTH endpoints exist (already-present or just-approved)
+    const edgeKey = (s: string, t: string) => `${s}>${t}`
+    for (const pe of PROPOSED_EDGES) {
+      if (pe.type === 'SHORTCUT') continue // focus the commit on the casing-crack knowledge
+      const k = edgeKey(pe.source, pe.target)
+      if (addedEdgesRef.current.has(k)) continue
+      if (!nodeMapRef.current[pe.source] || !nodeMapRef.current[pe.target]) continue
+      const link: SimLink = { ...pe }
+      const el = makeLinkEl(link, true); edgeG.appendChild(el)
+      edgeRecsRef.current.push({ link, el, s: pe.source, t: pe.target })
+      addedEdgesRef.current.add(k)
+    }
+
+    // orphan guard: casing crack approved without its confirming test → provisional edge from DT-PHASE
+    if (nodeMapRef.current['RC-CASING-CRACK'] && !nodeMapRef.current['DT-WELD-NDT'] && nodeMapRef.current['DT-PHASE']) {
+      const k = edgeKey('DT-PHASE', 'RC-CASING-CRACK')
+      if (!addedEdgesRef.current.has(k)) {
+        const link: SimLink = { source: 'DT-PHASE', target: 'RC-CASING-CRACK', type: 'CONFIRMS', context: false } as SimLink
+        const el = makeLinkEl(link, true); edgeG.appendChild(el)
+        edgeRecsRef.current.push({ link, el, s: 'DT-PHASE', t: 'RC-CASING-CRACK' })
+        addedEdgesRef.current.add(k)
+      }
+    }
+
+    sim.nodes(nodesRef.current)
+    ;(sim.force('link') as ReturnType<typeof forceLink<SimNode, SimLink>>).links(edgeRecsRef.current.map((r) => r.link))
+    sim.alpha(0.7).restart()
+
+    // zoom onto the committed new nodes only. Re-run as the sim cools so it tracks them to their
+    // final positions and lands reliably centred.
+    const focusIds = [...want]
+    const doZoom = () => {
+      const focus = nodesRef.current.filter((n) => focusIds.includes(n.id))
+      if (!focus.length || !viewRef.current) return
+      let cx = 0, cy = 0
+      for (const n of focus) { cx += n.x; cy += n.y }
+      cx /= focus.length; cy /= focus.length
+      viewRef.current.style.transform = centerTransform(cx, cy, COMMIT_Z, COMMIT_DX, COMMIT_DY)
+    }
+    zoomTimersRef.current.forEach(clearTimeout)
+    zoomTimersRef.current = [700, 1600, 2700, 3800, 4900].map((d) => window.setTimeout(doZoom, d))
+  }, [committedNodes])
 
   return (
     <div className="kgf-stage">

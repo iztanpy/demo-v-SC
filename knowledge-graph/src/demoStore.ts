@@ -23,16 +23,17 @@ interface DemoState {
   setReweightApplied: (v: boolean) => void
   setGap: (v: boolean) => void
 
-  /** admin signed off → the new knowledge commits into the graph (Panel 3) */
-  committed: boolean
-  setCommitted: (v: boolean) => void
+  /** proposed-node ids the human signed off on (per-card) → the graph grows exactly these */
+  committedNodes: string[]
+  /** add one approved proposed-node id to the graph (idempotent) */
+  approveNode: (id: string) => void
 }
 
 export const useDemo = create<DemoState>((set) => ({
   started: false,
   runId: 0,
-  start: () => set((s) => ({ started: true, runId: s.runId + 1, matchedNodes: [], reweight: false, reweightApplied: false, gap: false, committed: false })),
-  reset: () => set({ started: false, matchedNodes: [], reweight: false, reweightApplied: false, gap: false, committed: false }),
+  start: () => set((s) => ({ started: true, runId: s.runId + 1, matchedNodes: [], reweight: false, reweightApplied: false, gap: false, committedNodes: [] })),
+  reset: () => set({ started: false, matchedNodes: [], reweight: false, reweightApplied: false, gap: false, committedNodes: [] }),
 
   matchedNodes: [],
   reweight: false,
@@ -43,6 +44,6 @@ export const useDemo = create<DemoState>((set) => ({
   setReweightApplied: (v) => set({ reweightApplied: v }),
   setGap: (v) => set({ gap: v }),
 
-  committed: false,
-  setCommitted: (v) => set({ committed: v }),
+  committedNodes: [],
+  approveNode: (id) => set((s) => (s.committedNodes.includes(id) ? s : { committedNodes: [...s.committedNodes, id] })),
 }))
