@@ -4139,7 +4139,13 @@ function openIncidentDetail() {
   const ticket = getCanonicalTicket();
   const personaState = ticket.byPersona[personaKey];
   cancelInProgressReveal();
-  state.history.push(state.screen);
+  // Cancel pending banner-land timer so it can't fire later and bounce us
+  // back to the monitoring screen while we're in the incident detail view.
+  if (state.notifyTimer) { clearTimeout(state.notifyTimer); state.notifyTimer = null; }
+  state.bannerVisible = false;
+  state.incidentLanded = true;
+  // Push the stable landed screen (not the transient notify screen) so Back returns cleanly.
+  state.history.push(state.screen === 'monitoring-notify' ? 'monitoring-landed' : state.screen);
   state.screen = 'incident-detail';
   // W3.9 — first-open per persona: reset action steps so reveal re-fires per persona
   if (!personaState.opened && !personaState.actioned) {
