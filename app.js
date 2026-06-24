@@ -7582,14 +7582,13 @@ function mountSvgKG(body, win, persona) {
   const idealW = 800;
   const idealH = persona === 'onsite' ? 780 : 880;
   const margin = 16;
-  const topPx = 5;
-  const leftPx = window.innerWidth * 0.65;
+  // short-og-demo — centred on screen (may overlap the call-summary popup, by design).
   const dims = {
-    w: Math.min(idealW, window.innerWidth - leftPx - margin),
-    h: Math.min(idealH, window.innerHeight - topPx - margin),
+    w: Math.min(idealW, window.innerWidth - margin * 2),
+    h: Math.min(idealH, window.innerHeight - margin * 2),
   };
-  win.style.left = leftPx + 'px';
-  win.style.top = topPx + 'px';
+  win.style.left = Math.max(margin, (window.innerWidth - dims.w) / 2) + 'px';
+  win.style.top = Math.max(margin, (window.innerHeight - dims.h) / 2) + 'px';
   win.style.width = dims.w + 'px';
   win.style.height = dims.h + 'px';
   state.graphWinSize = dims;
