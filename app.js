@@ -1589,12 +1589,15 @@ function buildRegenWoDocHTML() {
       <span class="prov-doc-title">Work order regenerated</span>
       <span class="prov-doc-id">${WORK_ORDER_REVISED.id}</span>
     </div>
-    ${buildMachineProvBlock()}
-    <div class="doc-kv"><span class="doc-k">Supersedes</span><span class="doc-v">${WORK_ORDER.id}</span></div>
-    <div class="doc-kv"><span class="doc-k">Revised diagnosis</span><span class="doc-v">${WORK_ORDER_REVISED.diagnosis}</span></div>
-    ${buildCompletedWorksHTML()}
+    <div class="doc-revised-diagnosis">
+      <div class="doc-rd-lbl">Revised diagnosis</div>
+      <div class="doc-rd-val">${WORK_ORDER_REVISED.diagnosis}</div>
+    </div>
     <div class="doc-section-lbl">Works to be completed</div>
     <ul class="doc-list">${works}</ul>
+    ${buildMachineProvBlock()}
+    <div class="doc-kv"><span class="doc-k">Supersedes</span><span class="doc-v">${WORK_ORDER.id}</span></div>
+    ${buildCompletedWorksHTML()}
     <div class="prov-doc-note">Routed to <span class="dyn-name">Faye Sit</span> for ops + commercial action.</div>`;
 }
 
@@ -3274,11 +3277,8 @@ function spawnInCallStrip() {
     if (label) label.textContent = `Call ended · transcript captured · ${state.lim.revisionTimestamp || '02:55 SGT'}`;
     const endBtn = strip.querySelector('.in-call-end-btn');
     if (endBtn) endBtn.remove();
-  } else if (!state.lim.callTranscriptStarted) {
-    // W44 — fresh call: stream the live transcript (typewriter) once.
-    state.lim.callTranscriptStarted = true;
-    startLiveCallTranscript();
   }
+  // short-og-demo — live typewriter transcript removed; call strip shows status only.
 }
 
 function buildInCallStripHTML() {
@@ -3310,56 +3310,6 @@ const ISMAIL_CALL_SCRIPT = [
   { spk: 'lim',    name: 'L. Lim',     text: `Updating diagnosis: pump casing crack · BFP-3A. Bearing damage and temp rise look like secondary effects from imbalanced loading.` },
   { spk: 'ismail', name: 'Dr. Ismail', text: `Confirmed. Shutdown required — can't run with a propagating casing crack. Escalating back to Faye for ops + commercial impact routing.` },
 ];
-
-function startLiveCallTranscript() {
-  const slot = document.getElementById('lim-ctas-slot');
-  if (!slot || slot.querySelector('.call-transcript')) return;
-  const wrap = document.createElement('div');
-  wrap.className = 'call-transcript';
-  const strip = slot.querySelector('.in-call-strip');
-  if (strip) strip.after(wrap); else slot.appendChild(wrap);
-  state.lim.callTimers = [];
-  playCallLine(0, wrap);
-}
-
-function playCallLine(idx, wrap) {
-  if (!wrap.isConnected || idx >= ISMAIL_CALL_SCRIPT.length) return;
-  const line = ISMAIL_CALL_SCRIPT[idx];
-  const bubble = document.createElement('div');
-  bubble.className = `call-bubble call-bubble-${line.spk}`;
-  bubble.innerHTML = `<span class="call-bubble-spk">${line.name}</span><span class="call-typing-dots"><span></span><span></span><span></span></span>`;
-  wrap.appendChild(bubble);
-  bubble.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  // theater: ~1200ms of "speaking" dots before the words stream in
-  const t1 = setTimeout(() => {
-    if (!bubble.isConnected) return;
-    const body = document.createElement('span');
-    body.className = 'call-bubble-txt call-caret';
-    const dots = bubble.querySelector('.call-typing-dots');
-    if (dots) dots.replaceWith(body); else bubble.appendChild(body);
-    typeCallText(body, line.text, () => {
-      body.classList.remove('call-caret');
-      const t2 = setTimeout(() => playCallLine(idx + 1, wrap), 1100);
-      state.lim.callTimers.push(t2);
-    });
-  }, 1200);
-  state.lim.callTimers.push(t1);
-}
-
-function typeCallText(el, text, done) {
-  let n = 0;
-  const iv = setInterval(() => {
-    if (!el.isConnected) { clearInterval(iv); return; }
-    n += 1;   // 1 char per tick (slowed for a deliberate real-time-transcription feel)
-    el.textContent = text.slice(0, n);
-    if (n >= text.length) {
-      clearInterval(iv);
-      el.textContent = text;
-      if (done) done();
-    }
-  }, 30);
-  state.lim.callTimers.push(iv);
-}
 
 function cancelCallTranscript() {
   (state.lim.callTimers || []).forEach(id => { clearTimeout(id); clearInterval(id); });
@@ -5101,7 +5051,13 @@ function openIncidentDetail() {
   const ticket = getCanonicalTicket();
   const personaState = ticket.byPersona[personaKey];
   cancelInProgressReveal();
-  state.history.push(state.screen);
+  // Race fix — cancel any pending banner-land timer so it can't fire later and
+  // bounce us back to monitoring while we're in the incident detail view.
+  if (state.notifyTimer) { clearTimeout(state.notifyTimer); state.notifyTimer = null; }
+  state.bannerVisible = false;
+  state.incidentLanded = true;
+  // Push the stable landed screen (not the transient notify screen) so Back returns cleanly.
+  state.history.push(state.screen === 'monitoring-notify' ? 'monitoring-landed' : state.screen);
   state.screen = 'incident-detail';
   // W3.9 — first-open per persona: reset action steps so reveal re-fires per persona
   if (!personaState.opened && !personaState.actioned) {
