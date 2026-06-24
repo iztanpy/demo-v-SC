@@ -27,13 +27,19 @@ interface DemoState {
   committedNodes: string[]
   /** add one approved proposed-node id to the graph (idempotent) */
   approveNode: (id: string) => void
+
+  /** transient amber flash on the graph — bumped each time a resolution card emits a
+   *  "graph-imperfection" beat (re-weight + the 2 gaps). The graph pulses these node/edge ids
+   *  amber for ~1s then reverts. `seq` makes repeat pulses on the same target distinct. */
+  flashPulse: { seq: number; nodes: string[]; edges: string[] } | null
+  pulse: (nodes: string[], edges: string[]) => void
 }
 
 export const useDemo = create<DemoState>((set) => ({
   started: false,
   runId: 0,
-  start: () => set((s) => ({ started: true, runId: s.runId + 1, matchedNodes: [], reweight: false, reweightApplied: false, gap: false, committedNodes: [] })),
-  reset: () => set({ started: false, matchedNodes: [], reweight: false, reweightApplied: false, gap: false, committedNodes: [] }),
+  start: () => set((s) => ({ started: true, runId: s.runId + 1, matchedNodes: [], reweight: false, reweightApplied: false, gap: false, committedNodes: [], flashPulse: null })),
+  reset: () => set({ started: false, matchedNodes: [], reweight: false, reweightApplied: false, gap: false, committedNodes: [], flashPulse: null }),
 
   matchedNodes: [],
   reweight: false,
@@ -46,4 +52,7 @@ export const useDemo = create<DemoState>((set) => ({
 
   committedNodes: [],
   approveNode: (id) => set((s) => (s.committedNodes.includes(id) ? s : { committedNodes: [...s.committedNodes, id] })),
+
+  flashPulse: null,
+  pulse: (nodes, edges) => set((s) => ({ flashPulse: { seq: (s.flashPulse?.seq ?? 0) + 1, nodes, edges } })),
 }))

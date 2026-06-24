@@ -40,31 +40,36 @@ Store: `src/demoStore.ts` (zustand). Relevant fields the graph reacts to:
 
 The 2D component `src/components/KGForce.tsx` already implements most of these in SVG — use it as the spec and port each to three.js / the `3d-force-graph` API.
 
-### 1. Legend overlay (cheap, asked for repeatedly)
+### 1. Legend overlay (cheap, asked for repeatedly) — ✅ DONE
 - 6 label swatches (AssetClass / Machine / Symptom / DiagnosticTest / RootCause / Inconclusive) using `NODE_COLORS`.
 - Render as a small absolutely-positioned React element inside `.demo-right` (a sibling of `.kg3-host`), NOT inside the WebGL canvas. The 2D version had `.kgf-legend` in `KGForce.css` — copy the styling.
+- **Landed:** `KGForce3D.tsx` now returns a fragment `[<.kg3-host>, <.kg3-legend>]`; CSS `.kg3-legend` / `.kg3-legend-row` / `.kg3-legend-dot` added to `demo.css`.
 
-### 2. Committed new-knowledge nodes should POP
+### 2. Committed new-knowledge nodes should POP — ✅ DONE (interim)
 - Right now committed nodes are faded like everything else; they lean on the bold red edges + particles.
 - Quick interim: in `nodeColor`, return full opacity (and maybe larger `nodeVal`) when `n._proposed` (the flag is already set on proposed nodes).
-- Full version: marching-ants ring + floating label (see #3).
+- **Landed:** `nodeColor` returns full opacity for `_proposed`; `nodeVal` ×2.4 for `_proposed` so they read bigger. Full version (marching-ants ring + floating label) now also landed — see #3.
 
-### 3. Marching-ants rings + labels on new nodes (the real emphasis)
+### 3. Marching-ants rings + labels on new nodes (the real emphasis) — ✅ DONE
 - 2D ref: `newRingsRef` (a `<circle class="kgf-newring">` with animated stroke-dash) and `newLabelsRef` (`<text class="kgf-newlabel">`) in `KGForce.tsx`.
 - 3D approach: use `Graph.nodeThreeObject((node) => ...)` to attach a `THREE.Group` containing the sphere + a ring (`THREE.RingGeometry` or a torus) + a text sprite (drei-style `SpriteText`, or a `CanvasTexture` sprite — `three-spritetext` is a common companion lib for `3d-force-graph`). Only build the custom object for `_proposed` nodes; return undefined otherwise to keep default spheres.
-- Animate the ring (rotate / dash) in the render loop via `Graph.onEngineTick` or a `requestAnimationFrame` updating the sprite material.
+- **Landed:** added `three-spritetext` dep. `nodeThreeObjectExtend(true)` + `nodeThreeObject` accessor: `_proposed` nodes get a `THREE.Group` with a `makeMarchingRing()` sprite (a `CanvasTexture` dashed circle, `depthTest:false`, camera-facing) + a `SpriteText` name label below. The ring's `lineDashOffset` is advanced each frame by a `requestAnimationFrame` loop in the build effect (rings tracked in `ringsRef`, pruned by `committedRef`, cancelled on unmount).
 
-### 4. Re-weight edge visual beat (0.88 → 0.70)
+### 4. Re-weight edge visual beat (0.88 → 0.70) — ✅ DONE (label TODO)
 - 2D ref: `KGForce.tsx` toggles `kgf-reweight` on `RC-BENT-SHAFT` + a `kgf-reweight-label` on the `DT-PHASE → RC-BENT-SHAFT` edge, gated by `reweight && !reweightApplied` (proposed) vs `reweightApplied` (applied).
 - 3D approach: add a `reweight`/`reweightApplied` selector in `KGForce3D.tsx`; in `linkColor`/`linkWidth` special-case the `DT-PHASE`→`RC-BENT-SHAFT` edge (amber/pending while proposed, thinned/desaturated once applied to show confidence dropped). Optionally a sprite label showing "0.88 → 0.70". Re-trigger accessors in an effect on `[reweight, reweightApplied]`.
+- **Landed:** `reweightRef`/`reweightAppliedRef` + selectors; `isReweightEdge` helper; `linkColor`/`linkWidth`/`arrowLen` special-case the edge (amber + width 3.4 while pending → slate + width 0.8 once applied); effect re-triggers link accessors on `[reweight, reweightApplied]`.
+- **Label landed:** `linkThreeObjectExtend(true)` + `linkThreeObject` returns a `SpriteText` ("0.88 → 0.70" amber while pending → "0.70 ✓" slate once applied) on the re-weight edge only; the re-weight effect re-triggers `linkThreeObject` so the label rebuilds for the new state.
 
-### 5. Zoom-to-focus camera moves
+### 5. Zoom-to-focus camera moves — ✅ DONE (commit-only)
 - 2D ref: `centerTransform` + `COMMIT_Z/DX/DY`, `REST_TRANSFORM`, `FULL_TRANSFORM`, and the staged `zoomTimersRef` re-zoom passes in `KGForce.tsx`.
 - 3D approach: `Graph.cameraPosition(lookAtCoords, nodeCoords, ms)` to fly the camera. On reaffirm start → frame the BFP region; on commit → fly to the new nodes (average their positions, re-run a few times as the sim cools, mirroring the 2D `doZoom` passes). Pause `autoRotate` during scripted moves.
+- **Landed (commit-only):** the **reaffirm-camera leg was intentionally dropped** because the reaffirm-green highlight was removed (nothing to look at there). On commit, the commit effect pauses `controls().autoRotate` and schedules `flyToCommitted()` at 700/1600/2700ms — averages the committed nodes' live positions and `cameraPosition({cx,cy,cz+360}, {cx,cy,cz}, 1800)`. On reset, `autoRotate` resumes and the camera flies back to the full-fleet framing `({z:1150})`. Timers in `zoomTimersRef`, cleared on each run + on unmount.
 
-### 6. Region name labels (the cluster captions)
+### 6. Region name labels (the cluster captions) — ✅ DONE (halos skipped)
 - 2D ref: `kgf-clabel` text per cluster centre + `kgf-halo` soft washes.
 - 3D approach: a text sprite at each `ANCHORS[cluster]` position (one per `CLUSTERS` entry), using the cluster label (`CLUSTER_LABEL`). Add via `scene().add(...)` once, or as fixed sprites. Halos are optional (could be large, low-opacity sprites).
+- **Landed:** rather than static sprites at `ANCHORS`, the caption is attached to each asset-class hub node (`label==='AssetClass'`, which already carries `title` = region name) via the same `nodeThreeObject` accessor, coloured by `CLUSTER_COLOR` — so captions track the cluster as the sim settles instead of sitting at a fixed anchor. Halos skipped (feel call; revisit if the regions need more separation).
 
 ### 7. Background / depth tuning
 - Currently `BG = '#E9EFF6'` (light, matches the pane). Decide if a deeper backdrop reads better for 3D depth on the projector — try a subtle dark vignette or a slightly deeper slate and compare. Pure feel call; needs eyeballing on the actual screen.

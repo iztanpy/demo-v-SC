@@ -138,6 +138,15 @@ const FOCUS_INCIDENT = 'INC-0537'
 const FOCUS_CARDS = CARDS.filter((c) => c.incident === FOCUS_INCIDENT)
 const HERO_STEP_MS = 600 // spacing between successive hero-card resolves
 
+// As each "graph-imperfection" hero card resolves (re-weight + the 2 gaps), the graph flashes amber
+// on a representative EXISTING node/edge for ~1s. The gaps' own nodes (casing crack / NDT) aren't on
+// the graph yet, so we flash the nearest node already there. Edge keys are "SOURCE>TARGET".
+const FLASH_BY_CARD: Record<string, { nodes: string[]; edges: string[] }> = {
+  'c-0537-rw':  { nodes: ['RC-BENT-SHAFT'],      edges: ['DT-PHASE>RC-BENT-SHAFT'] },
+  'c-0537-gap': { nodes: ['DT-PHASE'],           edges: ['SYM-001>DT-PHASE'] },
+  'c-0537-ndt': { nodes: ['DT-HOUSING-INSPECT'], edges: ['SYM-001>DT-HOUSING-INSPECT'] },
+}
+
 // ── cross-panel particle flow: dots fly from a resolved card toward the graph (reaffirming it) ──
 let fxLayer: HTMLDivElement | null = null
 const getFxLayer = () => {
@@ -170,6 +179,7 @@ export function ResolutionPanel() {
   const setMatched = useDemo((s) => s.setMatched)
   const setReweight = useDemo((s) => s.setReweight)
   const setGap = useDemo((s) => s.setGap)
+  const pulse = useDemo((s) => s.pulse)
   const phases = useResolution(started, runId)
 
   const [open, setOpen] = useState(true)
@@ -185,6 +195,15 @@ export function ResolutionPanel() {
     const timers = FOCUS_CARDS.map((_, i) => setTimeout(() => setHeroResolved(i + 1), i * HERO_STEP_MS))
     return () => timers.forEach(clearTimeout)
   }, [heroPhase, runId])
+
+  // amber flash on the graph as each graph-imperfection card resolves (re-weight + the 2 gaps)
+  useEffect(() => {
+    if (heroResolved < 1) return
+    const card = FOCUS_CARDS[heroResolved - 1]
+    const f = card && FLASH_BY_CARD[card.id]
+    if (f) pulse(f.nodes, f.edges)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [heroResolved])
 
   // push resolution outcomes to the graph (matched paths + re-weight) and Panel 3 (the gap)
   const phaseKey = INCIDENTS.map((i) => phases.get(i.id)).join(',')
