@@ -4,6 +4,32 @@
 // render() is PURE PAINT — no timers, no animation kickoffs.
 // ─────────────────────────────────────────────
 
+// ═════════════════════════════════════════════
+// DEMO TIMING KNOBS — edit these to retime the demo
+// ═════════════════════════════════════════════
+const TIMING = {
+  // 1) GLOBAL 3-DOT LOADING THEATERS — speed multiplier.
+  // Scales every staged "loading dots → content" reveal that runs through pushReveal:
+  // Faye's initial-diagnosis load (5s/10s), each persona's screen reveal, the
+  // action-step spinners — PLUS the post-call generating/analyzing-transcript stages.
+  //   1 = as-tuned · 0.5 = twice as fast · 2 = twice as slow.
+  dotsSpeed: 1,
+
+  // 2) FAYE'S RIGHT-PANE AGENTIC WORKFLOW.
+  faye: {
+    // How long each agent card pulses "active" during Faye's triage
+    // (Sensor Anomaly Inspector · Equipment Diagnostic Agent · Power Gen Critic). ms.
+    // Nominally synced with the 5s diagnosis-load stage — if you retime the load feel
+    // via dotsSpeed and want the cards to match, change this too.
+    cardPulseMs: 5000,
+    // Orchestration-narrative cascade (the reveal → pulse → check agent sequence in
+    // the agent-orchestration view). Multiplier · 1 = as-tuned · lower = faster cascade.
+    orchSpeed: 1,
+  },
+};
+// helper — scales a base delay by the global 3-dot loader speed.
+const dotsMs = (base) => Math.round((base || 0) * TIMING.dotsSpeed);
+
 const state = {
   screen: 'monitoring',          // 'monitoring' | 'monitoring-notify' | 'monitoring-landed' | 'incident-detail'
   history: [],                   // nav stack
@@ -876,7 +902,7 @@ function startScreenDRevealW39(summarySlot, actionSlot) {
       </div>
     </div>`;
   // W6 — fire right-pane card lifecycle synced with Loading #1
-  fireAgentCardLifecycle('inspection', 5000);
+  fireAgentCardLifecycle('inspection', TIMING.faye.cardPulseMs);
 
   // Stage 2 at t=5s: swap to Summary report shell + embedded Triage placeholder
   pushReveal(() => {
@@ -894,7 +920,7 @@ function startScreenDRevealW39(summarySlot, actionSlot) {
         </div>
       </div>`;
     // W6 — fire triage + power-gen critic synced with Loading #2
-    fireAgentCardsParallel(['triage', 'critic-power-gen'], 5000);
+    fireAgentCardsParallel(['triage', 'critic-power-gen'], TIMING.faye.cardPulseMs);
   }, 5000);
 
   // Stage 3 at t=10s: swap Triage placeholder for Initial Diagnosis summary + Rationale + Confirm CTA
@@ -1943,7 +1969,8 @@ function buildPendingPlaceholder(blockId) {
 
 // W3.9 — reveal timer tracking (cancellable on persona switch)
 function pushReveal(fn, delay) {
-  const h = setTimeout(fn, delay);
+  // dotsSpeed scales the global 3-dot loading theaters (see TIMING at top).
+  const h = setTimeout(fn, dotsMs(delay));
   state.revealTimers.push(h);
   return h;
 }
@@ -3339,7 +3366,7 @@ function onCallEnd() {
       nodeChain: [],
     });
   }
-  fireAgentCardLifecycle('audio-transcription', 3000);
+  fireAgentCardLifecycle('audio-transcription', dotsMs(3000));
   setTimeout(() => {
     swapPostCallStage('generating-transcript', 'transcript-attached');
     state.lim.transcriptAttached = true;
@@ -3369,7 +3396,7 @@ function onCallEnd() {
     }
     spawnPostCallStage('analyzing-transcript');
     // Stage 2: analyzing-transcript (3s · Audio-transcription Agent — W8 A.6)
-    fireAgentCardLifecycle('audio-transcription', 3000);
+    fireAgentCardLifecycle('audio-transcription', dotsMs(3000));
     setTimeout(() => {
       // Remove analyzing-transcript loading visual
       const slot = document.getElementById('lim-ctas-slot');
@@ -3387,8 +3414,8 @@ function onCallEnd() {
       }
       // W8 E.4 — auto-trigger diagnosis morph + Revise diagnosis tile spawn (no user click).
       onDiagnosisConfirmedClick();
-    }, 3000);
-  }, 3000);
+    }, dotsMs(3000));
+  }, dotsMs(3000));
 }
 
 function paintPostCallStagesFromState() {
@@ -6224,7 +6251,8 @@ function playNarrativeModalAnimation(sectionDef) {
     }
   });
 
-  state.w10.modalTimers = seq.map(step => setTimeout(() => applyNarrativeAction(step), step.at));
+  // faye.orchSpeed scales the orchestration-narrative cascade (see TIMING at top).
+  state.w10.modalTimers = seq.map(step => setTimeout(() => applyNarrativeAction(step), Math.round(step.at * TIMING.faye.orchSpeed)));
 }
 
 // ═══════════════════════════════════════════════════════════════
