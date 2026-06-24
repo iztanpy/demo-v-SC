@@ -11,7 +11,7 @@ const state = {
   bannerVisible: false,          // true during banner-display phase
   bannerKey: 'ops',              // W3.9 — which BANNER_COPY variant to render
   notifyTimer: null,             // setTimeout handle for banner fade
-  incidentLanded: false,         // W3.10 — INC row no longer auto-visible; gated by byPersona[pKey].seen
+  incidentLanded: true,          // short-og-demo — incident card present immediately on load (no top-bar click to spawn)
   // ── Wave 3.2 — state pill state machine (W3.9 — TRIAGING/REVIEW_READY folded into TRIAGE_READY) ──
   incidentPhase: 'TRIAGE_READY', // 'TRIAGE_READY' | 'DISPATCHED_TO_ONSITE' | 'ONSITE_CONFIRMED' | 'AWAITING_ASSET_PERF'
   activeAgentId: null,
@@ -35,9 +35,9 @@ const state = {
   tickets: {
     'INC-2026-0537': {
       statePill: 'TRIAGE_READY', // mirrors state.incidentPhase via setStatePill()
-      handoffPending: { ops: true, onsite: false, offsite: false, analyst: false },
+      handoffPending: { ops: false, onsite: false, offsite: false, analyst: false },
       byPersona: {
-        ops:     { seen: false, opened: false, actioned: false },
+        ops:     { seen: true, opened: false, actioned: false },
         onsite:  { seen: false, opened: false, actioned: false },
         offsite: { seen: false, opened: false, actioned: false },
         analyst: { seen: false, opened: false, actioned: false },
@@ -114,8 +114,8 @@ function setStatePill(v) {
 }
 
 const PERSONA_INITIALS = {
-  ops:     { initials: 'FS',  name: 'Faye Sit'        },
-  onsite:  { initials: 'LWJ', name: 'Lim Wei Jie'    },
+  ops:     { initials: 'FS',  name: 'Faye Sit',       workspace: 'Operations Control Tower' },
+  onsite:  { initials: 'LWJ', name: 'Lim Wei Jie',    workspace: 'Engineer Workbench'        },
   offsite: { initials: 'AW',  name: 'Dr. A. Ismail'    },
   analyst: { initials: 'PS',  name: 'Priya Sundaram' },
 };
@@ -562,6 +562,11 @@ function switchToPersona(personaKey) {
   };
   render();
   updateAgentDimmingForActivePersona();
+  // short-og-demo — landing on Lim's (onsite) Engineer Workbench scrolls the left pane to top
+  // (runs after this tick's renders, incl. the dispatch's openIncidentDetail repaint).
+  if (personaKey === 'onsite') {
+    requestAnimationFrame(() => { const lp = document.getElementById('left-pane'); if (lp) lp.scrollTop = 0; });
+  }
 }
 
 function cancelInProgressReveal() {
@@ -768,7 +773,7 @@ function startScreenDRevealW39(summarySlot, actionSlot) {
           <div class="reveal-pending" data-stage="hypothesis">
             <div class="reveal-dots"><span></span><span></span><span></span></div>
             <div class="reveal-msg">
-              <span class="reveal-agent">Turbine Diagnostic Agent</span> ·
+              <span class="reveal-agent">Diagnostic Agent</span> ·
               Loading diagnosis hypothesis
             </div>
           </div>
@@ -1365,7 +1370,7 @@ function buildRecommendationBlock() {
         </div>
         <div class="reasoning-step">
           <span class="rs-num">3</span>
-          <span class="rs-body"><span class="rs-agent">Turbine Diagnostic Agent</span> pattern-matched against 3 prior RCAs across the fleet (Jurong-CCGT-2 &middot; 2025-08, Sakra-CCGT-1 &middot; 2025-11, Jurong-CCGT-1 &middot; 2024-09 &mdash; all compressor fouling, all humidity-correlated).</span>
+          <span class="rs-body"><span class="rs-agent">Diagnostic Agent</span> pattern-matched against 3 prior RCAs across the fleet (Jurong-CCGT-2 &middot; 2025-08, Sakra-CCGT-1 &middot; 2025-11, Jurong-CCGT-1 &middot; 2024-09 &mdash; all compressor fouling, all humidity-correlated).</span>
         </div>
         <div class="reasoning-step">
           <span class="rs-num">4</span>
@@ -1804,6 +1809,18 @@ function onDispatchCTA() {
   if (newPill) setStatePill(newPill);
   const next = HANDOFF_NEXT[personaKey];
   if (next) ticket.handoffPending[next] = true;
+
+  // short-og-demo — dispatching Lim jumps straight into his (onsite) incident-detail
+  // view, as if he'd tapped the card — skipping the monitoring/incident-list screen.
+  if (personaKey === 'ops' && next === 'onsite') {
+    ticket.byPersona.onsite.seen = true;     // card consumed
+    ticket.handoffPending.onsite = false;    // no top-bar click needed
+    switchToPersona('onsite');               // auto-switch persona (+ reset onsite steps)
+    openIncidentDetail();                    // straight into the detail view (Back → his dashboard)
+    fireWorkflowAgentArc();                  // dispatch arc still animates the right pane
+    return;
+  }
+
   render();
   fireWorkflowAgentArc();
 }
@@ -1889,7 +1906,7 @@ const GROUP_THEATER_AGENT = {
   },
   'Root cause isolation': {
     source: 'triage',
-    displayName: 'Sensor Anomaly Inspector + Turbine Diagnostic Agent',
+    displayName: 'Sensor Anomaly Inspector + Diagnostic Agent',
     loadingText: 'Loading sleeve + rolling-element bearing isolation protocols',
     nodeChain: ['bearing-bfp-3a-nde', 'coupling-bfp-3a', 'shaft-bfp-3a'],
     cardAgentIds: ['inspection', 'triage'],
@@ -1917,6 +1934,7 @@ function buildLimDetailScaffold() {
     </span>
     <div class="inc-hdr-row">
       <div class="inc-hdr-left">
+        <div class="inc-workspace">${PERSONA_INITIALS.onsite.workspace}</div>
         <div class="inc-title">${INCIDENT.asset}</div>
         <div class="inc-id">${INCIDENT.id} · routed from Faye Sit</div>
         <div class="inc-ts">${INCIDENT.timestamp}</div>
@@ -1925,24 +1943,9 @@ function buildLimDetailScaffold() {
     </div>`;
   content.appendChild(hdr);
 
-  // Metrics card (re-use Faye layout)
-  const grid = el('div', 'metrics-card');
-  INCIDENT.metrics.forEach(m => {
-    const cell = el('div', 'metric-cell');
-    cell.innerHTML = `
-      <div class="mc-lbl">${m.lbl}</div>
-      <div class="mc-val ${m.tone}">${m.val}<span class="mc-unit">${m.unit}</span></div>
-      <div class="mc-nom">${m.nom}</div>`;
-    grid.appendChild(cell);
-  });
-  content.appendChild(grid);
-
-  // W13 R1 — inbound Faye-notes section dropped from Lim Screen D (caller removed; buildLimNotesSection kept as dead code per WA #5).
-
-  // Summary report slot
-  const summarySlot = el('div', 'summary-slot');
-  summarySlot.id = 'lim-summary-slot';
-  content.appendChild(summarySlot);
+  // short-og-demo — 4 sensor metric cards + diagnosis summary card removed from Lim's view.
+  // (metrics-card grid + lim-summary-slot dropped; paintLimSummaryComplete no-ops on the
+  // missing slot so the downstream call/checklist flow is unaffected.)
 
   // Inspection checklist slot
   const checklistSlot = el('div', 'lim-checklist-slot');
@@ -2401,13 +2404,37 @@ function wireInspectionChecklist() {
       if (item.dataset.checked === 'true') return;
       const group = item.closest('.ic-group');
       if (group && group.dataset.locked === 'true') return;
-      const itemId = item.dataset.itemId;
-      state.lim.checked[itemId] = true;
-      item.dataset.checked = 'true';
-      item.querySelector('.ic-check').textContent = '✓';
-      logChecklistItem(itemId);
-      updateChecklistProgress();
+      tickInspectionItem(item.dataset.itemId);
+      // short-og-demo — clicking any Safety item auto-cascades the rest of the Safety
+      // checklist in quick succession (the other groups still click one-by-one).
+      if (group && group.dataset.group === 'Safety') cascadeTickGroup('Safety');
     });
+  });
+}
+
+// short-og-demo — tick a single inspection item (state + DOM + log + progress). Returns false if already done.
+function tickInspectionItem(itemId) {
+  if (state.lim.checked[itemId]) return false;
+  state.lim.checked[itemId] = true;
+  const el = document.querySelector(`.ic-item[data-item-id="${itemId}"]`);
+  if (el) {
+    el.dataset.checked = 'true';
+    const chk = el.querySelector('.ic-check');
+    if (chk) chk.textContent = '✓';
+  }
+  logChecklistItem(itemId);
+  updateChecklistProgress();
+  return true;
+}
+
+// short-og-demo — auto-tick the remaining items in a group, staggered for a quick cascade.
+function cascadeTickGroup(groupName) {
+  const grpDef = LIM_INSPECTION_CHECKLIST.find(g => g.group === groupName);
+  if (!grpDef) return;
+  const remaining = grpDef.items.filter(it => !state.lim.checked[it.id]);
+  remaining.forEach((it, i) => {
+    const h = setTimeout(() => tickInspectionItem(it.id), (i + 1) * 160);
+    state.revealTimers.push(h);   // cancelled on persona switch via cancelInProgressReveal
   });
 }
 
@@ -3154,11 +3181,11 @@ function startIsmailScreenDReveal() {
   state.ismail.revealStarted = true;
   const slot = document.getElementById('ismail-summary-slot');
   if (!slot) return;
-  // W6 — Ismail loading reveal alias: Turbine Diagnostic Agent (institutional rotating-machinery knowledge)
+  // W6 — Ismail loading reveal alias: Diagnostic Agent (institutional rotating-machinery knowledge)
   slot.innerHTML = `
     <div class="reveal-pending ismail-loading" data-stage="ismail-summary">
       <span class="reveal-dots"><span></span><span></span><span></span></span>
-      <span class="reveal-msg"><span class="reveal-agent">Turbine Diagnostic Agent</span> · Loading institutional rotating-machinery knowledge for Dr. A. Ismail</span>
+      <span class="reveal-msg"><span class="reveal-agent">Diagnostic Agent</span> · Loading institutional rotating-machinery knowledge for Dr. A. Ismail</span>
     </div>`;
   // W6 — CTA deferred: spawn only on reveal complete (Section A)
   // W6 — fire right-pane card lifecycle (triage + power-gen critic in parallel)
@@ -3167,7 +3194,7 @@ function startIsmailScreenDReveal() {
     window.LOG.appendLine({
       ts: currentSGTLog(),
       source: 'triage',
-      text: 'Turbine Diagnostic Agent · pulling Ismail\'s 2023 Jurong-2 BFP casing field-experience pattern + prior RCA traversal',
+      text: 'Diagnostic Agent · pulling Ismail\'s 2023 Jurong-2 BFP casing field-experience pattern + prior RCA traversal',
       dataSource: 'Hyperspace OS',
       nodeChain: ['casing-rca-jrg-2023', 'pump-casing-crack-pattern', 'dr-ismail'],
     });
@@ -3936,6 +3963,7 @@ function renderMonitoringView(root) {
   hdr.innerHTML = `
     <div class="mon-hdr-left">
       <div class="mon-hdr-brand">Hyperspace OS</div>
+      ${persona.workspace ? `<div class="mon-hdr-workspace">${persona.workspace}</div>` : ''}
     </div>
     <div class="mon-hdr-right">
       <div class="mon-hdr-time">${currentSGTTime()}</div>
@@ -4206,6 +4234,8 @@ function tabletCacheKey() {
 function renderTablet() {
   const root = document.getElementById('tablet-root');
   if (!root) return;
+  // short-og-demo — persona hook for per-persona color scheme (onsite = blue).
+  root.dataset.persona = state.activePersona;
   const key = tabletCacheKey();
   if (root.dataset.cacheKey === key && root.innerHTML !== '') {
     // No state change relevant to tablet structure — skip wipe.
@@ -4867,7 +4897,7 @@ const P1_SECTION_1 = {
   num: 1, title: 'Criticality · Diagnosis · Summary',
   domain: [
     { name: 'Sensor Anomaly Inspector',      persistent: 'inspection', dataSource: 'Hyperspace' },
-    { name: 'Turbine Diagnostic Agent',      persistent: 'triage',     dataSource: 'Org Knowledge' },
+    { name: 'Diagnostic Agent',      persistent: 'triage',     dataSource: 'Org Knowledge' },
     { name: 'Criticality Scoring Agent',     persistent: null,         dataSource: 'Netscope' },
     { name: 'Incident Summary Synthesizer',  persistent: null,         dataSource: 'Hyperspace' },
   ],
@@ -4933,9 +4963,9 @@ const P1_WORKFLOWS = {
       tagline: 'Sensor anomaly · severity scoring · KG path-trace',
       durationMs: 24000,   // W14 R1 — 4x slower (was 6000)
       buckets: [
-        { name: 'Domain Experts',   agents: ['Sensor Anomaly Inspector', 'Turbine Diagnostic Agent', 'Criticality Scoring Agent', 'Incident Summary Synthesizer'], persistent: ['inspection', 'triage', null, null] },
+        { name: 'Domain Experts',   agents: ['Sensor Anomaly Inspector', 'Historical Incidents Agent', 'Equipment History Agent', 'Criticality Scoring Agent', 'Incident Summary Synthesizer'], persistent: ['inspection', null, null, null, null] },
         { name: 'Critic',           agents: ['Critic · Power Gen', 'Criticality Standards Critic'],         persistent: ['critic-power-gen', null] },
-        { name: 'Orchestrator',     agents: ['Orchestrator', 'A2A Coordination Agent'],                     persistent: ['orchestrator', 'workflow'] },
+        { name: 'Orchestrator',     agents: ['Diagnostic Agent', 'Confidence Score Agent', 'A2A Coordination Agent'], persistent: ['triage', null, 'workflow'] },
       ],
       outputCaption: 'Triage Agent · 78% confidence · KG path traced',
     },
@@ -4945,9 +4975,9 @@ const P1_WORKFLOWS = {
       tagline: 'Roster · expertise match · dispatch payload',
       durationMs: 20000,   // W14 R1 — 4x slower (was 5000)
       buckets: [
-        { name: 'Domain Experts',   agents: ['Roster Lookup Agent', 'Expertise Match Agent'],               persistent: [null, null] },
+        { name: 'Domain Experts',   agents: ['Criticality Scoring Agent', 'Roster Lookup Agent', 'Expertise Match Agent', 'Schedule Integration Agent'], persistent: [null, null, null, null] },
         { name: 'Critic',           agents: ['Certs Validator'],                                            persistent: [null] },
-        { name: 'Orchestrator',     agents: ['Orchestrator', 'A2A Coordination Agent'],                     persistent: ['orchestrator', 'workflow'] },
+        { name: 'Orchestrator',     agents: ['Schedule Optimizer Agent', 'A2A Coordination Agent'],         persistent: [null, 'workflow'] },
       ],
       outputCaption: 'A2A Coordination Agent · dispatching to Lim Wei Jie · payload pre-attached',
     },
@@ -6829,7 +6859,7 @@ const LOG_SOURCE_COLORS = {
 const AGENT_DISPLAY_NAMES = {
   orchestrator:        'Orchestrator',
   inspection:            'Sensor Anomaly Inspector',
-  triage:                'Turbine Diagnostic Agent',
+  triage:                'Diagnostic Agent',
   'diag-hrsg':           'HRSG · Boiler Diagnostic Agent',
   'diag-electrical':     'Generator · Electrical Diagnostic Agent',
   playbook:              'BFP Maintenance Playbook Agent',
@@ -7120,7 +7150,7 @@ const INSPECTION_AGENT_SCRIPT = {
 };
 
 const ORCHESTRATOR_DISPATCH_LINES = [
-  { ts: '02:47:16', source: 'orchestrator', text: 'received inspection findings · handing to Turbine Diagnostic Agent', nodeChain: [] },
+  { ts: '02:47:16', source: 'orchestrator', text: 'received inspection findings · handing to Diagnostic Agent', nodeChain: [] },
 ];
 
 const TRIAGE_AGENT_SCRIPT = {
