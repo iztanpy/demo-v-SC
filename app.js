@@ -13,7 +13,7 @@ const TIMING = {
   // Faye's initial-diagnosis load (5s/10s), each persona's screen reveal, the
   // action-step spinners — PLUS the post-call generating/analyzing-transcript stages.
   //   1 = as-tuned · 0.5 = twice as fast · 2 = twice as slow.
-  dotsSpeed: 1,
+  dotsSpeed: 0.25,
 
   // 2) FAYE'S RIGHT-PANE AGENTIC WORKFLOW.
   faye: {
@@ -24,7 +24,7 @@ const TIMING = {
     cardPulseMs: 5000,
     // Orchestration-narrative cascade (the reveal → pulse → check agent sequence in
     // the agent-orchestration view). Multiplier · 1 = as-tuned · lower = faster cascade.
-    orchSpeed: 1,
+    orchSpeed: 0.25,
   },
 };
 // helper — scales a base delay by the global 3-dot loader speed.
@@ -5857,9 +5857,9 @@ const P1_WORKFLOWS = {
       tagline: 'Sensor anomaly · severity scoring · KG path-trace',
       durationMs: 24000,   // W14 R1 — 4x slower (was 6000)
       buckets: [
-        { name: 'Domain Experts',   agents: ['Sensor Anomaly Inspector', 'Equipment Diagnostic Agent', 'Criticality Scoring Agent', 'Incident Summary Synthesizer'], persistent: ['inspection', 'triage', null, null] },
+        { name: 'Domain Experts',   agents: ['Sensor Anomaly Inspector', 'Historical Incidents Agent', 'Equipment History Agent', 'Criticality Scoring Agent', 'Incident Summary Synthesizer'], persistent: ['inspection', null, null, null, null] },
         { name: 'Critic',           agents: ['Critic · Power Gen', 'Criticality Standards Critic'],         persistent: ['critic-power-gen', null] },
-        { name: 'Orchestrator',     agents: ['Orchestrator', 'A2A Coordination Agent', 'Confidence Score Agent'], persistent: ['orchestrator', 'workflow', null] },
+        { name: 'Orchestrator',     agents: ['Equipment Diagnostic Agent', 'Confidence Score Agent', 'A2A Coordination Agent'], persistent: ['triage', null, 'workflow'] },
       ],
       outputCaption: '',   // green confidence bar removed — confidence now carried by the Confidence Score Agent
     },
@@ -5871,7 +5871,7 @@ const P1_WORKFLOWS = {
       buckets: [
         { name: 'Domain Experts',   agents: ['SOP Retrieval Agent', 'Sensor Anomaly Inspector', 'Telemetry Snapshot Compiler', 'SOP Compliance Agent'], persistent: [null, 'inspection', null, 'sop-action'] },
         { name: 'Critic',           agents: ['SOP Adherence Critic'],                                       persistent: [null] },
-        { name: 'Orchestrator',     agents: ['Orchestrator', 'A2A Coordination Agent'],                     persistent: ['orchestrator', 'workflow'] },
+        { name: 'Orchestrator',     agents: ['A2A Coordination Agent'],                                     persistent: ['workflow'] },
       ],
       outputCaption: 'Action planner · SOP-BFP-VIBR-001 selected · telemetry pre-fetched · awaiting Faye Review',
       hitlNote: 'Human-in-the-loop · Faye must confirm telemetry (Step 1 Review)',
@@ -5885,7 +5885,7 @@ const P1_WORKFLOWS = {
         // W42 — Schedule Integration Agent consumes existing crew roster + planned maint/outage calendar to optimize dispatch timing.
         { name: 'Domain Experts',   agents: ['Roster Lookup Agent', 'Expertise Match Agent', 'Schedule Integration Agent', 'Criticality Scoring Agent'], persistent: [null, null, null, null] },
         { name: 'Critic',           agents: ['Certs Validator'],                                            persistent: [null] },
-        { name: 'Orchestrator',     agents: ['Orchestrator', 'A2A Coordination Agent'],                     persistent: ['orchestrator', 'workflow'] },
+        { name: 'Orchestrator',     agents: ['Schedule Optimizer Agent', 'A2A Coordination Agent'],         persistent: [null, 'workflow'] },
       ],
       outputCaption: 'Schedule Integration Agent · BFP-3A fix co-scheduled into next planned maintenance window · crew roster aligned · dispatching to Lim Wei Jie',
     },

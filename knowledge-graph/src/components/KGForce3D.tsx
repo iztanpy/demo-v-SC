@@ -20,7 +20,8 @@ const BG = '#E9EFF6' // light, to sit inside the light-theme right pane
 
 // v2 #5 — commit camera standoff (world units from the new node). The resting view sits ~1030 from
 // the BFP region, so a larger standoff = gentler push-in. Bump down for a stronger zoom, up for subtler.
-const COMMIT_STANDOFF = 720
+// Kept comfortably > node radius (~12) so the single settle-then-fly push-in never clips the sphere.
+const COMMIT_STANDOFF = 820
 
 // 3D cluster anchors — keep the familiar 2D constellation (BFP centre, four around) but lift each
 // region to its own depth so orbiting reveals real 3D separation. Same SPREAD ordering as the 2D map.
@@ -100,6 +101,7 @@ export function KGForce3D() {
   const flashNodesRef = useRef<Set<string>>(new Set()) // amber flash targets (~1s) on gap/re-weight beats
   const flashEdgesRef = useRef<Set<string>>(new Set())
   const flashTimerRef = useRef(0)
+  const idleSpinTimerRef = useRef(0) // resume idle auto-rotate ~3s after the user stops interacting
 
   // persistent node/link objects (reused across graphData() calls so positions + physics survive)
   const allNodesRef = useRef<GNode[]>([])
@@ -175,9 +177,25 @@ export function KGForce3D() {
     const lf = Graph.d3Force('link') as { distance: (f: (l: GLink) => number) => { strength: (f: (l: GLink) => number) => void } } | undefined
     if (lf) lf.distance((l: GLink) => (l.cross ? 320 : l.loose ? 220 : 90)).strength((l: GLink) => (l.cross || l.loose ? 0.01 : 0.3))
 
-    // gentle idle auto-rotate for the "wow" — pauses naturally while the user drags
-    const controls = Graph.controls() as { autoRotate?: boolean; autoRotateSpeed?: number }
-    if (controls) { controls.autoRotate = true; controls.autoRotateSpeed = 0.45 }
+    // gentle idle auto-rotate for the "wow" — pause it the instant the user interacts (drag OR
+    // scroll-zoom; OrbitControls only auto-pauses on drag, not on wheel-zoom, which is what caused
+    // the janky spin-through-zoom), then resume the gentle spin ~3s after they stop touching it.
+    const controls = Graph.controls() as {
+      autoRotate?: boolean; autoRotateSpeed?: number
+      addEventListener?: (e: string, cb: () => void) => void
+    }
+    if (controls) {
+      controls.autoRotate = true
+      controls.autoRotateSpeed = 0.45
+      controls.addEventListener?.('start', () => {
+        controls.autoRotate = false
+        clearTimeout(idleSpinTimerRef.current)
+      })
+      controls.addEventListener?.('end', () => {
+        clearTimeout(idleSpinTimerRef.current)
+        idleSpinTimerRef.current = window.setTimeout(() => { controls.autoRotate = true }, 3000)
+      })
+    }
 
     rebuild()
     // pull the camera back so the whole clustered fleet is framed
@@ -205,6 +223,7 @@ export function KGForce3D() {
       cancelAnimationFrame(raf)
       zoomTimersRef.current.forEach(clearTimeout)
       clearTimeout(flashTimerRef.current)
+      clearTimeout(idleSpinTimerRef.current)
       ro.disconnect()
       Graph._destructor()
       graphRef.current = null
@@ -236,8 +255,10 @@ export function KGForce3D() {
 
   // ── per-node commit growth: grow each approved proposed node/link into the live graph ──
   // v2 #5 — commit-only camera: on sign-off, pause the idle orbit and fly the camera to the new
-  // node so it lands centre-frame (re-run as the sim cools so it tracks to the final position);
-  // on reset, resume the orbit and pull back to the full-fleet framing.
+  // node so it lands centre-frame; on reset, resume the orbit and pull back to the full-fleet
+  // framing. NOTE: we deliberately fire ONE fly-to after the new node has settled (not a 700/1600/
+  // 2700ms chase) — the old multi-pass retargeted a still-drifting node mid-flight, overshooting
+  // into the sphere and swinging back out (the "weird spin"). One late pass = one clean push-in.
   useEffect(() => {
     committedRef.current = new Set(committedNodes)
     const G = graphRef.current
@@ -246,6 +267,7 @@ export function KGForce3D() {
 
     zoomTimersRef.current.forEach(clearTimeout)
     zoomTimersRef.current = []
+    clearTimeout(idleSpinTimerRef.current) // don't let a pending idle-resume re-spin the held frame
     const controls = G.controls() as { autoRotate?: boolean }
 
     if (committedNodes.length === 0) {
@@ -254,7 +276,8 @@ export function KGForce3D() {
       return
     }
     if (controls) controls.autoRotate = false
-    zoomTimersRef.current = [700, 1600, 2700].map((d) => window.setTimeout(flyToCommitted, d))
+    // single fly, after the node has settled so the target isn't moving under the camera
+    zoomTimersRef.current = [window.setTimeout(flyToCommitted, 1400)]
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [committedNodes])
 

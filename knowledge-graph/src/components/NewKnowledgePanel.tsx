@@ -30,7 +30,7 @@ const CARDS: NkCardDef[] = [
   {
     id: 'nk-reweight', kind: 'reweight', glyph: '~', badge: 'Re-weight',
     title: 'Rebalance diagnostic edge confidence',
-    detail: 'DT-PHASE → Bent shaft · 0.88 → 0.70',
+    detail: 'Backtesting on past data shows a 10% accuracy gain after adjusting confidence scores',
     provenance: 'from INC-0537 · bent shaft ruled out 3 / 3 — phase over-attributes the 1×RPM signature casing fatigue mimics',
     sop: ['SOP-BFP-VIBR-001', 'ISO 10816-7'],
     approvedMsg: 'Edge recalculated to 0.70.',
