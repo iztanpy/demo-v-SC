@@ -3835,8 +3835,7 @@ function fireWorkflowAgentArcLock() {
 function openTranscriptModal() {
   const m = document.getElementById('transcript-modal');
   if (m) { m.dataset.open = 'true'; m.setAttribute('aria-hidden', 'false'); }
-  // short-og-demo — surface the knowledge graph on the right when the transcript opens.
-  if (!state.graphWinOpen) toggleGraphWindow();
+  // short-og-demo — KG no longer auto-opens; surfaced via the "Knowledge bytes captured" button.
 }
 function closeTranscriptModal() {
   const m = document.getElementById('transcript-modal');
@@ -3856,6 +3855,8 @@ function initTranscriptModal() {
   modal.addEventListener('click', e => {
     if (e.target.closest('.transcript-modal-close')) { closeTranscriptModal(); return; }
     if (e.target.classList.contains('transcript-modal-backdrop')) { closeTranscriptModal(); return; }
+    // short-og-demo — "Knowledge bytes captured" surfaces the KG on demand.
+    if (e.target.closest('.transcript-modal-kg-btn')) { if (!state.graphWinOpen) toggleGraphWindow(); return; }
   });
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
@@ -7575,11 +7576,20 @@ function mountSvgKG(body, win, persona) {
   svgMount.innerHTML = persona === 'onsite' ? renderP2KGSvg() : renderP3KGSvg();
 
   // Resize floating window so SVG legible (default 460x360 too small).
-  // W17 Section A: onsite bumped 820×620 → 1180×780 to fit 1100×720 viewBox at full scale.
-  // W17 Section B: analyst bumped to 1180×880 to fit 1100×1500 viewBox.
-  const dims = persona === 'onsite'
-    ? { w: 1180, h: 780 }
-    : { w: 1180, h: 880 };
+  // W17 Section A: onsite ideal 1180×780 to fit 1100×720 viewBox at full scale.
+  // W17 Section B: analyst ideal 1180×880 to fit 1100×1500 viewBox.
+  // short-og-demo — auto-fit to viewport so right/bottom edges stay on screen at any projector res.
+  const idealW = 800;
+  const idealH = persona === 'onsite' ? 780 : 880;
+  const margin = 16;
+  const topPx = 5;
+  const leftPx = window.innerWidth * 0.65;
+  const dims = {
+    w: Math.min(idealW, window.innerWidth - leftPx - margin),
+    h: Math.min(idealH, window.innerHeight - topPx - margin),
+  };
+  win.style.left = leftPx + 'px';
+  win.style.top = topPx + 'px';
   win.style.width = dims.w + 'px';
   win.style.height = dims.h + 'px';
   state.graphWinSize = dims;
