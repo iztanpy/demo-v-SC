@@ -1,37 +1,69 @@
 {
-  "hash": "0d5bd2b5",
+  "hash": "f14da0e2",
   "configHash": "60e2b938",
-  "lockfileHash": "08525aa0",
-  "browserHash": "1fe33574",
+  "lockfileHash": "bc24e141",
+  "browserHash": "fc3cdfa9",
   "optimized": {
+    "3d-force-graph": {
+      "src": "../../node_modules/3d-force-graph/dist/3d-force-graph.mjs",
+      "file": "3d-force-graph.js",
+      "fileHash": "9788da19",
+      "needsInterop": false
+    },
+    "d3-force-3d": {
+      "src": "../../node_modules/d3-force-3d/src/index.js",
+      "file": "d3-force-3d.js",
+      "fileHash": "7c335719",
+      "needsInterop": false
+    },
     "react-dom/client": {
       "src": "../../node_modules/react-dom/client.js",
       "file": "react-dom_client.js",
-      "fileHash": "fb1dcd96",
+      "fileHash": "0f09fc18",
       "needsInterop": true
     },
     "react": {
       "src": "../../node_modules/react/index.js",
       "file": "react.js",
-      "fileHash": "eea4e56b",
+      "fileHash": "6fb855e4",
       "needsInterop": true
     },
     "react/jsx-dev-runtime": {
       "src": "../../node_modules/react/jsx-dev-runtime.js",
       "file": "react_jsx-dev-runtime.js",
-      "fileHash": "7d4a3f5f",
+      "fileHash": "3e04e3fa",
       "needsInterop": true
+    },
+    "three-spritetext": {
+      "src": "../../node_modules/three-spritetext/dist/three-spritetext.mjs",
+      "file": "three-spritetext.js",
+      "fileHash": "bf20f698",
+      "needsInterop": false
+    },
+    "three": {
+      "src": "../../node_modules/three/build/three.module.js",
+      "file": "three.js",
+      "fileHash": "f9843a25",
+      "needsInterop": false
     },
     "zustand": {
       "src": "../../node_modules/zustand/esm/index.mjs",
       "file": "zustand.js",
-      "fileHash": "f20b84b6",
+      "fileHash": "f6e00305",
       "needsInterop": false
     }
   },
   "chunks": {
-    "react-Ea1HnpA1": {
-      "file": "react-Ea1HnpA1.js",
+    "chunk-FDOR9p9I": {
+      "file": "chunk-FDOR9p9I.js",
+      "isDynamicEntry": false
+    },
+    "src-DnL_SGBE": {
+      "file": "src-DnL_SGBE.js",
+      "isDynamicEntry": false
+    },
+    "three.module-C2tczZR5": {
+      "file": "three.module-C2tczZR5.js",
       "isDynamicEntry": false
     }
   }

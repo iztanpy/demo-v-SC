@@ -142,8 +142,8 @@ function setStatePill(v) {
 }
 
 const PERSONA_INITIALS = {
-  ops:     { initials: 'FS',  name: 'Faye Sit'        },
-  onsite:  { initials: 'LWJ', name: 'Lim Wei Jie'    },
+  ops:     { initials: 'FS',  name: 'Faye Sit',       workspace: 'Operations Control Tower' },
+  onsite:  { initials: 'LWJ', name: 'Lim Wei Jie',    workspace: 'Engineer Workbench'        },
   offsite: { initials: 'AW',  name: 'Dr. A. Ismail'    },
   analyst: { initials: 'PS',  name: 'Priya Sundaram' },
 };
@@ -816,6 +816,7 @@ function renderOpsIncidentDetail(root) {
     </span>
     <div class="inc-hdr-row">
       <div class="inc-hdr-left">
+        <div class="inc-workspace">${PERSONA_INITIALS.ops.workspace}</div>
         <div class="inc-title">${INCIDENT.asset}</div>
         <div class="inc-id">${INCIDENT.id}</div>
         <div class="inc-ts">${INCIDENT.timestamp}</div>
@@ -1147,14 +1148,47 @@ function playSOPAnticipationTheater() {
   fireAgentCardLifecycle('sop-action', 2000);
 
   pushReveal(() => {
-    // Phase 2: result lands · "SOP requires telemetry to be checked"
+    // Phase 2: result lands. Telemetry step removed — go straight to work-order creation.
     theaterSlot.innerHTML = `
       <div class="sop-anticipation-result">
         <span class="sar-icon">📋</span>
-        <span class="sar-text">SOP requires telemetry to be checked before fix dispatch</span>
+        <span class="sar-text">SOP pre-conditions confirmed · generating work order</span>
       </div>`;
-    revealStep1WithAddButton();
+    revealCreateWorkOrderStep();
   }, 2000);
+}
+
+// Telemetry Step 1 removed (Faye action steps renumbered to 2). Work-order creation is now the first
+// step and auto-starts after the SOP check. Internal data-step="2"/"3" preserved so unlockActionStep2/3
+// + wireEngineerCardClick selectors keep working; only the visible numbering changes.
+// revealStep1WithAddButton (telemetry path) kept below as dead code per WA #5.
+function revealCreateWorkOrderStep() {
+  const slot1 = document.querySelector('.as-step-slot[data-step-slot="1"]');
+  const slot2 = document.querySelector('.as-step-slot[data-step-slot="2"]');
+  const slot3 = document.querySelector('.as-step-slot[data-step-slot="3"]');
+  if (!slot2 || !slot3) return;
+  if (slot1) slot1.innerHTML = '';
+  slot2.innerHTML = `
+    <div class="as-step" data-step="2" data-status="locked">
+      <div class="as-step-head">
+        <span class="as-step-num">○</span>
+        <span class="as-step-title">Step 1 · Create work order</span>
+      </div>
+      <div class="as-step-body">
+        <span class="as-step-msg">Hyperspace OS · preparing work order…</span>
+      </div>
+    </div>`;
+  slot3.innerHTML = `
+    <div class="as-step" data-step="3" data-status="locked">
+      <div class="as-step-head">
+        <span class="as-step-num">○</span>
+        <span class="as-step-title">Step 2 · Schedule optimisation and assignment of engineer <span class="as-step-optional">(optional)</span></span>
+      </div>
+      <div class="as-step-body">
+        <span class="as-step-msg">Locked — create the work order first.</span>
+      </div>
+    </div>`;
+  unlockActionStep2();
 }
 
 function revealStep1WithAddButton() {
@@ -1284,30 +1318,15 @@ function paintActionStepsInitial(actionSlot) {
 }
 
 function paintActionStepsComplete(actionSlot) {
-  // Already actioned (re-render after dispatch). Show both steps ✓.
-  // W13 R2 — heading "SOP Relevant next best actions"; Step 1 title "Inspect and confirm telemetry";
-  // notes re-attach block dropped (Faye onsite notes removed from Step 2).
+  // Already actioned (re-render after dispatch). Telemetry Step 1 removed — 2-step flow:
+  // Step 1 = Create work order (internal data-step="2"), Step 2 = assign engineer (data-step="3").
   actionSlot.innerHTML = `
     <div class="action-steps" data-variant="sop-relevant">
       <div class="as-heading">SOP Relevant next best actions</div>
-      <div class="as-step" data-step="1" data-status="done">
-        <div class="as-step-head">
-          <span class="as-step-num">✓</span>
-          <span class="as-step-title">Step 1 · Inspect and confirm telemetry</span>
-        </div>
-        <div class="as-step-body">
-          <span class="as-step-msg italic">Telemetry confirmed for INC-2026-0537</span>
-          <button class="as-step-attach" type="button" aria-label="View verified metrics">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
-              <path d="M16.5 6v11.5a4 4 0 0 1-8 0V5a2.5 2.5 0 0 1 5 0v10a1 1 0 0 1-2 0V6h-1.5v9a2.5 2.5 0 0 0 5 0V5a4 4 0 0 0-8 0v12.5a5.5 5.5 0 0 0 11 0V6z"/>
-            </svg>
-          </button>
-        </div>
-      </div>
       <div class="as-step" data-step="2" data-status="done">
         <div class="as-step-head">
           <span class="as-step-num">✓</span>
-          <span class="as-step-title">Step 2 · Create work order</span>
+          <span class="as-step-title">Step 1 · Create work order</span>
         </div>
         <div class="as-step-body">${buildWorkOrderCardHTML({
           id: WORK_ORDER.id,
@@ -1320,7 +1339,7 @@ function paintActionStepsComplete(actionSlot) {
       <div class="as-step" data-step="3" data-status="selected">
         <div class="as-step-head">
           <span class="as-step-num">✓</span>
-          <span class="as-step-title">Step 3 · Schedule optimisation and assignment of engineer <span class="as-step-optional">(optional)</span></span>
+          <span class="as-step-title">Step 2 · Schedule optimisation and assignment of engineer <span class="as-step-optional">(optional)</span></span>
         </div>
         <div class="as-step-body">
           <span class="as-step-msg">Lim Wei Jie selected</span>
@@ -1328,7 +1347,6 @@ function paintActionStepsComplete(actionSlot) {
       </div>
       <div class="dispatch-confirmed">✓ Dispatched to fix at ${currentSGTTime()} · ${DISPATCH_LABEL[state.activePersona] || 'next persona'} notified</div>
     </div>`;
-  wireTelemetryModal();
 }
 
 function startActionStep1() {
@@ -1631,20 +1649,15 @@ function buildRegenWoDocHTML() {
 // drawn live from state (Safety = checked, Instrument = tick/cross/halted).
 function buildCompletedWorksHTML() {
   const checked = state.lim.checked || {};
-  const instrResults = state.lim.instrumentResults || {};
-  const groups = LIM_INSPECTION_CHECKLIST.filter(g => g.group === 'Safety' || g.group === 'Instrument').map(g => {
+  // Instrument group removed; onsite works = Safety + Root cause isolation. Root-cause checks halted by
+  // the temp-spike render as "superseded" (escalated to offsite expert) rather than done.
+  const groups = LIM_INSPECTION_CHECKLIST.filter(g => g.group === 'Safety' || g.group === 'Root cause isolation').map(g => {
     const rows = g.items.map(it => {
+      const done = !!checked[it.id];
       let status, cls;
-      if (g.group === 'Safety') {
-        const done = !!checked[it.id];
-        status = done ? '✓ done' : '— not reached';
-        cls = done ? 'doc-st-done' : 'doc-st-pending';
-      } else {
-        const r = instrResults[it.id];
-        if (r === 'tick')      { status = '✓ done';    cls = 'doc-st-done'; }
-        else if (r === 'cross'){ status = '✗ skipped'; cls = 'doc-st-skip'; }
-        else                   { status = '— halted';  cls = 'doc-st-pending'; }
-      }
+      if (done)                             { status = '✓ done';       cls = 'doc-st-done'; }
+      else if (state.lim.tempSpikeTriggered){ status = '— superseded'; cls = 'doc-st-skip'; }
+      else                                  { status = '— not reached'; cls = 'doc-st-pending'; }
       return `<li class="doc-check"><span class="doc-check-txt">${it.text}</span><span class="doc-check-st ${cls}">${status}</span></li>`;
     }).join('');
     return `<div class="doc-works-group-lbl">${g.group}</div><ul class="doc-list doc-check-list">${rows}</ul>`;
@@ -1684,8 +1697,8 @@ const SERVICE_REPORT_SOURCES = [
     records: ['Hyperspace KG · differential diagnosis', 'RCA · Jurong-CCGT-2 / Sakra-CCGT-1 / Banyan-CHP'] },
   { id: 'sr-human', color: '#DB2777', agent: 'Faye Sit + Lim Wei Jie',
     label: 'Human-in-the-loop decisions',
-    desc: 'Ops override rationale and onsite safety + instrument checks captured in-workflow.',
-    records: ['Faye Sit · diagnosis override + reasoning', 'Lim Wei Jie · safety 5/5 · instrument 2/3'] },
+    desc: 'Ops override rationale and onsite safety + root-cause checks captured in-workflow.',
+    records: ['Faye Sit · diagnosis override + reasoning', 'Lim Wei Jie · safety 5/5 · root-cause 2/5'] },
   { id: 'sr-call', color: '#00A5A8', agent: 'Audio-transcription Agent',
     label: 'Escalation call transcript',
     desc: 'Diarised Lim ↔ Dr. Ismail call that confirmed the revised failure mode.',
@@ -2354,8 +2367,8 @@ function stubView(root, label) {
 // + inspection checklist + binary CTAs + call flow + diagnosis morph + escalate
 // ─────────────────────────────────────────────
 
-// W15 — Restored grouped 3-group structure from commit 17cd4c3.
-// Safety 5 items / Instrument 3 items / Root cause isolation EXPANDED 2→5 items = 13 total.
+// 2-group structure (Instrument group removed). Safety 5 items / Root cause isolation 5 items = 10 total.
+// Temp-spike escalation relocated from Instrument (instr-2) → Root cause isolation (rci-2).
 const LIM_INSPECTION_CHECKLIST = [
   {
     group: 'Safety',
@@ -2365,14 +2378,6 @@ const LIM_INSPECTION_CHECKLIST = [
       { id: 'safety-3', text: 'Confirm vibration levels are stable enough for safe inspection.' },
       { id: 'safety-4', text: 'Check casing temperature is within safe handling range.' },
       { id: 'safety-5', text: 'Confirm lockout/tagout is in place before close inspection.' },
-    ],
-  },
-  {
-    group: 'Instrument',
-    items: [
-      { id: 'instr-1', text: 'Cross-check Bently Nevada 3500 readings against handheld vibration meter.' },
-      { id: 'instr-2', text: 'Inspect vibration transducer cabling + mounts for any loose connections.' },
-      { id: 'instr-3', text: 'Verify vibration readings using a handheld vibration meter if available.' },
     ],
   },
   {
@@ -2387,7 +2392,7 @@ const LIM_INSPECTION_CHECKLIST = [
   },
 ];
 
-const LIM_CHECKLIST_THRESHOLD = 13;
+const LIM_CHECKLIST_THRESHOLD = 10;
 
 // W4.1 — group theater (HSE for Safety, Instrument Diagnostic, Sensor Anomaly Inspector + Equipment Diag for root-cause)
 const GROUP_THEATER_AGENT = {
@@ -2417,7 +2422,7 @@ const GROUP_THEATER_AGENT = {
 const GROUP_LOCKED_HINT = {
   'Safety': '',
   'Instrument': '🔒 awaiting safety completion',
-  'Root cause isolation': '🔒 awaiting instrument completion',
+  'Root cause isolation': '🔒 awaiting safety completion',
 };
 
 function buildLimDetailScaffold() {
@@ -2435,6 +2440,7 @@ function buildLimDetailScaffold() {
     </span>
     <div class="inc-hdr-row">
       <div class="inc-hdr-left">
+        <div class="inc-workspace">${PERSONA_INITIALS.onsite.workspace}</div>
         <div class="inc-title">${INCIDENT.asset}</div>
         <div class="inc-id">${INCIDENT.id} · routed from Faye Sit</div>
         <div class="inc-ts">${INCIDENT.timestamp}</div>
@@ -2684,6 +2690,15 @@ function buildLimGroupHTML(grp, locked) {
             </div>` : ''}
         </div>`;
     }
+    // Root-cause items halted after the temp spike render as superseded (escalating to offsite expert).
+    if (state.lim.tempSpikeTriggered && grp.group === 'Root cause isolation' && !isChecked) {
+      return `
+        <div class="ic-item ic-item-struck" data-item-id="${it.id}" data-checked="false">
+          <span class="ic-check">○</span>
+          <span class="ic-text">${it.text}</span>
+          <span class="ic-instr-superseded">superseded</span>
+        </div>`;
+    }
     return `
       <div class="ic-item" data-item-id="${it.id}" data-checked="${isChecked}">
         <span class="ic-check">${isChecked ? '✓' : '○'}</span>
@@ -2691,7 +2706,7 @@ function buildLimGroupHTML(grp, locked) {
       </div>`;
   }).join('');
   // W43 — temperature spike: surface a new "contact offsite expert" item in the Instrument group.
-  const escalateHtml = (isInstrument && state.lim.tempSpikeTriggered) ? `
+  const escalateHtml = (grp.group === 'Root cause isolation' && state.lim.tempSpikeTriggered) ? `
       <div class="ic-escalate-item" data-item-id="contact-offsite-expert">
         <span class="ic-escalate-arrow">→</span>
         <div class="ic-escalate-body">
@@ -2729,18 +2744,18 @@ function paintLimChecklist() {
   const checked = Object.keys(state.lim.checked).length;
   let progressText;
   if (state.lim.tempSpikeTriggered) {
-    // W46 — escalated path: show per-group progress (Safety 5/5 · Instrument 2/3), not the 13-item aggregate.
+    // W46 — escalated path: show per-group progress (Safety 5/5 · Root cause 2/5), not the aggregate.
     const grpProg = g => `${g.group} ${g.items.filter(it => state.lim.checked[it.id]).length}/${g.items.length}`;
     const safety = LIM_INSPECTION_CHECKLIST.find(g => g.group === 'Safety');
-    const instr = LIM_INSPECTION_CHECKLIST.find(g => g.group === 'Instrument');
-    progressText = `${grpProg(safety)} · ${grpProg(instr)} · escalated to offsite expert`;
+    const rci = LIM_INSPECTION_CHECKLIST.find(g => g.group === 'Root cause isolation');
+    progressText = `${grpProg(safety)} · ${grpProg(rci)} · escalated to offsite expert`;
   } else {
     progressText = `${checked}/${total} checks complete`;
   }
   slot.innerHTML = `
     <div class="inspection-checklist">
       <div class="ic-heading">Inspection workflow (INC-2026-0537 · per the SOP)</div>
-      <div class="ic-sub">Complete safety + instrument + root-cause checks sequentially.</div>
+      <div class="ic-sub">Complete safety + root-cause checks sequentially.</div>
       ${groupsHtml}
       <div class="ic-progress"><span class="ic-progress-num">${progressText}</span></div>
     </div>`;
@@ -2760,11 +2775,6 @@ function paintLimChecklistComplete() {
   if (!state.lim.tempSpikeTriggered) {
     // Legacy/confirm path: all items rendered as checked (post-escalation re-entry)
     LIM_INSPECTION_CHECKLIST.forEach(g => g.items.forEach(it => { state.lim.checked[it.id] = true; }));
-    // W15 — also mirror Instrument tick results so post-action re-entry shows ✓ Done
-    state.lim.instrumentResults = state.lim.instrumentResults || {};
-    LIM_INSPECTION_CHECKLIST.find(g => g.group === 'Instrument').items.forEach(it => {
-      if (!state.lim.instrumentResults[it.id]) state.lim.instrumentResults[it.id] = 'tick';
-    });
   }
   paintLimChecklist();
   // W8 C.5 — re-entry path also shows truncated groups.
@@ -3017,6 +3027,8 @@ function wireInspectionChecklist() {
   document.querySelectorAll('.ic-item').forEach(item => {
     // W15 — Instrument rows handled by wireInstrumentActions (tick/cross buttons); skip generic wiring.
     if (item.classList.contains('ic-item-instrument')) return;
+    // Superseded root-cause rows (post temp-spike) are not tickable.
+    if (item.classList.contains('ic-item-struck')) return;
     if (item.dataset.wired === '1') return;
     item.dataset.wired = '1';
     item.addEventListener('click', () => {
@@ -3028,7 +3040,15 @@ function wireInspectionChecklist() {
       item.dataset.checked = 'true';
       item.querySelector('.ic-check').textContent = '✓';
       logChecklistItem(itemId);
+      // Temp-spike escalation: ticking the rolling-element bearing check (rci-2) surfaces the 94°C
+      // NDE bearing spike → supersede remaining root-cause checks + surface the offsite-expert item.
+      const triggerSpike = itemId === 'rci-2' && !state.lim.tempSpikeTriggered;
+      if (triggerSpike) {
+        state.lim.tempSpikeTriggered = true;
+        paintLimChecklist();   // re-render so remaining root-cause rows supersede + escalation item appears
+      }
       updateChecklistProgress();
+      if (triggerSpike) showTempSpikeAlert();
     });
   });
 }
@@ -3124,12 +3144,9 @@ function updateChecklistProgress() {
     if (grpChecked === grpDef.items.length) groupCompleted[groupName] = true;
   });
 
-  // W4.1 — chain theater triggers on prior-group completion
-  if (groupCompleted['Safety'] && !state.lim.instrumentTheaterFired) {
-    state.lim.instrumentTheaterFired = true;
-    triggerGroupTheater('Instrument');
-  }
-  if (groupCompleted['Instrument'] && !state.lim.rciTheaterFired) {
+  // W4.1 — chain theater triggers on prior-group completion.
+  // Instrument group removed → Safety completion now fires the Root cause isolation theater directly.
+  if (groupCompleted['Safety'] && !state.lim.rciTheaterFired) {
     state.lim.rciTheaterFired = true;
     triggerGroupTheater('Root cause isolation');
   }
@@ -3749,13 +3766,11 @@ function serviceReportSections() {
     : `<p class="svr-p">Ops (<span class="dyn-name">Faye Sit</span>) confirmed the AI recommendation: <strong>${captured.name} · ${captured.conf}%</strong>.</p>`;
 
   const safetyGrp = LIM_INSPECTION_CHECKLIST.find(g => g.group === 'Safety');
-  const instrGrp = LIM_INSPECTION_CHECKLIST.find(g => g.group === 'Instrument');
+  const rciGrp = LIM_INSPECTION_CHECKLIST.find(g => g.group === 'Root cause isolation');
   const safetyDone = safetyGrp.items.filter(it => state.lim.checked[it.id]).length;
-  const instrRows = instrGrp.items.map(it => {
-    const r = (state.lim.instrumentResults || {})[it.id];
-    const status = r === 'tick' ? '<span class="svr-ok">✓ done</span>'
-      : r === 'cross' ? '<span class="svr-skip">✗ skipped</span>'
-      : '<span class="svr-sup">superseded</span>';
+  const rciRows = rciGrp.items.map(it => {
+    const done = !!state.lim.checked[it.id];
+    const status = done ? '<span class="svr-ok">✓ done</span>' : '<span class="svr-sup">superseded</span>';
     return `<div class="svr-kv"><span class="svr-k">${it.text}</span><span class="svr-v">${status}</span></div>`;
   }).join('');
 
@@ -3769,8 +3784,8 @@ function serviceReportSections() {
       html: `${telemetryRows}<div class="svr-kv"><span class="svr-k">NDE bearing housing temp (onsite)</span><span class="svr-v">94 °C<span class="svr-note"> · spiking, +16 °C / 4 min</span></span></div>` },
     { sourceId: 'sr-diag', label: '2 · AI-generated diagnoses + confidence', html: diagRows },
     { sourceId: 'sr-human', label: '3 · Ops override rationale', html: overrideHtml },
-    { sourceId: 'sr-human', label: '4 · Onsite safety + instrument checks · <span class="dyn-name">Lim Wei Jie</span>',
-      html: `<div class="svr-kv"><span class="svr-k">Safety checks</span><span class="svr-v"><span class="svr-ok">${safetyDone}/${safetyGrp.items.length} complete</span></span></div>${instrRows}<p class="svr-p svr-muted">Temperature spike on NDE bearing housing halted remaining instrument checks → escalation to offsite expert.</p>` },
+    { sourceId: 'sr-human', label: '4 · Onsite safety + root-cause checks · <span class="dyn-name">Lim Wei Jie</span>',
+      html: `<div class="svr-kv"><span class="svr-k">Safety checks</span><span class="svr-v"><span class="svr-ok">${safetyDone}/${safetyGrp.items.length} complete</span></span></div>${rciRows}<p class="svr-p svr-muted">Temperature spike on NDE bearing housing halted remaining root-cause checks → escalation to offsite expert.</p>` },
     { sourceId: 'sr-call', label: '5 · Escalation exchange · <span class="dyn-name">Dr. A. Ismail</span> (offsite)',
       html: `<div class="svr-transcript">${txRows}</div>` },
     { sourceId: 'sr-call', label: '6 · Revised failure mode',
@@ -4148,8 +4163,7 @@ function spawnEscalationReportContent() {
         <div class="oer-section-label"><span class="dyn-name">Lim Wei Jie</span>'s completed workflow</div>
         <div class="oer-workflow-list">
           <div class="oer-wl-item">✓ 5/5 Safety checks</div>
-          <div class="oer-wl-item">✓ 3/3 Instrument checks</div>
-          <div class="oer-wl-item">✓ 2/2 Root cause isolation checks</div>
+          <div class="oer-wl-item">✓ 2/5 Root cause isolation checks · escalated to offsite expert</div>
           <div class="oer-wl-item">✓ Initial bearing-spalling hypothesis rejected</div>
           <div class="oer-wl-item">✓ Call with <span class="dyn-name">Dr. A. Ismail</span> · 7m 23s · transcript captured</div>
           <div class="oer-wl-item">✓ Transcript captured · <span class="dyn-name">Dr. A. Ismail</span> + <span class="dyn-name">Lim Wei Jie</span> discussed and agreed <button class="oer-tx-inline" type="button">(see transcript)</button></div>
@@ -4785,6 +4799,8 @@ function initTranscriptModal() {
   modal.addEventListener('click', e => {
     if (e.target.closest('.transcript-modal-close')) { closeTranscriptModal(); return; }
     if (e.target.classList.contains('transcript-modal-backdrop')) { closeTranscriptModal(); return; }
+    // port (short-og-demo) — "Knowledge bytes captured" surfaces the 3D KG window on demand.
+    if (e.target.closest('.transcript-modal-kg-btn')) { if (!state.graphWinOpen) toggleGraphWindow(); return; }
   });
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
@@ -4864,6 +4880,7 @@ function renderMonitoringView(root) {
   hdr.innerHTML = `
     <div class="mon-hdr-left">
       <div class="mon-hdr-brand">Hyperspace OS</div>
+      ${persona.workspace ? `<div class="mon-hdr-workspace">${persona.workspace}</div>` : ''}
     </div>
     <div class="mon-hdr-right">
       <div class="mon-hdr-time">${currentSGTTime()}</div>
@@ -5130,6 +5147,8 @@ function tabletCacheKey() {
 function renderTablet() {
   const root = document.getElementById('tablet-root');
   if (!root) return;
+  // port (short-og-demo) — persona hook for per-persona color scheme (onsite = blue).
+  root.dataset.persona = state.activePersona;
   const key = tabletCacheKey();
   if (root.dataset.cacheKey === key && root.innerHTML !== '') {
     // No state change relevant to tablet structure — skip wipe.
@@ -8521,9 +8540,18 @@ function mountSvgKG(body, win, persona) {
   // Resize floating window so SVG legible (default 460x360 too small).
   // W17 Section A: onsite bumped 820×620 → 1180×780 to fit 1100×720 viewBox at full scale.
   // W17 Section B: analyst bumped to 1180×880 to fit 1100×1500 viewBox.
-  const dims = persona === 'onsite'
+  const ideal = persona === 'onsite'
     ? { w: 1180, h: 780 }
     : { w: 1180, h: 880 };
+  // Clamp to viewport so edges never run off-screen at any projector resolution.
+  const margin = 16;
+  const dims = {
+    w: Math.min(ideal.w, window.innerWidth - margin * 2),
+    h: Math.min(ideal.h, window.innerHeight - margin * 2),
+  };
+  // Centre the KG window on screen.
+  win.style.left = Math.max(margin, (window.innerWidth - dims.w) / 2) + 'px';
+  win.style.top = Math.max(margin, (window.innerHeight - dims.h) / 2) + 'px';
   win.style.width = dims.w + 'px';
   win.style.height = dims.h + 'px';
   state.graphWinSize = dims;

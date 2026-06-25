@@ -239,6 +239,17 @@
       border-radius: 18px;
       overflow: hidden;
     }
+    /* port (short-og-demo) — Onsite (Lim Wei Jie) tablet runs a BLUE scheme to distinguish it
+       from the green Ops screens. Remaps the brand tokens for the whole onsite tablet subtree;
+       everything using var(--green-*)/var(--teal-*) follows (mon-header, inc-header, etc.). */
+    #tablet-root[data-persona="onsite"] {
+      --green-vivid:      #2563EB;
+      --green-deep:       #1D4ED8;
+      --green-soft:       #DBEAFE;
+      --green-soft-text:  #1E40AF;
+      --teal-header:      #2563EB;
+      --teal-deep:        #1D4ED8;
+    }
     .tablet-content {
       border-radius: 18px;
       overflow: hidden;
@@ -755,6 +766,13 @@
       letter-spacing: .12em; text-transform: none;
       color: #fff;
     }
+    /* port (short-og-demo) — persona role/workspace label under the brand. */
+    .mon-hdr-workspace {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: .14em; text-transform: uppercase;
+      color: rgba(255,255,255,0.82);
+      margin-top: 3px;
+    }
     .mon-hdr-right { display: flex; align-items: center; gap: 16px; }
     .mon-hdr-time {
       font-family: var(--mono);
@@ -1024,11 +1042,25 @@
       gap: 12px;
     }
     .inc-hdr-left { flex: 1; min-width: 0; }
+    /* port (short-og-demo) — workspace role label above the asset title (onsite header). */
+    .inc-workspace {
+      font-size: 19px; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase;
+      color: #fff;
+      margin-bottom: 6px;
+    }
     .inc-title {
       font-size: 17px; font-weight: 800;
       letter-spacing: 0.02em;
       color: #fff;
       line-height: 1.25;
+    }
+    /* Where a workspace label is present (Faye ops + Lim onsite), it's the hero and the asset
+       title steps down. Headers without a workspace label (escalation report, offsite, analyst)
+       keep the 17px title. */
+    .inc-hdr-left:has(.inc-workspace) .inc-title {
+      font-size: 13.5px;
+      color: rgba(255,255,255,0.92);
     }
     .inc-id {
       font-family: var(--mono);
@@ -1805,6 +1837,26 @@
     .persona-tile-pulse {
       animation: persona-pulse 1.6s ease-in-out infinite;
       border-color: var(--green-vivid) !important;
+    }
+
+    /* port (short-og-demo) — Onsite (Lim Wei Jie) persona tile = BLUE, matching his blue screen. */
+    @keyframes persona-pulse-blue {
+      0%, 100% { box-shadow: 0 0 0 2px rgba(37,99,235,0.18); }
+      50%      { box-shadow: 0 0 0 6px rgba(37,99,235,0.50), 0 0 18px rgba(37,99,235,0.32); }
+    }
+    .persona-tile[data-persona-key="onsite"][data-state="active"] {
+      border-color: var(--blue-vivid);
+      box-shadow: 0 0 0 2px rgba(37,99,235,0.12);
+    }
+    .persona-tile[data-persona-key="onsite"][data-state="active"] .persona-scene {
+      background: linear-gradient(180deg, #EFF6FF 0%, #F1F5F9 100%);
+    }
+    .persona-tile[data-persona-key="onsite"][data-state="active"] .persona-role {
+      color: var(--blue-vivid);
+    }
+    .persona-tile[data-persona-key="onsite"].persona-tile-pulse {
+      animation: persona-pulse-blue 1.6s ease-in-out infinite;
+      border-color: var(--blue-vivid) !important;
     }
 
     /* ═══════════════════════════════════════════════
@@ -4015,17 +4067,50 @@
       font-size: 12.5px; line-height: 1.55;
       color: var(--text-secondary);
     }
-    .transcript-modal-footer {
+    /* port (short-og-demo) — call-summary boxes + "Knowledge bytes captured" KG button */
+    .tx-summary { display: flex; flex-direction: column; gap: 8px; }
+    .transcript-modal-header-2 { margin-top: 18px; }
+    .transcript-modal-header-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px;
+    }
+    .transcript-modal-header-row .transcript-modal-kg-btn { margin-right: 28px; }
+    .tx-box {
       font-size: 12px; line-height: 1.55;
-      margin-top: 4px;
-      padding: 10px 12px;
-      border-top: 2px solid var(--green-vivid);
-      background: var(--green-soft);
+      padding: 9px 12px;
       border-radius: 6px;
       color: var(--text-primary);
     }
-    .transcript-modal-footer strong {
-      color: var(--green-soft-text); font-weight: 800;
+    .tx-box strong { font-weight: 800; }
+    .tx-box-green {
+      border-left: 3px solid var(--green-vivid);
+      background: var(--green-soft);
+    }
+    .tx-box-green strong { color: var(--green-soft-text); }
+    .tx-box-red {
+      border-left: 3px solid var(--red-vivid);
+      background: #FEE2E2;
+    }
+    .tx-box-red strong { color: #991B1B; }
+    .tx-risk { font-weight: 800; color: #991B1B; }
+    .tx-link {
+      color: var(--green-soft-text, #00803f);
+      text-decoration: underline; cursor: pointer; font-weight: 600;
+    }
+    .tx-link:hover { color: var(--green-vivid); }
+    .transcript-modal-kg-btn {
+      font-size: 12.5px; font-weight: 700;
+      padding: 9px 16px;
+      border: 1px solid var(--green-vivid);
+      border-radius: 8px;
+      background: var(--green-vivid);
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+    .transcript-modal-kg-btn:hover {
+      background: var(--green-soft-text, #00803f);
+      box-shadow: 0 2px 8px rgba(0,166,81,0.28);
     }
 
     /* KG node labels — white-on-black palette (inside floating window) */
@@ -7285,7 +7370,17 @@
     <div class="transcript-modal-backdrop"></div>
     <div class="transcript-modal-card">
       <button class="transcript-modal-close" type="button" aria-label="Close">×</button>
-      <div class="transcript-modal-header">
+      <div class="transcript-modal-header transcript-modal-header-row">
+        <div class="transcript-modal-title">Call summary</div>
+        <button class="transcript-modal-kg-btn" type="button">Knowledge bytes captured</button>
+      </div>
+      <div class="tx-summary">
+        <div class="tx-box tx-box-green"><strong>Escalation:</strong> The incident was escalated when elevated radial vibration persisted despite normal bearing health indicators, suggesting a structural fault mechanism with potential loss-of-containment risk.</div>
+        <div class="tx-box tx-box-green"><strong>Troubleshooting:</strong> The team correlated vibration signatures with casing inspection data, performed a targeted review of the discharge-side volute weld region, and identified a surface-breaking discontinuity approximately 60 mm from the weld toe consistent with fatigue initiation.</div>
+        <div class="tx-box tx-box-green"><strong>Revised diagnosis:</strong> The diagnosis was revised to pump casing fatigue cracking after ruling out bearing spalling and matching the crack location, morphology, and vibration response to a previously documented cyclic pressure-load failure mode on a comparable BFP asset.</div>
+        <div class="tx-box tx-box-red"><strong>Recommendation:</strong> <span class="tx-risk">Immediate shutdown of BFP-3A · isolate Block 2 feedwater.</span> <span class="tx-risk">4h, 50 MW, $2.4M revenue at risk.</span> <a class="tx-link" href="#" onclick="return false;">Emergency Maintenance and Trading desk notified.</a></div>
+      </div>
+      <div class="transcript-modal-header transcript-modal-header-2">
         <div class="transcript-modal-title">Call transcript</div>
         <div class="transcript-modal-sub">
           Lim Wei Jie ↔ Dr. A. Ismail · 02:48 SGT · 7m 23s · auto-generated via Hyperspace OS
@@ -7299,12 +7394,9 @@
         <div class="tx-line"><span class="tx-spk">L. Lim</span><span class="tx-txt">Updating diagnosis: pump casing crack · BFP-3A. Bearing damage and temp rise look like secondary effects from imbalanced loading.</span></div>
         <div class="tx-line"><span class="tx-spk">Dr. Ismail</span><span class="tx-txt">Confirmed. Shutdown required — can't run with a propagating casing crack. Escalating back to Faye for ops + commercial impact routing.</span></div>
       </div>
-      <div class="transcript-modal-footer">
-        <strong>Revised diagnosis:</strong> Crack in pump casing · BFP-3A · confirmed via field-experience pattern + targeted inspection (60mm discontinuity, 4 o'clock on volute, near discharge weld). Bearing damage secondary. Action: immediate shutdown + casing replacement scheduling. Material commercial impact — escalation required.
-      </div>
     </div>
   </div>
 
-  <script src="app.js?v=w47"></script>
+  <script src="app.js?v=w54"></script>
 </body>
 </html>

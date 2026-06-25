@@ -32,7 +32,7 @@ const CARDS: NkCardDef[] = [
     title: 'Update AI confidence scoring',
     detail: 'Backtesting on past incidents shows a 10% accuracy gain',
     provenance: 'from INC-0537 · Faye selected an alternative diagnosis because of specific temperature and vibration readings',
-    sop: ['SOP-BFP-VIBR-001', 'ISO 10816-7'],
+    sop: ['SOP CHECK', 'SAFETY CHECK'],
     approvedMsg: 'Edge recalculated to 0.70.',
     rejectedMsg: 'Declined — edge held at 0.88 pending more fleet cases.',
   },
@@ -41,7 +41,7 @@ const CARDS: NkCardDef[] = [
     title: 'Dye-penetrant inspection (PT/MT)',
     detail: 'new DiagnosticTest node · DT-WELD-NDT · confirms casing crack',
     provenance: 'from INC-0537 · L. Lim onsite — discontinuity ~60 mm from discharge weld',
-    sop: ['HSE Hot-Work Permit', 'NDT Level 2 (PT/MT)'],
+    sop: ['SOP CHECK', 'SAFETY CHECK'],
     approvedMsg: 'Dye-penetrant test committed + linked to casing crack.',
     rejectedMsg: 'Declined — held for 2nd opinion.',
   },
@@ -50,7 +50,7 @@ const CARDS: NkCardDef[] = [
     title: 'Casing weld-toe crack (volute)',
     detail: 'new RootCause node · RC-CASING-CRACK',
     provenance: 'from INC-0537 · Dr. A. Ismail phase analysis + onsite PT finding',
-    sop: ['SOP-BFP-VIBR-001', 'ASME PCC-2'],
+    sop: ['SOP CHECK', 'SAFETY CHECK'],
     approvedMsg: 'Casing-crack root cause committed to the graph.',
     rejectedMsg: 'Declined — not added.',
   },
@@ -165,7 +165,7 @@ export function NewKnowledgePanel() {
       <header className="p-panel-head" onClick={() => toggleFold('nk')}>
         <span className="p-panel-num">3</span>
         <span className="p-panel-title">New Knowledge</span>
-        <span className="p-panel-sub">{run ? `human sign-off · ${decidedCount}/${CARDS.length}` : 'waiting for a gap'}</span>
+        <span className="p-panel-sub">{run ? `human sign-off · ${decidedCount}/${CARDS.length}` : 'waiting'}</span>
         <span className="p-caret" data-open={expanded}>▾</span>
       </header>
 

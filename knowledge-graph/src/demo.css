@@ -200,7 +200,7 @@
 .p-journey-chip[data-tone="actual"] { border-color: #6EE7B7; background: #ECFDF5; color: #047857; }
 .p-doc-pending { display: inline-flex; align-items: center; gap: 6px; color: var(--slate); font-style: italic; opacity: 0.75; }
 
-/* onsite workflow card (Safety / Instrument steps) — a sub-card like the service report */
+/* onsite workflow card (Safety / Root cause steps) — a sub-card like the service report */
 .p-wf-steplist { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
 .p-wf-step { display: flex; align-items: center; gap: 7px; font-size: 11.5px; }
 .p-wf-step-mark { font-weight: 800; color: var(--green); flex: 0 0 auto; }

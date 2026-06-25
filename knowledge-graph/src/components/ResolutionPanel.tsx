@@ -243,7 +243,7 @@ export function ResolutionPanel() {
       <header className="p-panel-head" onClick={() => toggleFold('reso')}>
         <span className="p-panel-num">2</span>
         <span className="p-panel-title">Resolution</span>
-        <span className="p-panel-sub">{run ? 'match vs. graph' : 'waiting for findings'}</span>
+        <span className="p-panel-sub">{run ? 'match vs. graph' : 'waiting'}</span>
         <span className="p-caret" data-open={expanded}>▾</span>
       </header>
 

@@ -52,8 +52,8 @@ export const FOCUS_NODES: GraphNode[] = [
   { id: 'DT-OIL-ANALYSIS', label: 'DiagnosticTest', title: 'Oil analysis', x: COLS.l2, y: 725, tier: 'followup', props: { name: 'Lubricant / oil debris analysis', layer: 'follow-up (confirmatory)', method: 'Sample bearing oil; ferrography + particle count', cost_band: 'med', required_certs: ['Lubrication Analysis Level 1'] } },
 
   // ── ROOT CAUSES (LAST column) — each carries a `solution` remedy ──
-  { id: 'RC-BENT-SHAFT', label: 'RootCause', title: 'Bent shaft', x: COLS.cause, y: 210, props: { name: 'Bent shaft', description: 'Shaft bow (mechanical or thermal) driving 1×RPM vibration', solution: 'Straighten or replace shaft; re-balance rotor; re-check runout' } },
-  { id: 'RC-MISALIGN', label: 'RootCause', title: 'Misalignment', x: COLS.cause, y: 400, props: { name: 'Coupling misalignment', description: 'Pump-driver misalignment driving 2×RPM vibration and bearing load', solution: 'Laser-align pump-driver coupling to tolerance; renew worn coupling element' } },
+  { id: 'RC-BENT-SHAFT', label: 'RootCause', title: 'Shaft misalignment', x: COLS.cause, y: 210, props: { name: 'Shaft misalignment', description: 'Pump-driver shaft misalignment driving elevated vibration and bearing load', solution: 'Laser-align pump-driver shaft to tolerance; correct soft foot; renew worn coupling element' } },
+  { id: 'RC-MISALIGN', label: 'RootCause', title: 'Coupling misalignment', x: COLS.cause, y: 400, props: { name: 'Coupling misalignment', description: 'Pump-driver coupling misalignment driving 2×RPM vibration and bearing load', solution: 'Laser-align pump-driver coupling to tolerance; renew worn coupling element' } },
   { id: 'RC-BEARING-SPALL', label: 'RootCause', title: 'Bearing spalling', x: COLS.cause, y: 590, props: { name: 'Bearing race spalling', description: 'NDE bearing race surface fatigue / spalling', solution: 'Replace NDE bearing; verify lubrication & housing fit' } },
   { id: 'RC-LUBE-FAIL', label: 'RootCause', title: 'Lube failure', x: COLS.cause, y: 780, props: { name: 'Lubrication failure', description: 'Oil starvation / contamination degrading the NDE bearing', solution: 'Flush & replace lubricant; correct oil supply / cooler; fit breather' } },
 
@@ -62,7 +62,7 @@ export const FOCUS_NODES: GraphNode[] = [
 
   // ── PROPOSED nodes (the week's recommended add — dashed/ghost until approval at step 8) ──
   { id: 'DT-WELD-NDT', label: 'DiagnosticTest', title: 'Weld NDT', x: COLS.l2, y: 940, tier: 'followup', state: 'proposed', proposeStep: 6, batch: 1, props: { name: 'Weld NDT / dye-penetrant inspection (volute, near discharge)', layer: 'follow-up (confirmatory)', method: 'PT/MT of casing volute & discharge-weld region', cost_band: 'med', required_certs: ['NDT Level 2 (PT/MT)'] } },
-  { id: 'RC-CASING-CRACK', label: 'RootCause', title: 'Casing crack', x: COLS.cause, y: 970, state: 'proposed', proposeStep: 6, batch: 1, props: { name: 'Pump casing crack / weld fatigue', description: 'Volute / discharge weld-toe crack; casing fatigue mimicking 1×RPM shaft signatures', solution: 'Weld repair + PWHT of volute / discharge weld; MPI re-check; review casing fatigue life' } },
+  { id: 'RC-CASING-CRACK', label: 'RootCause', title: 'Casing crack', x: COLS.cause, y: 970, state: 'proposed', proposeStep: 6, batch: 1, props: { name: 'Pump casing crack / weld fatigue', description: 'Volute / discharge weld-toe crack; casing fatigue mimicking shaft-misalignment vibration signatures', solution: 'Weld repair + PWHT of volute / discharge weld; MPI re-check; review casing fatigue life' } },
 ]
 
 // `result` on every test edge = the observed test finding that drives it (shown when the
@@ -76,22 +76,22 @@ export const FOCUS_EDGES: GraphEdge[] = [
   { source: 'SYM-001', target: 'DT-HOUSING-INSPECT', type: 'TRIGGERS', order: 2, result: 'First-line visual / borescope of NDE bearing race' },
 
   // FOLLOW_UP — single L1→L2 hop when a triage test isn't decisive on its own
-  { source: 'DT-PHASE', target: 'DT-RUNOUT', type: 'FOLLOW_UP', result: '1×RPM dominant → confirm shaft bow with runout' },
+  { source: 'DT-PHASE', target: 'DT-RUNOUT', type: 'FOLLOW_UP', result: 'Directional phase signature → confirm with shaft runout (TIR)' },
   { source: 'DT-PHASE', target: 'DT-ALIGNMENT', type: 'FOLLOW_UP', result: '2×RPM dominant → confirm with alignment check' },
   { source: 'DT-HOUSING-INSPECT', target: 'DT-OIL-ANALYSIS', type: 'FOLLOW_UP', result: 'No visible spalling → escalate to oil debris analysis' },
 
   // test → root cause (probability = how diagnostic). 1-layer (triage confirms) + 2-layer (follow-up confirms).
-  // ⭐ re-weight target: phase over-confirms bent shaft at 0.88 today; week proposes 0.70
-  { source: 'DT-PHASE', target: 'RC-BENT-SHAFT', type: 'CONFIRMS', band: 'high', probability: 0.88, oldProbability: 0.88, newProbability: 0.70, reweightProposeStep: 6, batch: 1, result: '1×RPM-dominant with ~180° NDE–DE phase shift' },
+  // ⭐ re-weight target: phase over-confirms shaft misalignment at 0.88 today; week proposes 0.70
+  { source: 'DT-PHASE', target: 'RC-BENT-SHAFT', type: 'CONFIRMS', band: 'high', probability: 0.88, oldProbability: 0.88, newProbability: 0.70, reweightProposeStep: 6, batch: 1, result: 'Elevated 1×/2×RPM with ~180° phase shift across the coupling' },
   { source: 'DT-PHASE', target: 'RC-MISALIGN', type: 'CONFIRMS', band: 'med', probability: 0.7, result: '2×RPM component elevated relative to 1×RPM' },
   { source: 'DT-HOUSING-INSPECT', target: 'RC-BEARING-SPALL', type: 'CONFIRMS', band: 'high', probability: 0.95, result: 'Visible race spalling / pitting on NDE bearing' },
-  { source: 'DT-RUNOUT', target: 'RC-BENT-SHAFT', type: 'CONFIRMS', band: 'high', probability: 0.9, result: 'Total indicated runout exceeds tolerance' },
+  { source: 'DT-RUNOUT', target: 'RC-BENT-SHAFT', type: 'CONFIRMS', band: 'high', probability: 0.9, result: 'Shaft / coupling TIR exceeds tolerance' },
   { source: 'DT-ALIGNMENT', target: 'RC-MISALIGN', type: 'CONFIRMS', band: 'high', probability: 0.92, result: 'Offset / angularity out of tolerance' },
   { source: 'DT-OIL-ANALYSIS', target: 'RC-LUBE-FAIL', type: 'CONFIRMS', band: 'high', probability: 0.9, result: 'High particle/water count; viscosity off-spec' },
   { source: 'DT-OIL-ANALYSIS', target: 'RC-BEARING-SPALL', type: 'CONFIRMS', band: 'med', probability: 0.65, result: 'Ferrous spall debris in ferrography' },
 
   // INCONCLUSIVE — the second outcome of each confirmatory test (test ran, didn't confirm → escalate)
-  { source: 'DT-RUNOUT', target: 'NEEDS-INFO', type: 'INCONCLUSIVE', result: 'Runout within tolerance → shaft bow not confirmed; gather more data' },
+  { source: 'DT-RUNOUT', target: 'NEEDS-INFO', type: 'INCONCLUSIVE', result: 'TIR within tolerance → shaft misalignment not confirmed; gather more data' },
   { source: 'DT-ALIGNMENT', target: 'NEEDS-INFO', type: 'INCONCLUSIVE', result: 'Alignment within tolerance → misalignment not confirmed; gather more data' },
   { source: 'DT-OIL-ANALYSIS', target: 'NEEDS-INFO', type: 'INCONCLUSIVE', result: 'Oil clean → lube failure / spalling not confirmed; gather more data' },
 
@@ -102,7 +102,7 @@ export const FOCUS_EDGES: GraphEdge[] = [
 
   // ── PROPOSED shortcut (batch 2) — captured from a call: skip triage, go straight to runout.
   // On approval this formalises into a first-line TRIGGERS edge (Shaft runout promoted to L1). ──
-  { source: 'SYM-001', target: 'DT-RUNOUT', type: 'SHORTCUT', order: 3, result: 'Captured call: “1×RPM is obvious — skip phase, go straight to the runout”', state: 'proposed', proposeStep: 6, batch: 2 },
+  { source: 'SYM-001', target: 'DT-RUNOUT', type: 'SHORTCUT', order: 3, result: 'Captured call: “Signature’s obvious — skip phase, go straight to the runout (TIR)”', state: 'proposed', proposeStep: 6, batch: 2 },
 ]
 
 // ── Decorative "rest of the KG" — a dense RADIAL field: other BFP symptoms ringing the

@@ -158,7 +158,7 @@ export function DocumentsPanel() {
                                   <span className="p-doc-prov">via {c.agent} · {c.source}</span>
                                 </div>
                               )}
-                              {ph === 'done' && c.steps && (
+                              {(isWorking(ph) || ph === 'done') && c.steps && (
                                 <div className="p-wf-steplist">
                                   {c.steps.map((s) => {
                                     const full = s.done >= s.total
