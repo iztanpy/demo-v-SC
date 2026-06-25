@@ -1,9 +1,10 @@
 import { create } from 'zustand'
 
 // Sequential 3-panel demo clock. "Run the week" starts ONLY section 1 (Documents). Each subsequent
-// section begins its own timeline when the presenter manually FOLDS the previous one (folding = the
-// advance trigger). Folded sections collapse to a thin numbered strip; multiple sections may be open
-// at once (re-opening a strip doesn't fold the others).
+// section begins its own timeline either when the presenter FOLDS the previous one, OR when they
+// OPEN the next (not-yet-run) section's strip directly — opening a fresh section auto-folds the
+// previous one and starts its timeline (so clicking ahead "just works"). Folded sections collapse to
+// a thin numbered strip; re-opening an ALREADY-run strip doesn't fold the others.
 export type SectionKey = 'docs' | 'reso' | 'nk'
 const ORDER: SectionKey[] = ['docs', 'reso', 'nk']
 
@@ -18,7 +19,8 @@ interface DemoState {
   sectionRun: Record<SectionKey, boolean>
   /** which sections are folded to a number strip */
   sectionFolded: Record<SectionKey, boolean>
-  /** fold/unfold a section; folding the current one triggers + opens the next (idempotent) */
+  /** fold/unfold a section; folding the current one — or opening the next not-yet-run one —
+   *  triggers the next section's timeline and folds the previous (idempotent) */
   toggleFold: (key: SectionKey) => void
 
   // ── Resolution (Panel 2) outputs that the graph + Panel 3 react to ──
@@ -45,6 +47,12 @@ interface DemoState {
    *  amber for ~1s then reverts. `seq` makes repeat pulses on the same target distinct. */
   flashPulse: { seq: number; nodes: string[]; edges: string[]; ms?: number } | null
   pulse: (nodes: string[], edges: string[], ms?: number) => void
+
+  /** PERSISTENT hover highlight — node/edge ids the graph emphasises while a Panel-2 / Panel-3
+   *  card is hovered. `color` overrides the default teal (Panel 3 passes orange). Cleared (null)
+   *  on mouse-leave. Edge keys are "SOURCE>TARGET". */
+  hoverHighlight: { nodes: string[]; edges: string[]; color?: string } | null
+  setHover: (h: { nodes: string[]; edges: string[]; color?: string } | null) => void
 }
 
 const ALL_FALSE: Record<SectionKey, boolean> = { docs: false, reso: false, nk: false }
@@ -57,12 +65,12 @@ export const useDemo = create<DemoState>((set) => ({
     started: true, runId: s.runId + 1,
     sectionRun: { docs: true, reso: false, nk: false },
     sectionFolded: { docs: false, reso: true, nk: true },
-    matchedNodes: [], reweight: false, reweightApplied: false, gap: false, committedNodes: [], flashPulse: null,
+    matchedNodes: [], reweight: false, reweightApplied: false, gap: false, committedNodes: [], flashPulse: null, hoverHighlight: null,
   })),
   reset: () => set({
     started: false,
     sectionRun: { ...ALL_FALSE }, sectionFolded: { ...ALL_FALSE },
-    matchedNodes: [], reweight: false, reweightApplied: false, gap: false, committedNodes: [], flashPulse: null,
+    matchedNodes: [], reweight: false, reweightApplied: false, gap: false, committedNodes: [], flashPulse: null, hoverHighlight: null,
   }),
 
   sectionRun: { ...ALL_FALSE },
@@ -72,11 +80,17 @@ export const useDemo = create<DemoState>((set) => ({
     const sectionFolded = { ...s.sectionFolded, [key]: willFold }
     let sectionRun = s.sectionRun
     if (willFold) {
+      // folding a section advances to + opens the next one (if it hasn't run yet)
       const next = ORDER[ORDER.indexOf(key) + 1]
       if (next && !s.sectionRun[next]) {
         sectionRun = { ...s.sectionRun, [next]: true }
         sectionFolded[next] = false // auto-open the freshly-triggered next section
       }
+    } else if (!s.sectionRun[key]) {
+      // OPENING a not-yet-run section = advance to it: start its timeline + fold the previous
+      sectionRun = { ...s.sectionRun, [key]: true }
+      const prev = ORDER[ORDER.indexOf(key) - 1]
+      if (prev) sectionFolded[prev] = true
     }
     return { sectionFolded, sectionRun }
   }),
@@ -95,4 +109,7 @@ export const useDemo = create<DemoState>((set) => ({
 
   flashPulse: null,
   pulse: (nodes, edges, ms) => set((s) => ({ flashPulse: { seq: (s.flashPulse?.seq ?? 0) + 1, nodes, edges, ms } })),
+
+  hoverHighlight: null,
+  setHover: (h) => set({ hoverHighlight: h }),
 }))

@@ -24,35 +24,40 @@ interface NkCardDef {
   sop: string[]
   approvedMsg: string
   rejectedMsg: string
+  /** graph node/edge ids this card highlights teal on hover (edges = "SOURCE>TARGET") */
+  hi: { nodes: string[]; edges: string[] }
 }
 
 const CARDS: NkCardDef[] = [
   {
     id: 'nk-reweight', kind: 'reweight', glyph: '~', badge: 'Re-weight',
     title: 'Update AI confidence scoring',
-    detail: 'Backtesting on past incidents shows a 10% accuracy gain',
-    provenance: 'from INC-0537 · Faye selected an alternative diagnosis because of specific temperature and vibration readings',
+    detail: '7/10 Similar past incidents had the same diagnosis',
+    provenance: 'Faye selected an alternative diagnosis because of specific temperature and vibration readings',
     sop: ['SOP CHECK', 'SAFETY CHECK'],
     approvedMsg: 'Edge recalculated to 0.70.',
     rejectedMsg: 'Declined — edge held at 0.88 pending more fleet cases.',
+    hi: { nodes: ['DT-PHASE', 'RC-BENT-SHAFT'], edges: ['DT-PHASE>RC-BENT-SHAFT'] },
   },
   {
     id: 'nk-test', kind: 'add-node', glyph: '+', badge: 'New test',
     title: 'Dye-penetrant inspection (PT/MT)',
     detail: 'new DiagnosticTest node · DT-WELD-NDT · confirms casing crack',
-    provenance: 'from INC-0537 · L. Lim onsite — discontinuity ~60 mm from discharge weld',
+    provenance: 'L. Lim onsite — discontinuity ~60 mm from discharge weld',
     sop: ['SOP CHECK', 'SAFETY CHECK'],
     approvedMsg: 'Dye-penetrant test committed + linked to casing crack.',
     rejectedMsg: 'Declined — held for 2nd opinion.',
+    hi: { nodes: ['DT-PHASE', 'DT-WELD-NDT', 'RC-CASING-CRACK'], edges: ['DT-PHASE>DT-WELD-NDT', 'DT-WELD-NDT>RC-CASING-CRACK'] },
   },
   {
     id: 'nk-crack', kind: 'add-node', glyph: '+', badge: 'New root cause',
     title: 'Casing weld-toe crack (volute)',
     detail: 'new RootCause node · RC-CASING-CRACK',
-    provenance: 'from INC-0537 · Dr. A. Ismail phase analysis + onsite PT finding',
+    provenance: 'Dr. A. Ismail phase analysis + onsite PT finding',
     sop: ['SOP CHECK', 'SAFETY CHECK'],
     approvedMsg: 'Casing-crack root cause committed to the graph.',
     rejectedMsg: 'Declined — not added.',
+    hi: { nodes: ['DT-WELD-NDT', 'RC-CASING-CRACK'], edges: ['DT-WELD-NDT>RC-CASING-CRACK'] },
   },
 ]
 
@@ -93,15 +98,15 @@ function NkCard({ card, startDelay, decision, onApprove, onReject, runId }: {
       <div className="p-nk-card-detail">{card.detail}</div>
       <div className="p-nk-card-prov">{card.provenance}</div>
 
-      <div className="p-nk-blocks">
+      <div className="p-nk-checks">
         {card.sop.map((b, i) => {
           const pass = decision === 'approved' || stage === 'passed' || i < checked
           const scan = !decided && stage === 'checking' && i === checked
           return (
-            <div key={b} className="p-nk-block" data-state={pass ? 'pass' : scan ? 'scan' : 'idle'}>
-              <span className="p-nk-block-name">{b}</span>
-              <span className="p-nk-block-mark">{pass ? '✓' : scan ? '⋯' : ''}</span>
-            </div>
+            <span key={b} className="p-nk-chip" data-state={pass ? 'pass' : scan ? 'scan' : 'idle'}>
+              {b}
+              <span className="p-nk-chip-mark">{pass ? '✓' : scan ? '⋯' : ''}</span>
+            </span>
           )
         })}
       </div>

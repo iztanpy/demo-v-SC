@@ -17,6 +17,7 @@ import { useDemo } from '../demoStore'
 // rings/labels. (The reaffirm-green highlight on matched paths was removed — undesired effect.)
 
 const BG = '#E9EFF6' // light, to sit inside the light-theme right pane
+const HOVER_HL = 'rgba(13,148,136,1)' // default card-hover highlight (teal); Panel 3 overrides to orange
 
 // v2 #5 — commit camera standoff (world units from the new node). The resting view sits ~1030 from
 // the BFP region, so a larger standoff = gentler push-in. Bump down for a stronger zoom, up for subtler.
@@ -38,6 +39,25 @@ const anchorOf = (cluster: string) => ANCHORS[cluster] ?? { x: 0, y: 0, z: 0 }
 type GNode = SimNodeData & { x?: number; y?: number; z?: number; _proposed?: boolean }
 type GLink = { source: string | GNode; target: string | GNode; type: string; context: boolean; cross?: boolean; loose?: boolean; _proposed?: boolean }
 const linkEnd = (e: string | GNode) => (typeof e === 'object' ? e.id : e)
+const nodeName = (e: string | GNode) => (typeof e === 'object' ? e.title ?? e.id : e)
+
+// human-readable relationship phrasing for the edge hover tooltip (maps every RelType)
+const REL_LABEL: Record<string, string> = {
+  OCCURS_IN: 'occurs in',
+  INSTANCE_OF: 'is a unit of',
+  TRIGGERS: 'triggers test',
+  FOLLOW_UP: 'escalates to',
+  CONFIRMS: 'confirms',
+  RULES_OUT: 'rules out',
+  INCONCLUSIVE: 'inconclusive → escalate',
+  SIMILAR_TO: 'similar failure mode',
+  SHORTCUT: 'shortcut to',
+}
+function linkLabel(o: LinkObject): string {
+  const l = o as unknown as GLink
+  const verb = REL_LABEL[l.type] ?? l.type
+  return `<div class="kg3-tip"><b>${nodeName(l.source)}</b> ${verb} <b>${nodeName(l.target)}</b><span>${l.type}</span></div>`
+}
 
 const hexToRgba = (hex: string, a: number) => {
   const h = hex.replace('#', '')
@@ -101,6 +121,10 @@ export function KGForce3D() {
   const flashNodesRef = useRef<Set<string>>(new Set()) // amber flash targets (~1s) on gap/re-weight beats
   const flashEdgesRef = useRef<Set<string>>(new Set())
   const flashTimerRef = useRef(0)
+  const hoverNodesRef = useRef<Set<string>>(new Set()) // persistent highlight while a card is hovered
+  const hoverEdgesRef = useRef<Set<string>>(new Set())
+  const hoverColorRef = useRef<string>(HOVER_HL)        // hover highlight colour (teal default / orange for NK)
+  const reweightAppliedRef = useRef(false)              // re-weight stays lit on the graph once approved
   const idleSpinTimerRef = useRef(0) // resume idle auto-rotate ~3s after the user stops interacting
 
   // persistent node/link objects (reused across graphData() calls so positions + physics survive)
@@ -110,6 +134,8 @@ export function KGForce3D() {
 
   const committedNodes = useDemo((s) => s.committedNodes)
   const flashPulse = useDemo((s) => s.flashPulse)
+  const hoverHighlight = useDemo((s) => s.hoverHighlight)
+  const reweightApplied = useDemo((s) => s.reweightApplied)
 
   // ── build the graph once ──
   useEffect(() => {
@@ -145,6 +171,7 @@ export function KGForce3D() {
       // returning undefined → lib falls back to the default sphere (runtime-supported; types don't express it)
       .nodeThreeObject(nodeThreeObject as (o: NodeObject) => THREE.Object3D)
       .nodeLabel((o: NodeObject) => { const n = o as unknown as GNode; return `<div class="kg3-tip">${n.title ?? n.id}<span>${n.label}</span></div>` })
+      .linkLabel(linkLabel as (o: LinkObject) => string)
       .linkColor(linkColor)
       .linkThreeObjectExtend(true)
       .linkThreeObject(linkThreeObject as (o: LinkObject) => THREE.Object3D)
@@ -253,6 +280,27 @@ export function KGForce3D() {
     }, flashPulse.ms ?? 1000)
   }, [flashPulse])
 
+  // ── persistent hover highlight: while a Panel-2/3 card is hovered, its node/edge ids glow teal
+  // (edges thickened + arrowed) and the rest of the fleet dims back, so the path stands out. No
+  // timer — it holds until the store clears hoverHighlight on mouse-leave.
+  useEffect(() => {
+    const G = graphRef.current
+    if (!G) return
+    hoverNodesRef.current = new Set(hoverHighlight?.nodes ?? [])
+    hoverEdgesRef.current = new Set(hoverHighlight?.edges ?? [])
+    hoverColorRef.current = hoverHighlight?.color ?? HOVER_HL
+    G.nodeColor(G.nodeColor()).linkColor(G.linkColor()).linkWidth(G.linkWidth()).linkDirectionalArrowLength(G.linkDirectionalArrowLength())
+  }, [hoverHighlight])
+
+  // ── re-weight stays lit: once the human approves the re-weight, keep the DT-PHASE→Shaft-misalignment
+  // edge amber (+ its "0.88 → 0.70" label) persistently, instead of letting the approval flash fade.
+  useEffect(() => {
+    const G = graphRef.current
+    if (!G) return
+    reweightAppliedRef.current = reweightApplied
+    G.nodeColor(G.nodeColor()).linkColor(G.linkColor()).linkWidth(G.linkWidth()).linkThreeObject(G.linkThreeObject())
+  }, [reweightApplied])
+
   // ── per-node commit growth: grow each approved proposed node/link into the live graph ──
   // v2 #5 — commit-only camera: on sign-off, pause the idle orbit and fly the camera to the new
   // node so it lands centre-frame; on reset, resume the orbit and pull back to the full-fleet
@@ -339,13 +387,16 @@ export function KGForce3D() {
   // v2 #4 — the "0.88 → 0.70" sprite label, surfaced on the re-weight edge only during its amber flash
   function linkThreeObject(o: LinkObject): THREE.Object3D | undefined {
     const l = o as unknown as GLink
-    if (!isReweightEdge(l) || !isFlashEdge(l)) return undefined
+    if (!isReweightEdge(l)) return undefined
+    if (!isFlashEdge(l) && !reweightAppliedRef.current) return undefined // show during the flash OR once applied
     return makeLabelSprite('0.88 → 0.70', 9, '#B45309', true)
   }
 
   function nodeColor(o: NodeObject): string {
     const n = o as unknown as GNode
     if (flashNodesRef.current.has(n.id)) return 'rgba(245,158,11,1)' // amber flash (~1s, gap/re-weight beat)
+    if (hoverNodesRef.current.has(n.id)) return hoverColorRef.current // hovered card path → highlight colour
+    if (reweightAppliedRef.current && n.id === RW_T) return 'rgba(245,158,11,1)' // re-weight target stays amber
     // v2 #2 — committed new-knowledge nodes POP: full opacity (vs the uniform 0.55 fade) so the
     // freshly-grown casing-crack / weld-NDT nodes draw the eye against the faded fleet.
     if (n._proposed) return hexToRgba(NODE_COLORS[n.label], 1)
@@ -365,6 +416,11 @@ export function KGForce3D() {
     const s = linkEnd(l.source), t = linkEnd(l.target)
     return flashEdgesRef.current.has(`${s}>${t}`) || flashEdgesRef.current.has(`${t}>${s}`)
   }
+  // hover-highlight edge — same either-direction "SOURCE>TARGET" key match
+  const isHoverEdge = (l: GLink) => {
+    const s = linkEnd(l.source), t = linkEnd(l.target)
+    return hoverEdgesRef.current.has(`${s}>${t}`) || hoverEdgesRef.current.has(`${t}>${s}`)
+  }
   // edge classification — drives a clear visual hierarchy so connections read as concrete:
   //   proposed (new red) > focus diagnostic tree > region-internal > cross-region
   const isFocus = (l: GLink) => !l.context && !l.cross && !l.loose // the SYM-001 diagnostic-tree edges
@@ -372,19 +428,24 @@ export function KGForce3D() {
   function linkColor(o: LinkObject): string {
     const l = o as unknown as GLink
     if (isFlashEdge(l)) return 'rgba(245,158,11,1)' // amber flash (~1s, gap/re-weight beat)
+    if (isHoverEdge(l)) return hoverColorRef.current // hovered card → highlight colour (above proposed)
+    if (isReweightEdge(l) && reweightAppliedRef.current) return 'rgba(245,158,11,1)' // re-weight stays amber after approval
     if (l._proposed) return 'rgba(220,38,38,0.9)'       // newly committed knowledge → solid red
-    return 'rgba(100,116,139,0.55)'                     // every connector (focus + all fleet) → one uniform mid slate
+    // when a hover is active, dim every non-highlighted connector back so the path stands out
+    return hoverEdgesRef.current.size > 0 ? 'rgba(100,116,139,0.16)' : 'rgba(100,116,139,0.55)'
   }
   function linkWidth(o: LinkObject): number {
     const l = o as unknown as GLink
     if (isFlashEdge(l)) return 3.2 // amber flash — briefly emphasised
+    if (isHoverEdge(l)) return 3.4 // hovered card path — emphasised
+    if (isReweightEdge(l) && reweightAppliedRef.current) return 3.2 // re-weight stays emphasised after approval
     if (l._proposed) return 2.4
     return 1.1                                          // every connector (focus + all fleet) → same weight
   }
-  // arrows on the directed diagnostic tree + active paths only (fleet edges stay plain, like the intra-region ones)
+  // arrows on the directed diagnostic tree + active paths + hovered card edges (fleet edges stay plain)
   function arrowLen(o: LinkObject): number {
     const l = o as unknown as GLink
-    return l._proposed || isFocus(l) ? 4 : 0
+    return l._proposed || isFocus(l) || isHoverEdge(l) ? 4 : 0
   }
   // flowing particles only on the newly committed paths so they feel alive without cluttering the fleet
   function particleCount(o: LinkObject): number {

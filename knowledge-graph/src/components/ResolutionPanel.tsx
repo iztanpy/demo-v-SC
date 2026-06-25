@@ -18,6 +18,8 @@ interface ResCard {
   chipKind: 'reaffirm' | 'reweight' | 'gap'
   entities: ResEntity[]
   matchedNodes: string[]
+  /** graph edges ("SOURCE>TARGET") this card highlights teal on hover (nodes = matchedNodes) */
+  hiEdges?: string[]
   reweight?: boolean
   gap?: boolean
 }
@@ -31,6 +33,7 @@ const CARDS: ResCard[] = [
       { label: 'Diagnosis', detail: 'Bearing spalling → RC-BEARING-SPALL', status: 'match' },
     ],
     matchedNodes: ['SYM-001', 'DT-HOUSING-INSPECT', 'RC-BEARING-SPALL'],
+    hiEdges: ['SYM-001>DT-HOUSING-INSPECT', 'DT-HOUSING-INSPECT>RC-BEARING-SPALL'],
   },
   {
     id: 'c-0501', incident: 'INC-0501', chip: 'matched', chipKind: 'reaffirm',
@@ -40,6 +43,7 @@ const CARDS: ResCard[] = [
       { label: 'Diagnosis', detail: 'Misalignment → RC-MISALIGN', status: 'match' },
     ],
     matchedNodes: ['SYM-001', 'DT-PHASE', 'DT-ALIGNMENT', 'RC-MISALIGN'],
+    hiEdges: ['SYM-001>DT-PHASE', 'DT-PHASE>DT-ALIGNMENT', 'DT-ALIGNMENT>RC-MISALIGN'],
   },
   {
     id: 'c-0455', incident: 'INC-0455', chip: 'matched', chipKind: 'reaffirm',
@@ -49,6 +53,7 @@ const CARDS: ResCard[] = [
       { label: 'Diagnosis', detail: 'Bearing spalling → RC-BEARING-SPALL', status: 'match' },
     ],
     matchedNodes: ['SYM-001', 'DT-HOUSING-INSPECT', 'RC-BEARING-SPALL'],
+    hiEdges: ['SYM-001>DT-HOUSING-INSPECT', 'DT-HOUSING-INSPECT>RC-BEARING-SPALL'],
   },
   {
     id: 'c-0472', incident: 'INC-0472', chip: 'matched', chipKind: 'reaffirm',
@@ -58,6 +63,7 @@ const CARDS: ResCard[] = [
       { label: 'Diagnosis', detail: 'Misalignment → RC-MISALIGN', status: 'match' },
     ],
     matchedNodes: ['SYM-001', 'DT-PHASE', 'DT-ALIGNMENT', 'RC-MISALIGN'],
+    hiEdges: ['SYM-001>DT-PHASE', 'DT-PHASE>DT-ALIGNMENT', 'DT-ALIGNMENT>RC-MISALIGN'],
   },
   // INC-0537 (the exception) emits several resolution cards — most of it the graph already knows
   // (symptom, asset, first-line tests), one over-confident edge to re-weight, and the casing-crack
@@ -69,6 +75,7 @@ const CARDS: ResCard[] = [
       { label: 'Tests run', detail: 'Phase analysis + housing inspection on the graph’s path', status: 'match' },
     ],
     matchedNodes: ['SYM-001', 'AC-BFP', 'DT-PHASE', 'DT-HOUSING-INSPECT'],
+    hiEdges: ['SYM-001>AC-BFP', 'SYM-001>DT-PHASE', 'SYM-001>DT-HOUSING-INSPECT'],
   },
   {
     id: 'c-0537-rw', incident: 'INC-0537', chip: 're-weight confidence', chipKind: 'reweight',
@@ -77,6 +84,7 @@ const CARDS: ResCard[] = [
       { label: 'Signature', detail: 'Specific temperature + vibration signature pointed to a bearing-related issue', status: 'reweight' },
     ],
     matchedNodes: ['SYM-001', 'DT-PHASE'],
+    hiEdges: ['DT-PHASE>RC-BENT-SHAFT'],
     reweight: true,
   },
   {
@@ -85,6 +93,7 @@ const CARDS: ResCard[] = [
       { label: 'Root cause', detail: 'Casing crack identified as the root cause — no matching node on the graph', status: 'gap' },
     ],
     matchedNodes: [],
+    hiEdges: ['SYM-001>DT-PHASE'],
     gap: true,
   },
   {
@@ -93,6 +102,7 @@ const CARDS: ResCard[] = [
       { label: 'Test', detail: 'New test needed to confirm the casing crack — liquid-penetrant inspection, off the graph’s path', status: 'gap' },
     ],
     matchedNodes: [],
+    hiEdges: ['SYM-001>DT-HOUSING-INSPECT'],
     gap: true,
   },
 ]
@@ -156,6 +166,7 @@ export function ResolutionPanel() {
   const setReweight = useDemo((s) => s.setReweight)
   const setGap = useDemo((s) => s.setGap)
   const pulse = useDemo((s) => s.pulse)
+  const setHover = useDemo((s) => s.setHover)
   const phases = useResolution(run, runId)
   const expanded = !folded
 
@@ -242,7 +253,7 @@ export function ResolutionPanel() {
     <section className="p-panel p-resolution" data-active={run} data-folded={folded}>
       <header className="p-panel-head" onClick={() => toggleFold('reso')}>
         <span className="p-panel-num">2</span>
-        <span className="p-panel-title">Resolution</span>
+        <span className="p-panel-title">Comparing against graph</span>
         <span className="p-panel-sub">{run ? 'match vs. graph' : 'waiting'}</span>
         <span className="p-caret" data-open={expanded}>▾</span>
       </header>
@@ -251,7 +262,6 @@ export function ResolutionPanel() {
         <div className="p-res-body" ref={bodyRef}>
           {visibleCards.map((card) => {
             const phase = phases.get(card.incident) ?? 'pending'
-            const inc = INCIDENTS.find((i) => i.id === card.incident)!
             const color = INCIDENT_COLOR[card.incident]
             const focus = card.incident === FOCUS_INCIDENT
             // hero cards cascade: each stays in matching until its turn in the sequence comes up
@@ -260,10 +270,12 @@ export function ResolutionPanel() {
               ? phase === 'matching' || (phase === 'resolved' && heroResolved <= focusIndex)
               : phase === 'matching'
             return (
-              <div key={card.id} ref={(el) => { cardRefs.current[card.id] = el }} className="p-res-row" data-kind={matching ? 'matching' : card.chipKind} data-mini={!focus} style={{ ['--inc' as string]: color }}>
+              <div key={card.id} ref={(el) => { cardRefs.current[card.id] = el }} className="p-res-row" data-kind={matching ? 'matching' : card.chipKind} data-mini={!focus} style={{ ['--inc' as string]: color }}
+                onMouseEnter={() => setHover({ nodes: card.matchedNodes, edges: card.hiEdges ?? [], color: card.chipKind === 'reaffirm' ? undefined : '#F59E0B' })}
+                onMouseLeave={() => setHover(null)}>
                 <div className="p-res-top">
                   <span className="p-res-dot" style={{ background: color }} />
-                  <span className="p-res-incident" style={{ color }}>{card.incident} · {inc.asset}</span>
+                  <span className="p-res-incident" style={{ color }}>{card.incident}</span>
                   <span className="p-res-chip" data-kind={matching ? 'matching' : card.chipKind}>
                     {matching ? 'matching...' : card.chip}
                   </span>

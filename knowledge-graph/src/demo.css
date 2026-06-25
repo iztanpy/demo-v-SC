@@ -114,10 +114,18 @@
   gap: 0;
   border-bottom: none;
 }
-.p-panel[data-folded="true"] .p-panel-title,
 .p-panel[data-folded="true"] .p-panel-sub,
 .p-panel[data-folded="true"] .p-panel-count,
 .p-panel[data-folded="true"] .p-caret { display: none; }
+/* folded panel keeps its name, written vertically down the strip (under the number) */
+.p-panel[data-folded="true"] .p-panel-title {
+  writing-mode: vertical-rl;
+  margin-top: 12px;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  white-space: nowrap;
+}
 .p-caret { font-size: 11px; color: var(--slate); transition: transform 200ms ease; }
 .p-caret[data-open="false"] { transform: rotate(-90deg); }
 .p-panel-num {
@@ -189,6 +197,15 @@
 .p-doc-kv-k { color: var(--k, var(--slate)); font-weight: 700; }
 .p-doc-rationale { font-size: 11px; color: var(--ink); font-style: italic; border-left: 2px solid var(--k, var(--slate)); padding-left: 7px; margin-top: 2px; }
 
+/* compact inline finding — field name (in the doc-type accent) + value on one line, provenance
+   moved up to the sub-card header (.p-sub-prov), so a card no longer repeats "via …" per block */
+.p-finding { font-size: 12px; line-height: 1.45; color: var(--ink); margin-top: 4px; }
+.p-finding-k { font-weight: 700; color: var(--k, var(--slate)); }
+.p-finding-k::after { content: " · "; color: var(--slate); font-weight: 400; }
+.p-finding-rec { font-weight: 600; }
+.p-sub-prov { margin-left: auto; font-size: 10px; color: var(--slate); white-space: nowrap; }
+.p-sub-top .p-sub-prov + .p-doc-tick { margin-left: 0; }
+
 /* test-path journey chips (mother card) — AI guess → ops pick → actual, each a toned pill */
 .p-journey { display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px; margin: 6px 0 2px; }
 .p-journey-chip { display: flex; flex-direction: column; gap: 1px; padding: 4px 9px; border-radius: 9px; border: 1px solid var(--line); background: #fff; }
@@ -235,8 +252,8 @@
 .p-res-chip[data-kind="reweight"] { color: #B45309; background: #FEF3C7; }
 .p-res-chip[data-kind="gap"] { color: #B45309; background: #FEE9C8; }
 
-.p-ent-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
-.p-ent { display: grid; grid-template-columns: 16px 64px 1fr; align-items: baseline; gap: 7px; font-size: 12px; }
+.p-ent-list { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.p-ent { display: grid; grid-template-columns: 16px 64px 1fr; align-items: baseline; gap: 7px; font-size: 12px; line-height: 1.35; }
 .p-ent-glyph { font-weight: 700; text-align: center; }
 .p-ent-glyph[data-status="match"] { color: var(--green); }
 .p-ent-glyph[data-status="reweight"] { color: var(--amber); }
@@ -263,6 +280,14 @@
 .p-nk-block[data-state="scan"] .p-nk-block-mark { color: var(--amber); }
 .p-nk-block[data-state="pass"] { border-color: #BBF7D0; background: #F0FDF4; }
 .p-nk-block[data-state="pass"] .p-nk-block-mark { color: var(--green); }
+
+/* compact inline validation chips — the SOP + Safety checks on ONE row (replaces the two stacked
+   blocks); same idle/scan/pass colours as .p-nk-block */
+.p-nk-checks { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.p-nk-chip { display: inline-flex; align-items: center; gap: 5px; font: 600 11px ui-monospace, monospace; border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; background: #fff; color: var(--slate); transition: all 220ms; }
+.p-nk-chip-mark { font-weight: 700; }
+.p-nk-chip[data-state="scan"] { border-color: var(--amber); color: var(--amber); box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.3); }
+.p-nk-chip[data-state="pass"] { border-color: #BBF7D0; background: #F0FDF4; color: #047857; }
 
 /* particles flowing from the candidate down into the SOP/safety blocks */
 .p-nk-particles { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
@@ -305,8 +330,8 @@ label.p-nk-change { display: flex; align-items: center; gap: 7px; font-size: 12p
 .p-nk-status[data-decision="rejected"] { color: #64748B; }
 
 .p-nk-card-title { font-size: 13.5px; font-weight: 600; margin-top: 5px; }
-.p-nk-card-detail { font: 600 11px ui-monospace, monospace; color: var(--slate); margin-top: 2px; }
-.p-nk-card-prov { font-size: 10.5px; color: #94A3B8; line-height: 1.4; margin: 4px 0 8px; }
+.p-nk-card-detail { font: 600 11px ui-monospace, monospace; color: var(--slate); margin-top: 1px; }
+.p-nk-card-prov { font-size: 10.5px; color: #94A3B8; line-height: 1.35; margin: 3px 0 0; }
 .p-nk-card .p-nk-blocks { margin-bottom: 2px; }
 
 .p-nk-actions { display: flex; gap: 7px; margin-top: 9px; }

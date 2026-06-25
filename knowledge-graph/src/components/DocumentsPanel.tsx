@@ -87,7 +87,7 @@ export function DocumentsPanel() {
               <div key={inc.id} className="p-wf-card" data-outcome={inc.outcome} style={{ borderLeftColor: color, ['--inc' as string]: color }}>
                 <div className="p-wf-head" onClick={() => toggle(inc.id)}>
                   <span className="p-doc-entry" style={{ background: color }}>incident</span>
-                  <span className="p-doc-incident" style={{ color }}>{inc.id} · {inc.asset}</span>
+                  <span className="p-doc-incident" style={{ color }}>{inc.id}</span>
                   <span className="p-doc-docs">{doneDocs}/{docs.length}</span>
                   {working
                     ? <span className="p-doc-spin"><span className="p-dots"><span /><span /><span /></span></span>
@@ -105,23 +105,28 @@ export function DocumentsPanel() {
                     )}
                     {rootPhase === 'done' && (
                       <div className="p-doc-extract" style={{ ['--k' as string]: kColor(root.kind) }}>
-                        <span className="p-doc-field">{root.field}</span>
                         {root.journey && allDone ? (
-                          <div className="p-journey">
-                            {root.journey.map((j, i) => (
-                              <Fragment key={j.label}>
-                                <span className="p-journey-chip" data-tone={j.tone}>
-                                  <span className="p-journey-dx">{j.label}</span>
-                                  <span className="p-journey-tag">{j.tag}</span>
-                                </span>
-                                {i < root.journey!.length - 1 && <span className="p-journey-arrow">→</span>}
-                              </Fragment>
-                            ))}
-                          </div>
+                          <>
+                            <span className="p-doc-field">{root.field}</span>
+                            <div className="p-journey">
+                              {root.journey.map((j, i) => (
+                                <Fragment key={j.label}>
+                                  <span className="p-journey-chip" data-tone={j.tone}>
+                                    <span className="p-journey-dx">{j.label}</span>
+                                    <span className="p-journey-tag">{j.tag}</span>
+                                  </span>
+                                  {i < root.journey!.length - 1 && <span className="p-journey-arrow">→</span>}
+                                </Fragment>
+                              ))}
+                            </div>
+                          </>
                         ) : root.journey ? (
-                          <span className="p-doc-value p-doc-pending">Compiling test path — awaiting full analysis<span className="p-dots"><span /><span /><span /></span></span>
+                          <>
+                            <span className="p-doc-field">{root.field}</span>
+                            <span className="p-doc-value p-doc-pending">Compiling test path — awaiting full analysis<span className="p-dots"><span /><span /><span /></span></span>
+                          </>
                         ) : (
-                          <span className="p-doc-value">{root.value}</span>
+                          <div className="p-finding"><span className="p-finding-k">{root.field}</span>{root.value}</div>
                         )}
                         <span className="p-doc-prov">via {root.agent} · {root.source}</span>
                       </div>
@@ -136,6 +141,7 @@ export function DocumentsPanel() {
                                 <span className="p-sub-icon"><DocIcon kind={c.kind} /></span>
                                 <span className="p-sub-kind">{c.label}</span>
                                 {isWorking(ph) && <span className="p-doc-spin"><span className="p-dots"><span /><span /><span /></span></span>}
+                                {ph === 'done' && <span className="p-sub-prov">via {c.agent} · {c.source}</span>}
                                 {ph === 'done' && <span className="p-doc-tick">✓</span>}
                               </div>
                               {isWorking(ph) && (
@@ -144,20 +150,14 @@ export function DocumentsPanel() {
                                 </div>
                               )}
                               {ph === 'done' && (
-                                <div className="p-doc-extract">
-                                  <span className="p-doc-field">{c.field}</span>
-                                  <span className="p-doc-value">{c.value}</span>
-                                  {c.extras && c.extras.length > 0 && (
-                                    <div className="p-doc-extras">
-                                      {c.extras.map((x) => (
-                                        <span key={x.k} className="p-doc-kv"><span className="p-doc-kv-k">{x.k} · </span>{x.v}</span>
-                                      ))}
-                                    </div>
-                                  )}
-                                  {c.rationale && <span className="p-doc-rationale">Rationale · {c.rationale}</span>}
-                                  <span className="p-doc-prov">via {c.agent} · {c.source}</span>
-                                </div>
+                                <>
+                                  <div className="p-finding"><span className="p-finding-k">{c.field}</span>{c.value}</div>
+                                  {c.rationale && <div className="p-doc-rationale">Rationale · {c.rationale}</div>}
+                                </>
                               )}
+                              {ph === 'done' && c.extras && c.extras.map((x) => (
+                                <div key={x.k} className="p-finding"><span className="p-finding-k">{x.k}</span>{x.v}</div>
+                              ))}
                               {(isWorking(ph) || ph === 'done') && c.steps && (
                                 <div className="p-wf-steplist">
                                   {c.steps.map((s) => {
@@ -178,11 +178,7 @@ export function DocumentsPanel() {
                                 </div>
                               )}
                               {ph === 'done' && c.recommendation && (
-                                <div className="p-doc-extract">
-                                  <span className="p-doc-field">Recommendation</span>
-                                  <span className="p-doc-value">{c.recommendation.label}</span>
-                                  {c.recommendation.detail && <span className="p-doc-prov">{c.recommendation.detail}</span>}
-                                </div>
+                                <div className="p-finding p-finding-rec"><span className="p-finding-k">Recommendation</span>{c.recommendation.label}</div>
                               )}
                             </div>
                           )
