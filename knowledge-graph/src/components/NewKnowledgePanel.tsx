@@ -29,21 +29,12 @@ interface NkCardDef {
 const CARDS: NkCardDef[] = [
   {
     id: 'nk-reweight', kind: 'reweight', glyph: '~', badge: 'Re-weight',
-    title: 'Rebalance diagnostic edge confidence',
-    detail: 'Backtesting on past data shows a 10% accuracy gain after adjusting confidence scores',
-    provenance: 'from INC-0537 · bent shaft ruled out 3 / 3 — phase over-attributes the 1×RPM signature casing fatigue mimics',
+    title: 'Update AI confidence scoring',
+    detail: 'Backtesting on past incidents shows a 10% accuracy gain',
+    provenance: 'from INC-0537 · Faye selected an alternative diagnosis because of specific temperature and vibration readings',
     sop: ['SOP-BFP-VIBR-001', 'ISO 10816-7'],
     approvedMsg: 'Edge recalculated to 0.70.',
     rejectedMsg: 'Declined — edge held at 0.88 pending more fleet cases.',
-  },
-  {
-    id: 'nk-crack', kind: 'add-node', glyph: '+', badge: 'New root cause',
-    title: 'Casing weld-toe crack (volute)',
-    detail: 'new RootCause node · RC-CASING-CRACK',
-    provenance: 'from INC-0537 · Dr. A. Ismail phase analysis + onsite PT finding',
-    sop: ['SOP-BFP-VIBR-001', 'ASME PCC-2'],
-    approvedMsg: 'Casing-crack root cause committed to the graph.',
-    rejectedMsg: 'Declined — not added.',
   },
   {
     id: 'nk-test', kind: 'add-node', glyph: '+', badge: 'New test',
@@ -53,6 +44,15 @@ const CARDS: NkCardDef[] = [
     sop: ['HSE Hot-Work Permit', 'NDT Level 2 (PT/MT)'],
     approvedMsg: 'Dye-penetrant test committed + linked to casing crack.',
     rejectedMsg: 'Declined — held for 2nd opinion.',
+  },
+  {
+    id: 'nk-crack', kind: 'add-node', glyph: '+', badge: 'New root cause',
+    title: 'Casing weld-toe crack (volute)',
+    detail: 'new RootCause node · RC-CASING-CRACK',
+    provenance: 'from INC-0537 · Dr. A. Ismail phase analysis + onsite PT finding',
+    sop: ['SOP-BFP-VIBR-001', 'ASME PCC-2'],
+    approvedMsg: 'Casing-crack root cause committed to the graph.',
+    rejectedMsg: 'Declined — not added.',
   },
 ]
 
@@ -126,23 +126,24 @@ function NkCard({ card, startDelay, decision, onApprove, onReject, runId }: {
 }
 
 export function NewKnowledgePanel() {
-  const gap = useDemo((s) => s.gap)
   const runId = useDemo((s) => s.runId)
-  const committedNodes = useDemo((s) => s.committedNodes)
+  const run = useDemo((s) => s.sectionRun.nk)
+  const folded = useDemo((s) => s.sectionFolded.nk)
+  const toggleFold = useDemo((s) => s.toggleFold)
   const approveNode = useDemo((s) => s.approveNode)
   const setReweight = useDemo((s) => s.setReweight)
   const setReweightApplied = useDemo((s) => s.setReweightApplied)
+  const pulse = useDemo((s) => s.pulse)
 
   const [decisions, setDecisions] = useState<Record<string, Decision>>({})
-  const [open, setOpen] = useState(true)
-  useEffect(() => { setOpen(true); setDecisions({}) }, [runId])
+  useEffect(() => { setDecisions({}) }, [runId])
 
-  const active = gap || committedNodes.length > 0
+  const expanded = !folded
 
   const decide = (card: NkCardDef, d: Decision) => {
     setDecisions((prev) => ({ ...prev, [card.id]: d }))
     if (d === 'approved') {
-      if (card.id === 'nk-reweight') setReweightApplied(true)
+      if (card.id === 'nk-reweight') { setReweightApplied(true); pulse(['RC-BENT-SHAFT'], ['DT-PHASE>RC-BENT-SHAFT'], 5000) } // light the re-weighted edge for 5s
       else if (card.id === 'nk-crack') approveNode('RC-CASING-CRACK')
       else if (card.id === 'nk-test') approveNode('DT-WELD-NDT')
     } else if (d === 'rejected') {
@@ -160,15 +161,15 @@ export function NewKnowledgePanel() {
   }, [decidedCount])
 
   return (
-    <section className="p-panel p-newknow" data-active={active} data-collapsed={!open}>
-      <header className="p-panel-head" onClick={() => setOpen((o) => !o)}>
+    <section className="p-panel p-newknow" data-active={run} data-folded={folded}>
+      <header className="p-panel-head" onClick={() => toggleFold('nk')}>
         <span className="p-panel-num">3</span>
         <span className="p-panel-title">New Knowledge</span>
-        <span className="p-panel-sub">{active ? `human sign-off · ${decidedCount}/${CARDS.length}` : 'waiting for a gap'}</span>
-        <span className="p-caret" data-open={open}>▾</span>
+        <span className="p-panel-sub">{run ? `human sign-off · ${decidedCount}/${CARDS.length}` : 'waiting for a gap'}</span>
+        <span className="p-caret" data-open={expanded}>▾</span>
       </header>
 
-      {open && active && (
+      {expanded && run && (
         <div className="p-nk-body" ref={bodyRef}>
           <div className="p-nk-intro">
             {CARDS.length} changes proposed from <b>INC-0537</b> — nothing enters the graph without your sign-off.

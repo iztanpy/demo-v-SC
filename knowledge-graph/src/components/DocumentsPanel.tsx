@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { FEED, INCIDENTS, DOC_KIND_COLOR, INCIDENT_COLOR, type DocKind } from '../data/feed'
 import { useDemo } from '../demoStore'
 import { useFeed, type FeedPhase } from '../useFeed'
@@ -31,17 +31,19 @@ function DocIcon({ kind }: { kind: DocKind }) {
 const FOCUS_INCIDENT = 'INC-0537'
 
 export function DocumentsPanel() {
-  const started = useDemo((s) => s.started)
   const runId = useDemo((s) => s.runId)
-  const phases = useFeed(started, runId)
+  const run = useDemo((s) => s.sectionRun.docs)
+  const folded = useDemo((s) => s.sectionFolded.docs)
+  const toggleFold = useDemo((s) => s.toggleFold)
+  const phases = useFeed(run, runId)
+  const expanded = !folded
 
-  const [open, setOpen] = useState(true) // panel collapse/expand
   const [manual, setManual] = useState<Record<string, boolean>>({}) // per-incident expand override
-  useEffect(() => { setManual({}); setOpen(true) }, [runId]) // reset on a new run
+  useEffect(() => { setManual({}) }, [runId]) // reset on a new run
 
   const doneCount = FEED.filter((d) => phases.get(d.id) === 'done').length
-  const allDone = started && doneCount === FEED.length
-  const active = started && !allDone
+  const allDone = run && doneCount === FEED.length
+  const active = run && !allDone
 
   const groups = INCIDENTS.map((inc) => ({
     inc,
@@ -55,25 +57,19 @@ export function DocumentsPanel() {
   const isExpanded = (incId: string) => manual[incId] ?? (incId === FOCUS_INCIDENT)
   const toggle = (incId: string) => setManual((m) => ({ ...m, [incId]: !isExpanded(incId) }))
 
-  // keep the hero (INC-0537, top of the list) in view as the reaffirm cards tick below it
   const streamRef = useRef<HTMLDivElement>(null)
-  const phaseSig = FEED.map((d) => phases.get(d.id) ?? 'p').join('')
-  useEffect(() => {
-    const el = streamRef.current
-    if (el) requestAnimationFrame(() => { el.scrollTop = 0 })
-  }, [phaseSig])
 
   return (
-    <section className="p-panel p-docs" data-active={active} data-collapsed={!open}>
-      <header className="p-panel-head" onClick={() => setOpen((o) => !o)}>
+    <section className="p-panel p-docs" data-active={run} data-folded={folded}>
+      <header className="p-panel-head" onClick={() => toggleFold('docs')}>
         <span className="p-panel-num">1</span>
         <span className="p-panel-title">Documents</span>
-        <span className="p-panel-sub">{!started ? 'waiting' : active ? 'extraction · JRG-CCGT-1' : 'all parsed ✓'}</span>
-        {started && <span className="p-panel-count">{doneCount}/{FEED.length}</span>}
-        <span className="p-caret" data-open={open}>▾</span>
+        <span className="p-panel-sub">{!run ? 'waiting' : active ? 'extraction · JRG-CCGT-1' : 'all parsed ✓'}</span>
+        {run && <span className="p-panel-count">{doneCount}/{FEED.length}</span>}
+        <span className="p-caret" data-open={expanded}>▾</span>
       </header>
 
-      {open && started && (
+      {expanded && run && (
         <div className="p-doc-stream" ref={streamRef}>
           {groups.map(({ inc, root, children }) => {
             if (!root) return null
@@ -110,42 +106,28 @@ export function DocumentsPanel() {
                     {rootPhase === 'done' && (
                       <div className="p-doc-extract" style={{ ['--k' as string]: kColor(root.kind) }}>
                         <span className="p-doc-field">{root.field}</span>
-                        <span className="p-doc-value">{root.value}</span>
+                        {root.journey && allDone ? (
+                          <div className="p-journey">
+                            {root.journey.map((j, i) => (
+                              <Fragment key={j.label}>
+                                <span className="p-journey-chip" data-tone={j.tone}>
+                                  <span className="p-journey-dx">{j.label}</span>
+                                  <span className="p-journey-tag">{j.tag}</span>
+                                </span>
+                                {i < root.journey!.length - 1 && <span className="p-journey-arrow">→</span>}
+                              </Fragment>
+                            ))}
+                          </div>
+                        ) : root.journey ? (
+                          <span className="p-doc-value p-doc-pending">Compiling test path — awaiting full analysis<span className="p-dots"><span /><span /><span /></span></span>
+                        ) : (
+                          <span className="p-doc-value">{root.value}</span>
+                        )}
                         <span className="p-doc-prov">via {root.agent} · {root.source}</span>
                       </div>
                     )}
-                    {(subs.length > 0 || (rootPhase === 'done' && root.steps)) && (
+                    {subs.length > 0 && (
                       <div className="p-wf-subs">
-                        {rootPhase === 'done' && root.steps && (
-                          <div className="p-sub p-sub-steps" style={{ ['--k' as string]: kColor('workflow-trace') }}>
-                            <div className="p-sub-top">
-                              <span className="p-sub-icon">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                                  <path d="M5 3.5h10v17H5zM8 3.5V6h4V3.5" />
-                                  <path d="M7.5 11l1.4 1.4 3-3M7.5 16l1.4 1.4 3-3" />
-                                </svg>
-                              </span>
-                              <span className="p-sub-kind">Onsite workflow</span>
-                            </div>
-                            <div className="p-wf-steplist">
-                              {root.steps.map((s) => {
-                                const full = s.done >= s.total
-                                return (
-                                  <div key={s.label} className="p-wf-step" data-full={full}>
-                                    <span className="p-wf-step-mark">{full ? '✓' : '◐'}</span>
-                                    <span className="p-wf-step-label">{s.label}</span>
-                                    <span className="p-wf-step-bar">
-                                      {Array.from({ length: s.total }).map((_, i) => (
-                                        <span key={i} className="p-wf-step-seg" data-on={i < s.done} />
-                                      ))}
-                                    </span>
-                                    <span className="p-wf-step-count">{s.done}/{s.total}</span>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        )}
                         {subs.map((c) => {
                           const ph = phases.get(c.id) ?? 'pending'
                           return (
@@ -174,6 +156,25 @@ export function DocumentsPanel() {
                                   )}
                                   {c.rationale && <span className="p-doc-rationale">Rationale · {c.rationale}</span>}
                                   <span className="p-doc-prov">via {c.agent} · {c.source}</span>
+                                </div>
+                              )}
+                              {ph === 'done' && c.steps && (
+                                <div className="p-wf-steplist">
+                                  {c.steps.map((s) => {
+                                    const full = s.done >= s.total
+                                    return (
+                                      <div key={s.label} className="p-wf-step" data-full={full}>
+                                        <span className="p-wf-step-mark">{full ? '✓' : '◐'}</span>
+                                        <span className="p-wf-step-label">{s.label}</span>
+                                        <span className="p-wf-step-bar">
+                                          {Array.from({ length: s.total }).map((_, i) => (
+                                            <span key={i} className="p-wf-step-seg" data-on={i < s.done} />
+                                          ))}
+                                        </span>
+                                        <span className="p-wf-step-count">{s.done}/{s.total}</span>
+                                      </div>
+                                    )
+                                  })}
                                 </div>
                               )}
                               {ph === 'done' && c.recommendation && (

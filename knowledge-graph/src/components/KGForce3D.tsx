@@ -4,7 +4,7 @@ import { forceX, forceY, forceZ, forceManyBody, forceCollide } from 'd3-force-3d
 import * as THREE from 'three'
 import SpriteText from 'three-spritetext'
 import {
-  FLEET_NODES, FLEET_EDGES, PROPOSED_NODES, PROPOSED_EDGES, CLUSTERS, CLUSTER_COLOR,
+  FLEET_NODES, FLEET_EDGES, PROPOSED_NODES, PROPOSED_EDGES, CLUSTERS,
 } from '../data/backdrop'
 import type { SimNodeData, SimEdgeData } from '../data/backdrop'
 import { NODE_COLORS } from '../data/graph'
@@ -250,7 +250,7 @@ export function KGForce3D() {
         GG.nodeColor(GG.nodeColor()).linkColor(GG.linkColor()).linkWidth(GG.linkWidth())
         GG.linkThreeObject(GG.linkThreeObject()) // drop the re-weight label when the flash ends
       }
-    }, 1000)
+    }, flashPulse.ms ?? 1000)
   }, [flashPulse])
 
   // ── per-node commit growth: grow each approved proposed node/link into the live graph ──
@@ -316,8 +316,8 @@ export function KGForce3D() {
     const n = o as unknown as GNode
     if (n.label === 'AssetClass' && n.title) {
       const rr = renderedRadius(Math.max(1, (n.r ?? 28) * 0.9))
-      const lbl = makeLabelSprite(n.title, 14, CLUSTER_COLOR[n.cluster] ?? '#475569')
-      lbl.position.set(0, rr + 12, 0)
+      const lbl = makeLabelSprite(n.title, 21, '#111111')
+      lbl.position.set(0, rr + 40, 0)
       return lbl
     }
     if (n._proposed) {

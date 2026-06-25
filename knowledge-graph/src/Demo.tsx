@@ -6,9 +6,9 @@ import { NewKnowledgePanel } from './components/NewKnowledgePanel'
 import { KGForce3D } from './components/KGForce3D'
 import './demo.css'
 
-// 3-panel concurrent demo shell. Left = the three process panels stacked (Documents → Resolution
-// → New Knowledge); right = the knowledge graph hero (the Context Hub). One "Run the week" kicks
-// off every panel's timeline at once.
+// 3-panel SEQUENTIAL demo shell. Left = the three process panels in a row (Documents → Resolution
+// → New Knowledge), run as a horizontal accordion; right = the knowledge graph hero (the Context
+// Hub). "Run the week" starts only section 1; folding a section triggers the next one to run.
 export default function Demo() {
   const started = useDemo((s) => s.started)
   const start = useDemo((s) => s.start)

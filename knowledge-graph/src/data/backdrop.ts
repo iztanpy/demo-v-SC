@@ -45,10 +45,10 @@ export interface ClusterDef {
 // 5 regions = the combined-cycle train (a real, sensible grouping)
 export const CLUSTERS: ClusterDef[] = [
   { key: 'BFP', label: 'Boiler feed pump', color: '#00A651', syms: 3 }, // + the real focus tree
-  { key: 'GT', label: 'Gas turbine', color: '#2563EB', syms: 9 },
-  { key: 'HRSG', label: 'HRSG', color: '#F59E0B', syms: 7 },
-  { key: 'ST', label: 'Steam turbine', color: '#7C3AED', syms: 9 },
-  { key: 'GEN', label: 'Generator', color: '#0EA5A4', syms: 7 },
+  { key: 'GT', label: 'Compressor', color: '#2563EB', syms: 9 },
+  { key: 'HRSG', label: 'Generator', color: '#F59E0B', syms: 7 },
+  { key: 'ST', label: 'Air inlet', color: '#7C3AED', syms: 9 },
+  { key: 'GEN', label: 'Combustor', color: '#0EA5A4', syms: 7 },
 ]
 
 export const CLUSTER_LABEL: Record<string, string> = Object.fromEntries(CLUSTERS.map((c) => [c.key, c.label]))

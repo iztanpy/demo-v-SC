@@ -53,9 +53,9 @@
 }
 .demo-run:hover { filter: brightness(1.05); }
 
-/* main two-zone layout — LEFT 60% = the 3 process panels in a ROW; RIGHT 40% = graph hero */
-.demo-main { flex: 1; display: grid; grid-template-columns: 60% 40%; min-height: 0; }
-.demo-left { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr; gap: 10px; padding: 12px; min-height: 0; overflow: hidden; }
+/* main two-zone layout — LEFT 45% = the 3 process panels in a ROW; RIGHT 55% = graph hero */
+.demo-main { flex: 1; display: grid; grid-template-columns: 45% 55%; min-height: 0; }
+.demo-left { display: flex; gap: 10px; padding: 12px; min-height: 0; overflow: hidden; }
 .demo-right { position: relative; border-left: 1px solid var(--line); overflow: hidden; }
 
 /* 3D knowledge graph (3d-force-graph / WebGL) fills the right pane */
@@ -79,6 +79,7 @@
 
 /* panels — each a full-height column in the row. Dormant ones dim; collapsed ones fold to header. */
 .p-panel {
+  flex: 1 1 0;          /* open sections share the row width */
   min-height: 0;
   min-width: 0;
   background: var(--surface);
@@ -88,9 +89,10 @@
   flex-direction: column;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(15, 27, 61, 0.05);
-  transition: opacity 300ms ease;
+  transition: flex-grow 360ms ease, flex-basis 360ms ease, opacity 300ms ease;
 }
-.p-panel[data-collapsed="true"] { align-self: start; }
+/* folded → thin numbered strip; click anywhere to re-open */
+.p-panel[data-folded="true"] { flex: 0 0 46px; cursor: pointer; }
 .p-panel[data-active="false"] { opacity: 0.6; }
 .p-panel[data-active="false"] .p-panel-num { background: var(--slate); }
 .p-panel-head {
@@ -103,7 +105,19 @@
   cursor: pointer;
   user-select: none;
 }
-.p-panel[data-collapsed="true"] .p-panel-head { border-bottom: none; }
+/* folded header → vertical bar, number only (title/sub/count/caret hidden) */
+.p-panel[data-folded="true"] .p-panel-head {
+  flex-direction: column;
+  justify-content: flex-start;
+  height: 100%;
+  padding: 12px 0;
+  gap: 0;
+  border-bottom: none;
+}
+.p-panel[data-folded="true"] .p-panel-title,
+.p-panel[data-folded="true"] .p-panel-sub,
+.p-panel[data-folded="true"] .p-panel-count,
+.p-panel[data-folded="true"] .p-caret { display: none; }
 .p-caret { font-size: 11px; color: var(--slate); transition: transform 200ms ease; }
 .p-caret[data-open="false"] { transform: rotate(-90deg); }
 .p-panel-num {
@@ -174,6 +188,17 @@
 .p-doc-kv { font-size: 11px; line-height: 1.4; color: var(--ink); }
 .p-doc-kv-k { color: var(--k, var(--slate)); font-weight: 700; }
 .p-doc-rationale { font-size: 11px; color: var(--ink); font-style: italic; border-left: 2px solid var(--k, var(--slate)); padding-left: 7px; margin-top: 2px; }
+
+/* test-path journey chips (mother card) — AI guess → ops pick → actual, each a toned pill */
+.p-journey { display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px; margin: 6px 0 2px; }
+.p-journey-chip { display: flex; flex-direction: column; gap: 1px; padding: 4px 9px; border-radius: 9px; border: 1px solid var(--line); background: #fff; }
+.p-journey-dx { font-weight: 700; font-size: 12px; line-height: 1.2; }
+.p-journey-tag { font-size: 9px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; opacity: 0.85; }
+.p-journey-arrow { align-self: center; color: var(--slate); font-size: 13px; }
+.p-journey-chip[data-tone="ai"] { border-color: #CBD5E1; background: #F8FAFC; color: #475569; }
+.p-journey-chip[data-tone="ops"] { border-color: #FCD34D; background: #FFFBEB; color: #B45309; }
+.p-journey-chip[data-tone="actual"] { border-color: #6EE7B7; background: #ECFDF5; color: #047857; }
+.p-doc-pending { display: inline-flex; align-items: center; gap: 6px; color: var(--slate); font-style: italic; opacity: 0.75; }
 
 /* onsite workflow card (Safety / Instrument steps) — a sub-card like the service report */
 .p-wf-steplist { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }

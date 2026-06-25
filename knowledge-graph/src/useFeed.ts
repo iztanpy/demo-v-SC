@@ -16,18 +16,20 @@ const END = Math.max(...WINS.map((w) => w.t3))
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-export function useFeed(started: boolean, runId: number): Map<string, FeedPhase> {
+// `active` — this section's clock runs only once it's been triggered (Documents is section 1, so
+// it goes active the moment "Run the week" is pressed). Its windows are self-relative (own t=0).
+export function useFeed(active: boolean, runId: number): Map<string, FeedPhase> {
   const [now, setNow] = useState(-1)
 
   useEffect(() => {
-    if (!started) { setNow(-1); return }
+    if (!active) { setNow(-1); return }
     if (prefersReducedMotion()) { setNow(END + 1); return }
     setNow(0)
     const bounds = Array.from(new Set(WINS.flatMap((w) => [w.t0, w.t1, w.t2, w.t3])))
       .filter((t) => t > 0).sort((a, b) => a - b)
     const timers = bounds.map((t) => setTimeout(() => setNow(t), t))
     return () => timers.forEach(clearTimeout)
-  }, [started, runId])
+  }, [active, runId])
 
   const map = new Map<string, FeedPhase>()
   for (const w of WINS) {

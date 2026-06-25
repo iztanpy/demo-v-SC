@@ -1,13 +1,25 @@
 import { create } from 'zustand'
 
-// Concurrent 3-panel demo clock. No step machine — a single "Run the week" starts every panel's
-// timeline at once; panels derive their own state from the shared elapsed clock + runId.
+// Sequential 3-panel demo clock. "Run the week" starts ONLY section 1 (Documents). Each subsequent
+// section begins its own timeline when the presenter manually FOLDS the previous one (folding = the
+// advance trigger). Folded sections collapse to a thin numbered strip; multiple sections may be open
+// at once (re-opening a strip doesn't fold the others).
+export type SectionKey = 'docs' | 'reso' | 'nk'
+const ORDER: SectionKey[] = ['docs', 'reso', 'nk']
+
 interface DemoState {
   started: boolean
   /** bumps on each run so panel timers re-arm cleanly */
   runId: number
   start: () => void
   reset: () => void
+
+  /** which sections have begun their timeline (sequential — see ORDER) */
+  sectionRun: Record<SectionKey, boolean>
+  /** which sections are folded to a number strip */
+  sectionFolded: Record<SectionKey, boolean>
+  /** fold/unfold a section; folding the current one triggers + opens the next (idempotent) */
+  toggleFold: (key: SectionKey) => void
 
   // ── Resolution (Panel 2) outputs that the graph + Panel 3 react to ──
   /** graph node ids on confirmed (reaffirmed) paths — the graph lights these green */
@@ -31,15 +43,43 @@ interface DemoState {
   /** transient amber flash on the graph — bumped each time a resolution card emits a
    *  "graph-imperfection" beat (re-weight + the 2 gaps). The graph pulses these node/edge ids
    *  amber for ~1s then reverts. `seq` makes repeat pulses on the same target distinct. */
-  flashPulse: { seq: number; nodes: string[]; edges: string[] } | null
-  pulse: (nodes: string[], edges: string[]) => void
+  flashPulse: { seq: number; nodes: string[]; edges: string[]; ms?: number } | null
+  pulse: (nodes: string[], edges: string[], ms?: number) => void
 }
+
+const ALL_FALSE: Record<SectionKey, boolean> = { docs: false, reso: false, nk: false }
 
 export const useDemo = create<DemoState>((set) => ({
   started: false,
   runId: 0,
-  start: () => set((s) => ({ started: true, runId: s.runId + 1, matchedNodes: [], reweight: false, reweightApplied: false, gap: false, committedNodes: [], flashPulse: null })),
-  reset: () => set({ started: false, matchedNodes: [], reweight: false, reweightApplied: false, gap: false, committedNodes: [], flashPulse: null }),
+  // Run → only section 1 begins; sections 2 & 3 start folded (waiting strips).
+  start: () => set((s) => ({
+    started: true, runId: s.runId + 1,
+    sectionRun: { docs: true, reso: false, nk: false },
+    sectionFolded: { docs: false, reso: true, nk: true },
+    matchedNodes: [], reweight: false, reweightApplied: false, gap: false, committedNodes: [], flashPulse: null,
+  })),
+  reset: () => set({
+    started: false,
+    sectionRun: { ...ALL_FALSE }, sectionFolded: { ...ALL_FALSE },
+    matchedNodes: [], reweight: false, reweightApplied: false, gap: false, committedNodes: [], flashPulse: null,
+  }),
+
+  sectionRun: { ...ALL_FALSE },
+  sectionFolded: { ...ALL_FALSE },
+  toggleFold: (key) => set((s) => {
+    const willFold = !s.sectionFolded[key]
+    const sectionFolded = { ...s.sectionFolded, [key]: willFold }
+    let sectionRun = s.sectionRun
+    if (willFold) {
+      const next = ORDER[ORDER.indexOf(key) + 1]
+      if (next && !s.sectionRun[next]) {
+        sectionRun = { ...s.sectionRun, [next]: true }
+        sectionFolded[next] = false // auto-open the freshly-triggered next section
+      }
+    }
+    return { sectionFolded, sectionRun }
+  }),
 
   matchedNodes: [],
   reweight: false,
@@ -54,5 +94,5 @@ export const useDemo = create<DemoState>((set) => ({
   approveNode: (id) => set((s) => (s.committedNodes.includes(id) ? s : { committedNodes: [...s.committedNodes, id] })),
 
   flashPulse: null,
-  pulse: (nodes, edges) => set((s) => ({ flashPulse: { seq: (s.flashPulse?.seq ?? 0) + 1, nodes, edges } })),
+  pulse: (nodes, edges, ms) => set((s) => ({ flashPulse: { seq: (s.flashPulse?.seq ?? 0) + 1, nodes, edges, ms } })),
 }))

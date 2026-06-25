@@ -59,33 +59,6 @@ const CARDS: ResCard[] = [
     ],
     matchedNodes: ['SYM-001', 'DT-PHASE', 'DT-ALIGNMENT', 'RC-MISALIGN'],
   },
-  {
-    id: 'c-0510', incident: 'INC-0510', chip: 'matched', chipKind: 'reaffirm',
-    entities: [
-      { label: 'Symptom', detail: 'BFP NDE vib high → SYM-001', status: 'match' },
-      { label: 'Tests run', detail: 'Oil analysis → DT-OIL-ANALYSIS', status: 'match' },
-      { label: 'Diagnosis', detail: 'Lube failure → RC-LUBE-FAIL', status: 'match' },
-    ],
-    matchedNodes: ['SYM-001', 'DT-HOUSING-INSPECT', 'DT-OIL-ANALYSIS', 'RC-LUBE-FAIL'],
-  },
-  {
-    id: 'c-0523', incident: 'INC-0523', chip: 'matched', chipKind: 'reaffirm',
-    entities: [
-      { label: 'Symptom', detail: 'BFP NDE vib high → SYM-001', status: 'match' },
-      { label: 'Tests run', detail: 'Housing inspect → DT-HOUSING-INSPECT', status: 'match' },
-      { label: 'Diagnosis', detail: 'Bearing spalling → RC-BEARING-SPALL', status: 'match' },
-    ],
-    matchedNodes: ['SYM-001', 'DT-HOUSING-INSPECT', 'RC-BEARING-SPALL'],
-  },
-  {
-    id: 'c-0544', incident: 'INC-0544', chip: 'matched', chipKind: 'reaffirm',
-    entities: [
-      { label: 'Symptom', detail: 'BFP NDE vib high → SYM-001', status: 'match' },
-      { label: 'Tests run', detail: 'Alignment → DT-ALIGNMENT', status: 'match' },
-      { label: 'Diagnosis', detail: 'Misalignment → RC-MISALIGN', status: 'match' },
-    ],
-    matchedNodes: ['SYM-001', 'DT-PHASE', 'DT-ALIGNMENT', 'RC-MISALIGN'],
-  },
   // INC-0537 (the exception) emits several resolution cards — most of it the graph already knows
   // (symptom, asset, first-line tests), one over-confident edge to re-weight, and the casing-crack
   // entities that have no home on the graph (the gaps that flow to New Knowledge).
@@ -133,10 +106,11 @@ const SHOW_PARTICLES = false
 // every other (reaffirm) incident stays a compact mini card — just the incident + chip + ✓.
 const FOCUS_INCIDENT = 'INC-0537'
 
-// The hero emits several cards on ONE per-incident phase, so they'd all resolve at the same instant.
-// Once the incident resolves, cascade its cards one-by-one (in array order) for a sequenced reveal.
+// The hero emits several cards on ONE per-incident phase. They SPAWN together (with every other
+// card), but once the incident resolves they REVEAL one-by-one (in array order) for a sequenced
+// cascade — so the yellow cards land separately, not all at once.
 const FOCUS_CARDS = CARDS.filter((c) => c.incident === FOCUS_INCIDENT)
-const HERO_STEP_MS = 600 // spacing between successive hero-card resolves
+const HERO_STEP_MS = 600 // spacing between successive hero-card reveals
 
 // As each "graph-imperfection" hero card resolves (re-weight + the 2 gaps), the graph flashes amber
 // on a representative EXISTING node/edge for ~1s. The gaps' own nodes (casing crack / NDT) aren't on
@@ -174,19 +148,19 @@ function spawnParticles(from: { x: number; y: number }, to: { x: number; y: numb
 }
 
 export function ResolutionPanel() {
-  const started = useDemo((s) => s.started)
   const runId = useDemo((s) => s.runId)
+  const run = useDemo((s) => s.sectionRun.reso)
+  const folded = useDemo((s) => s.sectionFolded.reso)
+  const toggleFold = useDemo((s) => s.toggleFold)
   const setMatched = useDemo((s) => s.setMatched)
   const setReweight = useDemo((s) => s.setReweight)
   const setGap = useDemo((s) => s.setGap)
   const pulse = useDemo((s) => s.pulse)
-  const phases = useResolution(started, runId)
+  const phases = useResolution(run, runId)
+  const expanded = !folded
 
-  const [open, setOpen] = useState(true)
-  useEffect(() => { setOpen(true) }, [runId])
-  const active = INCIDENTS.some((i) => (phases.get(i.id) ?? 'pending') !== 'pending')
-
-  // hero-card cascade: how many of INC-0537's cards have resolved so far (rest stay in matching)
+  // hero-card cascade: how many of INC-0537's cards have revealed so far (rest stay in matching).
+  // Cards spawn together but flip from matching → revealed one-by-one once the incident resolves.
   const heroPhase = phases.get(FOCUS_INCIDENT) ?? 'pending'
   const [heroResolved, setHeroResolved] = useState(0)
   useEffect(() => { setHeroResolved(0) }, [runId])
@@ -196,7 +170,7 @@ export function ResolutionPanel() {
     return () => timers.forEach(clearTimeout)
   }, [heroPhase, runId])
 
-  // amber flash on the graph as each graph-imperfection card resolves (re-weight + the 2 gaps)
+  // amber flash on the graph as each graph-imperfection card reveals (re-weight + the 2 gaps)
   useEffect(() => {
     if (heroResolved < 1) return
     const card = FOCUS_CARDS[heroResolved - 1]
@@ -265,15 +239,15 @@ export function ResolutionPanel() {
   }, [phaseKey])
 
   return (
-    <section className="p-panel p-resolution" data-active={active} data-collapsed={!open}>
-      <header className="p-panel-head" onClick={() => setOpen((o) => !o)}>
+    <section className="p-panel p-resolution" data-active={run} data-folded={folded}>
+      <header className="p-panel-head" onClick={() => toggleFold('reso')}>
         <span className="p-panel-num">2</span>
         <span className="p-panel-title">Resolution</span>
-        <span className="p-panel-sub">{active ? 'match vs. graph' : 'waiting for findings'}</span>
-        <span className="p-caret" data-open={open}>▾</span>
+        <span className="p-panel-sub">{run ? 'match vs. graph' : 'waiting for findings'}</span>
+        <span className="p-caret" data-open={expanded}>▾</span>
       </header>
 
-      {open && active && (
+      {expanded && run && (
         <div className="p-res-body" ref={bodyRef}>
           {visibleCards.map((card) => {
             const phase = phases.get(card.incident) ?? 'pending'
