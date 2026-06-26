@@ -128,7 +128,6 @@ export function DocumentsPanel() {
                         ) : (
                           <div className="p-finding"><span className="p-finding-k">{root.field}</span>{root.value}</div>
                         )}
-                        <span className="p-doc-prov">via {root.agent} · {root.source}</span>
                       </div>
                     )}
                     {subs.length > 0 && (
@@ -141,7 +140,7 @@ export function DocumentsPanel() {
                                 <span className="p-sub-icon"><DocIcon kind={c.kind} /></span>
                                 <span className="p-sub-kind">{c.label}</span>
                                 {isWorking(ph) && <span className="p-doc-spin"><span className="p-dots"><span /><span /><span /></span></span>}
-                                {ph === 'done' && <span className="p-sub-prov">via {c.agent} · {c.source}</span>}
+                                {ph === 'done' && <span className="p-sub-prov">via {c.agent}{c.source ? ` · ${c.source}` : ''}</span>}
                                 {ph === 'done' && <span className="p-doc-tick">✓</span>}
                               </div>
                               {isWorking(ph) && (

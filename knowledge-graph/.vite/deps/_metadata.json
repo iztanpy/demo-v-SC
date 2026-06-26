@@ -2,7 +2,7 @@
   "hash": "f14da0e2",
   "configHash": "60e2b938",
   "lockfileHash": "bc24e141",
-  "browserHash": "fc3cdfa9",
+  "browserHash": "3e5d0312",
   "optimized": {
     "3d-force-graph": {
       "src": "../../node_modules/3d-force-graph/dist/3d-force-graph.mjs",

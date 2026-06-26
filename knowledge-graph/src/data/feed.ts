@@ -26,7 +26,7 @@ export interface FeedDoc {
   field: string
   value: string
   /** provenance shown under the extract (instrument / system / person), echoing Part-1 vocab */
-  source: string
+  source?: string
   /** workflow-trace only — onsite step completion (Safety / Root cause isolation), echoing Part-1's checklist */
   steps?: WorkflowStep[]
   /** diagnosis only — the human (Faye) override rationale recorded against the AI recommendation */
@@ -92,9 +92,9 @@ const RAW: RawDoc[] = [
   // ── lead workflow traces (entry docs) — each incident's card opens on its workflow trace ("Test
   // path" is the INC-0537 mother card). The INC-0537 sub-cards then read: Initial diagnosis →
   // Onsite workflow → Call transcript. ──
-  { id: 'w3', incident: 'INC-0537', asset: 'BFP-3A', kind: 'workflow-trace', label: 'Test path', agent: 'Workflow Tracer', source: 'Bently Nevada 3500 / Honeywell Experion DCS', outcome: 'exception', root: true, slot: 0, parse: 1500, extract: 1000, field: 'Test path', value: 'Shaft misalignment (AI) → Bearing race spalling (Ops) → Casing crack (Actual)', journey: [{ label: 'Shaft misalignment', tag: 'AI recommended', tone: 'ai' }, { label: 'Bearing race spalling', tag: 'Ops selection', tone: 'ops' }, { label: 'Casing crack', tag: 'Actual', tone: 'actual' }] },
-  { id: 'w1', incident: 'INC-0488', asset: 'BFP-2A', kind: 'workflow-trace', label: 'Workflow trace', agent: 'Workflow Tracer', source: 'Bently Nevada 3500 · OSIsoft PI', outcome: 'reaffirm', root: true, slot: 1, parse: 1400, extract: 900, field: 'Test path', value: 'NDE housing inspection → bearing race spalling ✓ · SOP-BFP-VIBR-001 followed' },
-  { id: 'w2', incident: 'INC-0501', asset: 'BFP-1A', kind: 'workflow-trace', label: 'Workflow trace', agent: 'Workflow Tracer', source: 'Bently Nevada 3500 · OSIsoft PI', outcome: 'reaffirm', root: true, slot: 2, parse: 1400, extract: 900, field: 'Test path', value: 'Laser shaft alignment → coupling misalignment ✓' },
+  { id: 'w3', incident: 'INC-0537', asset: 'BFP-3A', kind: 'workflow-trace', label: 'Test path', agent: 'Workflow Tracer', outcome: 'exception', root: true, slot: 0, parse: 1500, extract: 1000, field: 'Test path', value: 'Shaft misalignment (AI) → Bearing race spalling (Ops) → Casing crack (Actual)', journey: [{ label: 'Shaft misalignment', tag: 'AI recommended', tone: 'ai' }, { label: 'Bearing race spalling', tag: 'Ops selection', tone: 'ops' }, { label: 'Casing crack', tag: 'Actual', tone: 'actual' }] },
+  { id: 'w1', incident: 'INC-0488', asset: 'BFP-2A', kind: 'workflow-trace', label: 'Workflow trace', agent: 'Workflow Tracer', source: 'OSIsoft PI', outcome: 'reaffirm', root: true, slot: 1, parse: 1400, extract: 900, field: 'Test path', value: 'NDE housing inspection → bearing race spalling ✓ · SOP-BFP-VIBR-001 followed' },
+  { id: 'w2', incident: 'INC-0501', asset: 'BFP-1A', kind: 'workflow-trace', label: 'Workflow trace', agent: 'Workflow Tracer', source: 'OSIsoft PI', outcome: 'reaffirm', root: true, slot: 2, parse: 1400, extract: 900, field: 'Test path', value: 'Laser shaft alignment → coupling misalignment ✓' },
 
   // ── related docs, pulled in as each workflow gets parsed ──
   { id: 'd1', incident: 'INC-0488', asset: 'BFP-2A', kind: 'service-report', label: 'Service report', agent: 'Report Parser', source: 'Service report · BFP-2A', outcome: 'reaffirm', slot: 5, parse: 1200, extract: 800, field: 'Root cause', value: 'NDE bearing race spalling — bearing replaced, resolved' },
@@ -105,10 +105,10 @@ const RAW: RawDoc[] = [
   { id: 'd6', incident: 'INC-0537', asset: 'BFP-3A', kind: 'call', label: 'Call transcript', agent: 'Call Agent', source: 'Dr. A. Ismail ↔ L. Lim', outcome: 'exception', slot: 4, parse: 1500, extract: 1000, field: 'Expert finding', value: 'Pump casing fatigue crack — not bearing race spalling · same mode as Jurong-CCGT-2 BFP (2023)', extras: [{ k: 'Confirmation test', v: 'Liquid penetrant would confirm · ~60 mm from discharge weld' }], recommendation: { label: 'Shutdown required — can’t run with a propagating casing crack', detail: 'via Call Agent · Dr. A. Ismail ↔ L. Lim' } },
 
   // ── 2 more reaffirm incidents (varied doc mixes) — the parallel stream of confirmations ──
-  { id: 'a-w', incident: 'INC-0455', asset: 'BFP-4A', kind: 'workflow-trace', label: 'Workflow trace', agent: 'Workflow Tracer', source: 'Bently Nevada 3500 · OSIsoft PI', outcome: 'reaffirm', root: true, slot: 3, parse: 1300, extract: 850, field: 'Test path', value: 'NDE housing inspection → bearing race spalling ✓' },
+  { id: 'a-w', incident: 'INC-0455', asset: 'BFP-4A', kind: 'workflow-trace', label: 'Workflow trace', agent: 'Workflow Tracer', source: 'OSIsoft PI', outcome: 'reaffirm', root: true, slot: 3, parse: 1300, extract: 850, field: 'Test path', value: 'NDE housing inspection → bearing race spalling ✓' },
   { id: 'a-c', incident: 'INC-0455', asset: 'BFP-4A', kind: 'call', label: 'Call transcript', agent: 'Call Agent', source: 'Expert call', outcome: 'reaffirm', slot: 10, parse: 1400, extract: 950, field: 'Expert finding', value: 'Confirmed race spalling on NDE bearing · 1×RPM dominant' },
 
-  { id: 'b-w', incident: 'INC-0472', asset: 'BFP-2B', kind: 'workflow-trace', label: 'Workflow trace', agent: 'Workflow Tracer', source: 'Bently Nevada 3500 · OSIsoft PI', outcome: 'reaffirm', root: true, slot: 3, parse: 650, extract: 425, field: 'Test path', value: 'Laser shaft alignment → coupling misalignment ✓' },
+  { id: 'b-w', incident: 'INC-0472', asset: 'BFP-2B', kind: 'workflow-trace', label: 'Workflow trace', agent: 'Workflow Tracer', source: 'OSIsoft PI', outcome: 'reaffirm', root: true, slot: 3, parse: 650, extract: 425, field: 'Test path', value: 'Laser shaft alignment → coupling misalignment ✓' },
   { id: 'b-n', incident: 'INC-0472', asset: 'BFP-2B', kind: 'notes', label: 'Field notes', agent: 'Notes Parser', source: 'Onsite notes', outcome: 'reaffirm', slot: 7, parse: 550, extract: 375, field: 'Onsite observation', value: 'Coupling offset out of tolerance at DE face' },
   { id: 'b-r', incident: 'INC-0472', asset: 'BFP-2B', kind: 'service-report', label: 'Service report', agent: 'Report Parser', source: 'Service report · BFP-2B', outcome: 'reaffirm', slot: 8, parse: 650, extract: 450, field: 'Root cause', value: 'Coupling misalignment — re-aligned, resolved' },
 ]

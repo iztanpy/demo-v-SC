@@ -90,7 +90,7 @@ const CARDS: ResCard[] = [
   {
     id: 'c-0537-gap', incident: 'INC-0537', chip: 'gap — new knowledge', chipKind: 'gap',
     entities: [
-      { label: 'Root cause', detail: 'Casing crack identified as the root cause — no matching node on the graph', status: 'gap' },
+      { label: 'Root cause', detail: 'Additional temperature spike suggests casing crack as the root cause', status: 'gap' },
     ],
     matchedNodes: [],
     hiEdges: ['SYM-001>DT-PHASE'],
