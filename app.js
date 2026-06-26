@@ -34,6 +34,7 @@ const state = {
   screen: 'monitoring',          // 'monitoring' | 'monitoring-notify' | 'monitoring-landed' | 'incident-detail'
   history: [],                   // nav stack
   activePersona: 'ops',          // 'ops' | 'onsite' | 'offsite' | 'analyst'
+  part3: false,                  // Part 3 — "after learning" view: Faye re-triages a same-family BFP incident weeks later; AI now recommends casing crack. Switch in persona header. Stops at the diagnosis.
   bannerVisible: false,          // true during banner-display phase
   bannerKey: 'ops',              // W3.9 — which BANNER_COPY variant to render
   notifyTimer: null,             // setTimeout handle for banner fade
@@ -291,6 +292,60 @@ const INCIDENT = {
   vendor: 'Sulzer (BFP) · Bently Nevada 3500 (machinery protection)',
   historicalWOCount: 3,
 };
+
+// ── Part 3 — "after learning" rationale rows for the now-recommended casing-crack diagnosis ──
+const CASING_CRACK_RATIONALE = [
+  { text: 'Discharge-weld-toe fatigue signature — matches the resolved JRG-CCGT-1 BFP-3A casing crack (INC-2026-0537)',
+    strength: 'met',     badgeLabel: 'fully met' },
+  { text: 'Weld-NDT (dye-penetrant) confirmation step now part of the BFP vibration SOP after that case',
+    strength: 'met',     badgeLabel: 'fully met' },
+  { text: 'NDE bearing vibration + temperature rise consistent with secondary damage from a propagating casing crack',
+    strength: 'met',     badgeLabel: 'fully met' },
+  { text: '1×RPM dominance present — bearing-spalling look-alike now correctly de-prioritised',
+    strength: 'partial', badgeLabel: 'partially met' },
+  { text: 'Cyclic discharge-pressure loading on the Block 2 BFP volute — fatigue-conducive duty',
+    strength: 'partial', badgeLabel: 'partially met' },
+];
+
+// ── Part 3 incident — same vibration readings, weeks later, sister unit (BFP-2B). The graph has
+// learned the casing-crack failure mode from INC-0537, so the AI now leads with casing crack.
+// Readings are shared verbatim with INCIDENT (the "same readings" point). View is Faye-only; stops
+// at the diagnosis (no downstream workflow). getDiagnosisOptions() returns ACT3_INCIDENT.options
+// when state.part3 is on; the recommended option is casing crack.
+const ACT3_INCIDENT = {
+  id: 'INC-2026-0612',
+  asset: 'JRG-CCGT-1 · Block 2 · BFP-2B',
+  title: 'BFP-2B vibration RMS drift · NDE bearing housing',
+  timestamp: '03:14 SGT · 2026-06-18',
+  severity: 'AMBER',
+  alarm: 'BFP-2B VIBRATION RMS DRIFT — NDE bearing housing exceeds ISO 10816-7 Zone C threshold (8.4 mm/s vs 7.1 mm/s alarm).',
+  alarmSource: 'Bently Nevada 3500 / Honeywell Experion DCS',
+  metrics: INCIDENT.metrics,   // same readings as INC-0537 — the whole point of the contrast
+  options: [
+    { id: 'casing-crack', name: 'Pump casing crack / weld-toe fatigue', conf: 82, recommended: true,
+      rationale: 'Discharge weld-toe fatigue — same failure mode the system confirmed on JRG-CCGT-1 BFP-3A (INC-2026-0537); weld-NDT step now standard',
+      details: CASING_CRACK_RATIONALE, detailLabel: 'Full reasoning' },
+    { id: 'shaft-misalign', name: 'Shaft misalignment', conf: 64, recommended: false,
+      rationale: 'Elevated 2×RPM + ~180° NDE-DE phase shift — misalignment signature · down-weighted after the prior over-weight was corrected',
+      details: SHAFT_MISALIGN_RATIONALE, detailLabel: 'Full reasoning' },
+    { id: 'bearing-spalling', name: 'NDE bearing race spalling (early-stage)', conf: 41, recommended: false,
+      rationale: 'Vibration spectrum + 1×RPM dominance overlap race-spalling · now secondary to the casing-crack pattern',
+      details: INITIAL_DIAGNOSIS_RATIONALE, detailLabel: 'Full reasoning' },
+    { id: 'coupling-wear', name: 'Coupling wear', conf: 22, recommended: false,
+      rationale: 'Coupling within last-service window · no sideband signature at coupling frequency',
+      details: [{ text: 'Vibration band partially overlaps coupling-wear signature', strength: 'partial', badgeLabel: 'partial match' }],
+      detailLabel: 'Full reasoning' },
+    { id: 'impeller-imbal', name: 'Impeller imbalance', conf: 12, recommended: false,
+      rationale: 'Synchronous 1×RPM present, but no flow/head deviation consistent with imbalance',
+      details: [{ text: 'Synchronous 1×RPM component present', strength: 'partial', badgeLabel: 'partial match' }],
+      detailLabel: 'Full reasoning' },
+  ],
+};
+
+// Active incident for the Faye triage screen — swaps to the Part 3 incident when the switch is on.
+function activeIncident() {
+  return state.part3 ? ACT3_INCIDENT : INCIDENT;
+}
 
 // ── W19 — Work Order generated before dispatch ──
 // Works-to-complete mirror the LIM_INSPECTION_CHECKLIST groups (Safety / Instrument / Root cause isolation),
@@ -690,6 +745,34 @@ function onPersonaTileClick(personaKey) {
   switchToPersona(personaKey);
 }
 
+// ── Part 3 switch (persona header) — flip Faye's triage between "initial triage" and "after learning" ──
+// On either flip we land on Faye's incident-detail triage screen with a fresh selection, so the two
+// views read as an A/B of the SAME readings. Part 3 paints the diagnosis instantly + stops there.
+function setPart3(on) {
+  if (state.part3 === on) return;
+  cancelInProgressReveal();
+  state.part3 = on;
+  // reset Faye's triage so each view default-selects its own recommended option fresh
+  state.faye.selectedOption = null;
+  state.faye.overrideReason = '';
+  state.faye.diagnosisConfirmed = false;
+  state.faye.actionStepsSpawned = false;
+  // land on Faye's triage screen in both modes
+  state.activePersona = 'ops';
+  state.screen = 'incident-detail';
+  const bp = getCanonicalTicket().byPersona.ops;
+  bp.seen = true; bp.opened = true; bp.actioned = false;
+  syncActSwitch();
+  render();
+}
+
+function syncActSwitch() {
+  document.querySelectorAll('#act-switch .act-seg').forEach(b => {
+    const isActive = (b.dataset.act === 'part3') === !!state.part3;
+    b.setAttribute('data-active', isActive ? '1' : '0');
+  });
+}
+
 function switchToPersona(personaKey) {
   // W7 — offsite tile removed; guard against any stray call
   if (personaKey === 'offsite') return;
@@ -780,6 +863,8 @@ function initAgentCardStates() {
 
 // ── W4 / W5 — per-persona Screen D dispatcher (state-aware for ops) ──
 function renderIncidentDetailView(root) {
+  // Part 3 — Faye-only re-triage; bypass persona/escalation routing and always show her triage screen.
+  if (state.part3) return renderOpsIncidentDetail(root);
   const ticket = getCanonicalTicket();
   switch (state.activePersona) {
     case 'ops': {
@@ -806,6 +891,7 @@ function renderOpsIncidentDetail(root) {
   content.id = 'incident-detail-view';
 
   // (A) header band — green gradient + back chevron + title/ID/severity
+  const inc = activeIncident();
   const hdr = el('div', 'inc-header');
   hdr.innerHTML = `
     <span class="inc-back">
@@ -817,17 +903,17 @@ function renderOpsIncidentDetail(root) {
     <div class="inc-hdr-row">
       <div class="inc-hdr-left">
         <div class="inc-workspace">${PERSONA_INITIALS.ops.workspace}</div>
-        <div class="inc-title">${INCIDENT.asset}</div>
-        <div class="inc-id">${INCIDENT.id}</div>
-        <div class="inc-ts">${INCIDENT.timestamp}</div>
+        <div class="inc-title">${inc.asset}</div>
+        <div class="inc-id">${inc.id}</div>
+        <div class="inc-ts">${inc.timestamp}</div>
       </div>
-      <span class="sev-pill" data-severity="${INCIDENT.severity}">▲ Severity: ${INCIDENT.severity}</span>
+      <span class="sev-pill" data-severity="${inc.severity}">▲ Severity: ${inc.severity}</span>
     </div>`;
   content.appendChild(hdr);
 
   // (B) Metrics card (2×2 grid)
   const grid = el('div', 'metrics-card');
-  INCIDENT.metrics.forEach(m => {
+  inc.metrics.forEach(m => {
     const cell = el('div', 'metric-cell');
     cell.innerHTML = `
       <div class="mc-lbl">${m.lbl}</div>
@@ -866,6 +952,10 @@ function renderOpsIncidentDetail(root) {
     paintSummaryComplete(summarySlot);
     paintActionStepsComplete(actionSlot);
     setTimeout(appendDispatchCaptureFooter, 200);
+  } else if (state.part3) {
+    // Part 3 — the AI re-analysed and now recommends casing crack; paint the diagnosis directly
+    // (no reveal theater) and STOP at the diagnosis (no downstream action steps).
+    paintSummaryComplete(summarySlot);
   } else {
     // First open or in-progress — kick off the 2-stage reveal; Action Steps now gated on Confirm click.
     startScreenDRevealW39(summarySlot, actionSlot);
@@ -953,6 +1043,7 @@ function escapeHtml(s) {
 }
 
 function getDiagnosisOptions() {
+  if (state.part3) return ACT3_INCIDENT.options;   // Part 3 — casing crack recommended
   const hyp = INCIDENT.hypothesis;
   return [
     { id: 'primary', name: hyp.primary, conf: hyp.confidence, rationale: hyp.rationale, recommended: true,
@@ -977,9 +1068,10 @@ function paintSummaryComplete(summarySlot) {
   // W19 — heading "Initial Diagnosis" now lists ALL options (recommended + alternates) w/ confidence + rationale.
   // User picks one (default = recommended); Confirm captures the choice. Primary keeps the detailed rationale dropdown.
   const options = getDiagnosisOptions();
-  // Default-select the recommended option on first paint.
-  if (state.faye && !state.faye.selectedOption) state.faye.selectedOption = 'primary';
-  const selectedId = (state.faye && state.faye.selectedOption) || 'primary';
+  const recId = (options.find(o => o.recommended) || options[0]).id;
+  // Default-select the recommended option on first paint (id differs in Part 3 → casing-crack).
+  if (state.faye && !state.faye.selectedOption) state.faye.selectedOption = recId;
+  const selectedId = (state.faye && state.faye.selectedOption) || recId;
 
   const optionsHtml = options.map(o => `
     <div class="sr-option${o.id === selectedId ? ' sr-option-selected' : ''}" data-option-id="${o.id}" role="button" tabindex="0">
@@ -1016,7 +1108,7 @@ function paintSummaryComplete(summarySlot) {
 
   summarySlot.innerHTML = `
     <div class="summary-report" data-block-real="summary">
-      <div class="sr-heading">Initial Diagnosis</div>
+      <div class="sr-heading">Initial Diagnosis${state.part3 ? ` <span class="sr-act-chip">After learning · ${ACT3_INCIDENT.id}</span>` : ''}</div>
       <div class="sr-section">
         <div class="sr-options">
           ${optionsHtml}
@@ -2179,7 +2271,7 @@ function onInitialDiagnosisConfirmClick() {
     }
     const overrideBlock = document.querySelector('.sr-override');
     if (overrideBlock) overrideBlock.style.display = 'none';
-    spawnSOPRelevantNextBestActions();
+    if (!state.part3) spawnSOPRelevantNextBestActions();   // Part 3 stops at the diagnosis
   }, 2000);
 }
 
@@ -5133,6 +5225,7 @@ function tabletCacheKey() {
   const hp = ticket && ticket.handoffPending;
   return [
     p,
+    state.part3 ? 1 : 0,
     state.screen,
     state.bannerVisible ? 1 : 0,
     state.bannerKey || '',
@@ -9402,6 +9495,11 @@ function init() {
   // W10 A.5 — relocate agent buckets into log dropdown as 2-tab switcher.
   // Runs AFTER seedLogLines + initAgentCardStates so orch-log + agent cards are populated before reparenting.
   initLogDropdownTabs();
+  // Part 3 switch (persona header)
+  document.querySelectorAll('#act-switch .act-seg').forEach(b => {
+    b.addEventListener('click', () => setPart3(b.dataset.act === 'part3'));
+  });
+  syncActSwitch();
 }
 
 document.addEventListener('DOMContentLoaded', init);

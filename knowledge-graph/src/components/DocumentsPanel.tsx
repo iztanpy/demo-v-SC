@@ -151,7 +151,7 @@ export function DocumentsPanel() {
                               )}
                               {ph === 'done' && (
                                 <>
-                                  <div className="p-finding"><span className="p-finding-k">{c.field}</span>{c.value}</div>
+                                  {(c.field || c.value) && <div className="p-finding"><span className="p-finding-k">{c.field}</span>{c.value}</div>}
                                   {c.rationale && <div className="p-doc-rationale">Rationale · {c.rationale}</div>}
                                 </>
                               )}

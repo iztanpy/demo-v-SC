@@ -134,6 +134,44 @@
       color: var(--text-muted);
       font-family: var(--mono);
     }
+    .personas-hdr-right {
+      display: flex; align-items: center; gap: 12px;
+    }
+    /* Part 3 switch — Initial triage · After learning */
+    .act-switch {
+      display: inline-flex;
+      background: var(--bg-stage, #F1F5F9);
+      border: 1px solid var(--border-subtle);
+      border-radius: 999px;
+      padding: 2px;
+    }
+    .act-seg {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: .02em;
+      padding: 4px 10px;
+      border: none; background: transparent;
+      color: var(--text-muted);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      white-space: nowrap;
+    }
+    .act-seg[data-active="1"] {
+      background: var(--green-vivid);
+      color: #FFFFFF;
+    }
+    /* "After learning" chip on the Part 3 diagnosis heading */
+    .sr-act-chip {
+      display: inline-block;
+      margin-left: 8px;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: .02em;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(0,166,81,0.12);
+      color: var(--green-vivid);
+      vertical-align: middle;
+    }
 
     .personas-row {
       display: grid;
@@ -6712,7 +6750,13 @@
       <div id="personas-panel">
         <div class="personas-hdr">
           <span class="personas-lbl">Personas</span>
-          <span class="personas-flow" id="persona-flow">Ops · Control Tower → Onsite → Offsite → Asset Perf</span>
+          <div class="personas-hdr-right">
+            <span class="personas-flow" id="persona-flow">Ops · Control Tower → Onsite → Offsite → Asset Perf</span>
+            <div class="act-switch" id="act-switch" role="group" aria-label="Learning view">
+              <button class="act-seg" data-act="now" type="button">Initial triage</button>
+              <button class="act-seg" data-act="part3" type="button">After learning</button>
+            </div>
+          </div>
         </div>
         <div class="personas-row" id="personas-row"></div>
       </div>
@@ -7397,6 +7441,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=w54"></script>
+  <script src="app.js?v=w55"></script>
 </body>
 </html>
