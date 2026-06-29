@@ -112,7 +112,7 @@
       border: 1px solid var(--border-subtle);
       border-radius: 12px;
       box-shadow: var(--shadow-card);
-      padding: 12px 14px 14px;
+      padding: 6px 14px 8px;
       flex-shrink: 0;
       width: 100%;
       max-width: 720px;
@@ -120,9 +120,9 @@
     }
     .personas-hdr {
       display: flex; align-items: center; justify-content: space-between;
-      padding-bottom: 8px;
+      padding-bottom: 4px;
       border-bottom: 1px solid rgba(0,166,81,0.18);
-      margin-bottom: 10px;
+      margin-bottom: 5px;
     }
     .personas-lbl {
       font-size: 11px; font-weight: 800;
@@ -137,28 +137,34 @@
     .personas-hdr-right {
       display: flex; align-items: center; gap: 12px;
     }
-    /* Part 3 switch — Initial triage · After learning */
-    .act-switch {
-      display: inline-flex;
-      background: var(--bg-stage, #F1F5F9);
+    /* Part 3 switch — wordless toggle (off = initial triage · on = after learning) */
+    .act-toggle {
+      position: relative;
+      flex: none;
+      width: 38px; height: 22px;
       border: 1px solid var(--border-subtle);
+      background: var(--bg-stage, #F1F5F9);
       border-radius: 999px;
-      padding: 2px;
-    }
-    .act-seg {
-      font-size: 10px; font-weight: 700;
-      letter-spacing: .02em;
-      padding: 4px 10px;
-      border: none; background: transparent;
-      color: var(--text-muted);
-      border-radius: 999px;
+      padding: 0;
       cursor: pointer;
-      transition: background .15s, color .15s;
-      white-space: nowrap;
+      transition: background .18s, border-color .18s;
     }
-    .act-seg[data-active="1"] {
+    .act-toggle-knob {
+      position: absolute;
+      top: 50%; left: 3px;
+      width: 16px; height: 16px;
+      transform: translateY(-50%);
+      background: #FFFFFF;
+      border-radius: 50%;
+      box-shadow: 0 1px 2px rgba(15,27,61,0.18);
+      transition: left .18s;
+    }
+    .act-toggle[aria-checked="true"] {
       background: var(--green-vivid);
-      color: #FFFFFF;
+      border-color: var(--green-vivid);
+    }
+    .act-toggle[aria-checked="true"] .act-toggle-knob {
+      left: 19px;
     }
     /* "After learning" chip on the Part 3 diagnosis heading */
     .sr-act-chip {
@@ -185,7 +191,7 @@
       border-radius: 9px;
       overflow: hidden;
       display: flex; flex-direction: column;
-      min-height: 100px;
+      min-height: 50px;
       transition: filter .2s, opacity .2s, border-color .2s, transform .2s, box-shadow .2s;
     }
     .persona-tile[data-state="active"] {
@@ -216,16 +222,16 @@
       background: #F1F5F9;
       position: relative;
       display: flex; align-items: center; justify-content: center;
-      padding: 4px;
-      min-height: 56px;
+      padding: 2px;
+      min-height: 28px;
     }
     .persona-tile[data-state="active"] .persona-scene {
       background: linear-gradient(180deg, #ECFDF5 0%, #F1F5F9 100%);
     }
-    .persona-scene svg { width: 100%; height: 100%; max-height: 56px; }
+    .persona-scene svg { width: 100%; height: 100%; max-height: 28px; }
 
     .persona-label {
-      padding: 6px 9px 7px;
+      padding: 3px 9px 4px;
       display: flex; flex-direction: column; gap: 1px;
       border-top: 1px solid var(--border-subtle);
       background: var(--bg-card);
@@ -4908,9 +4914,28 @@
       border-left: 3px solid var(--green-vivid);
       border-radius: 10px;
       box-shadow: var(--shadow-card);
-      display: flex; align-items: center; gap: 12px;
+      display: flex; flex-direction: column; gap: 12px;
       animation: reveal-slide 0.35s ease-out;
     }
+    .ssd-row { display: flex; align-items: center; gap: 12px; }
+    .ssd-deviation { display: flex; flex-direction: column; gap: 6px; }
+    .ssd-dev-label {
+      font-size: 11px; font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: .01em;
+    }
+    .ssd-dev-req { color: var(--text-muted); font-weight: 600; font-style: italic; }
+    .ssd-dev-input {
+      width: 100%; box-sizing: border-box;
+      min-height: 64px; resize: vertical;
+      padding: 8px 10px;
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      font-family: inherit; font-size: 12px; line-height: 1.45;
+      color: var(--text-primary);
+      background: var(--bg-stage, #F8FAFC);
+    }
+    .ssd-dev-input:focus { outline: none; border-color: var(--green-vivid); }
     .ssd-icon {
       width: 36px; height: 36px;
       background: var(--green-soft);
@@ -4932,8 +4957,8 @@
       margin-top: 2px;
     }
     .ssd-action {
-      flex-shrink: 0;
-      padding: 10px 16px;
+      align-self: flex-end;
+      padding: 10px 18px;
       background: var(--green-vivid);
       color: white;
       border: none;
@@ -4946,6 +4971,11 @@
       transition: background 200ms;
     }
     .ssd-action:hover { background: var(--green-deep); }
+    .ssd-action:disabled {
+      background: var(--border-subtle);
+      color: var(--text-muted);
+      cursor: not-allowed;
+    }
 
     /* W8 E.2 — Revise diagnosis TILE (replaces W7 standalone confirm-revised-cta button). */
     /* W19 — workflow deviation notice (logged by system) */
@@ -6751,11 +6781,9 @@
         <div class="personas-hdr">
           <span class="personas-lbl">Personas</span>
           <div class="personas-hdr-right">
-            <span class="personas-flow" id="persona-flow">Ops · Control Tower → Onsite → Offsite → Asset Perf</span>
-            <div class="act-switch" id="act-switch" role="group" aria-label="Learning view">
-              <button class="act-seg" data-act="now" type="button">Initial triage</button>
-              <button class="act-seg" data-act="part3" type="button">After learning</button>
-            </div>
+            <button class="act-toggle" id="act-toggle" type="button" role="switch" aria-checked="false" aria-label="After-learning view">
+              <span class="act-toggle-knob"></span>
+            </button>
           </div>
         </div>
         <div class="personas-row" id="personas-row"></div>

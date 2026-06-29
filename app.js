@@ -104,6 +104,7 @@ const state = {
     verdictSpawned: false,
     rejectClicked: false,
     confirmRevisedClicked: false,
+    deviationRationale: '',            // Lim's free-text rationale for deviating to the offsite expert
     // ── W14 R2 — flat checklist + Assistant FAB state ──
     itemResults: {},                   // map of item-id → { type: 'tick'|'cross', photo?, voiceNote? }
     checklistRevealedTo: 1,            // 1..LIM_INSPECTION_CHECKLIST.length · sequential reveal cursor
@@ -266,7 +267,7 @@ const INCIDENT = {
   // W40 — recommended diagnosis is now Shaft misalignment (85%); Faye overrides to bearing race spalling.
   hypothesis: {
     primary: 'Shaft misalignment',
-    confidence: 85,
+    confidence: 88,
     subtitle: 'Pending Onsite verification (Lim Wei Jie)',
     rationale: 'Elevated 2×RPM harmonic + ~180° NDE-DE phase shift across coupling match misalignment signature · pattern-matched across fleet BFPs',
   },
@@ -274,15 +275,15 @@ const INCIDENT = {
   // + a short "Full reasoning" dropdown (`details`) showing the single partial-match signal.
   // W40 — bearing race spalling demoted to a selectable alternate (Faye's override pick); keeps the full rationale.
   alternates: [
-    { id: 'bearing-spalling', name: 'NDE bearing race spalling (early-stage)', conf: 78,
+    { id: 'bearing-spalling', name: 'NDE bearing race spalling (early-stage)', conf: 80,
       rationale: 'Vibration spectrum + 1×RPM dominance match race-spalling signature · pattern-matched to 3 prior BFP failures across fleet',
       details: INITIAL_DIAGNOSIS_RATIONALE },
-    { id: 'coupling-wear', name: 'Coupling wear', conf: 31,
+    { id: 'coupling-wear', name: 'Coupling wear', conf: 75,
       rationale: 'Coupling within last-service window · no sideband signature at coupling frequency',
       details: [
         { text: 'Vibration band partially overlaps coupling-wear signature', strength: 'partial', badgeLabel: 'partial match' },
       ] },
-    { id: 'impeller-imbal', name: 'Impeller imbalance', conf: 19,
+    { id: 'impeller-imbal', name: 'Impeller imbalance', conf: 70,
       rationale: 'Synchronous 1×RPM present, but no flow/head deviation consistent with imbalance',
       details: [
         { text: 'Synchronous 1×RPM component present', strength: 'partial', badgeLabel: 'partial match' },
@@ -322,22 +323,18 @@ const ACT3_INCIDENT = {
   alarmSource: 'Bently Nevada 3500 / Honeywell Experion DCS',
   metrics: INCIDENT.metrics,   // same readings as INC-0537 — the whole point of the contrast
   options: [
-    { id: 'casing-crack', name: 'Pump casing crack / weld-toe fatigue', conf: 82, recommended: true,
+    { id: 'casing-crack', name: 'Pump casing crack / weld-toe fatigue', conf: 91, recommended: true,
       rationale: 'Discharge weld-toe fatigue — same failure mode the system confirmed on JRG-CCGT-1 BFP-3A (INC-2026-0537); weld-NDT step now standard',
       details: CASING_CRACK_RATIONALE, detailLabel: 'Full reasoning' },
-    { id: 'shaft-misalign', name: 'Shaft misalignment', conf: 64, recommended: false,
+    { id: 'shaft-misalign', name: 'Shaft misalignment', conf: 77, recommended: false,
       rationale: 'Elevated 2×RPM + ~180° NDE-DE phase shift — misalignment signature · down-weighted after the prior over-weight was corrected',
       details: SHAFT_MISALIGN_RATIONALE, detailLabel: 'Full reasoning' },
-    { id: 'bearing-spalling', name: 'NDE bearing race spalling (early-stage)', conf: 41, recommended: false,
+    { id: 'bearing-spalling', name: 'NDE bearing race spalling (early-stage)', conf: 73, recommended: false,
       rationale: 'Vibration spectrum + 1×RPM dominance overlap race-spalling · now secondary to the casing-crack pattern',
       details: INITIAL_DIAGNOSIS_RATIONALE, detailLabel: 'Full reasoning' },
-    { id: 'coupling-wear', name: 'Coupling wear', conf: 22, recommended: false,
+    { id: 'coupling-wear', name: 'Coupling wear', conf: 68, recommended: false,
       rationale: 'Coupling within last-service window · no sideband signature at coupling frequency',
       details: [{ text: 'Vibration band partially overlaps coupling-wear signature', strength: 'partial', badgeLabel: 'partial match' }],
-      detailLabel: 'Full reasoning' },
-    { id: 'impeller-imbal', name: 'Impeller imbalance', conf: 12, recommended: false,
-      rationale: 'Synchronous 1×RPM present, but no flow/head deviation consistent with imbalance',
-      details: [{ text: 'Synchronous 1×RPM component present', strength: 'partial', badgeLabel: 'partial match' }],
       detailLabel: 'Full reasoning' },
   ],
 };
@@ -697,7 +694,7 @@ function renderPersonasPanel() {
   const row = document.getElementById('personas-row');
   if (!row) return;
   const ticket = getCanonicalTicket();
-  const visiblePersonas = PERSONAS.filter(p => p.key !== 'offsite');
+  const visiblePersonas = PERSONAS.filter(p => p.key !== 'offsite' && p.key !== 'analyst');
 
   // Lazy build — first call only.
   if (!row.dataset.built) {
@@ -767,10 +764,8 @@ function setPart3(on) {
 }
 
 function syncActSwitch() {
-  document.querySelectorAll('#act-switch .act-seg').forEach(b => {
-    const isActive = (b.dataset.act === 'part3') === !!state.part3;
-    b.setAttribute('data-active', isActive ? '1' : '0');
-  });
+  const t = document.getElementById('act-toggle');
+  if (t) t.setAttribute('aria-checked', state.part3 ? 'true' : 'false');
 }
 
 function switchToPersona(personaKey) {
@@ -953,9 +948,10 @@ function renderOpsIncidentDetail(root) {
     paintActionStepsComplete(actionSlot);
     setTimeout(appendDispatchCaptureFooter, 200);
   } else if (state.part3) {
-    // Part 3 — the AI re-analysed and now recommends casing crack; paint the diagnosis directly
-    // (no reveal theater) and STOP at the diagnosis (no downstream action steps).
-    paintSummaryComplete(summarySlot);
+    // Part 3 — the AI re-analysed after learning and now recommends casing crack. Play the same
+    // 2-stage agent loading theater as the initial triage, then STOP at the diagnosis (the
+    // re-entry action-steps branch is gated on diagnosisConfirmed, false on a fresh switch).
+    startScreenDRevealW39(summarySlot, actionSlot);
   } else {
     // First open or in-progress — kick off the 2-stage reveal; Action Steps now gated on Confirm click.
     startScreenDRevealW39(summarySlot, actionSlot);
@@ -999,7 +995,7 @@ function startScreenDRevealW39(summarySlot, actionSlot) {
   pushReveal(() => {
     summarySlot.innerHTML = `
       <div class="summary-report" data-block-real="summary">
-        <div class="sr-heading">Initial Diagnosis</div>
+        <div class="sr-heading">Initial Diagnosis${state.part3 ? ` <span class="sr-act-chip">After learning · ${ACT3_INCIDENT.id}</span>` : ''}</div>
         <div class="sr-body" id="sr-body">
           <div class="reveal-pending" data-stage="hypothesis">
             <div class="reveal-dots"><span></span><span></span><span></span></div>
@@ -1155,6 +1151,10 @@ function wireOverrideInput() {
     if (state.faye) state.faye.overrideReason = ta.value;
     refreshConfirmEnabled();
   });
+  // Auto-fill (typewriter) Faye's override rationale on first press.
+  const fill = () => typewriterFill(ta, 'specific vibration frequency suggests bearing issue');
+  ta.addEventListener('focus', fill);
+  ta.addEventListener('click', fill);
 }
 
 // W40 — enable Confirm only when not in an unjustified override.
@@ -2910,43 +2910,8 @@ function onInstrumentTick(itemId) {
   state.lim.instrumentResults[itemId] = 'tick';
   state.lim.checked[itemId] = true;
   logChecklistItem(itemId);
-  // W43 — ticking transducer cabling (instr-2) surfaces a component-temperature spike: strike the
-  // remaining instrument item(s) + insert the "contact offsite expert" item, then pop the alert.
-  const triggerSpike = itemId === 'instr-2' && !state.lim.tempSpikeTriggered;
-  if (triggerSpike) state.lim.tempSpikeTriggered = true;
   paintLimChecklist();
   updateChecklistProgress();
-  if (triggerSpike) showTempSpikeAlert();
-}
-
-// W43 — component temperature-spike alert (pops over the tablet; Acknowledge dismisses).
-function showTempSpikeAlert() {
-  if (document.querySelector('.ts-alert')) return;
-  const host = document.getElementById('tablet') || document.body;
-  const modal = document.createElement('div');
-  modal.className = 'ts-alert';
-  modal.innerHTML = `
-    <div class="ts-alert-backdrop"></div>
-    <div class="ts-alert-card" role="alertdialog" aria-modal="true">
-      <div class="ts-alert-icon">⚠</div>
-      <div class="ts-alert-label">DCS Alert · Temperature spike</div>
-      <div class="ts-alert-title">NDE bearing housing temperature spiking</div>
-      <div class="ts-alert-body">BFP-3A NDE bearing housing temperature is rising rapidly — <strong>94 °C and climbing</strong> (was 78 °C · +16 °C over 4 min). Remaining instrument checks halted. Escalate to the offsite expert for remote vibration phase analysis.</div>
-      <button class="ts-alert-ack" type="button">Acknowledge</button>
-    </div>`;
-  host.appendChild(modal);
-  const close = () => modal.remove();
-  modal.querySelector('.ts-alert-ack').addEventListener('click', close);
-  modal.querySelector('.ts-alert-backdrop').addEventListener('click', close);
-  if (window.LOG) {
-    window.LOG.appendLine({
-      ts: currentSGTLog(),
-      source: 'inspection',
-      text: 'DCS alert · BFP-3A NDE bearing housing temperature spike (94 °C, rising) · onsite instrument checks halted · escalation to offsite expert prompted',
-      dataSource: 'Honeywell Experion DCS',
-      nodeChain: ['bearing-bfp-3a-nde', 'bearing-temp-30d'],
-    });
-  }
 }
 
 // W43 — "Contact offsite expert" item → same effect as the Assistant "Call" button:
@@ -3132,15 +3097,7 @@ function wireInspectionChecklist() {
       item.dataset.checked = 'true';
       item.querySelector('.ic-check').textContent = '✓';
       logChecklistItem(itemId);
-      // Temp-spike escalation: ticking the rolling-element bearing check (rci-2) surfaces the 94°C
-      // NDE bearing spike → supersede remaining root-cause checks + surface the offsite-expert item.
-      const triggerSpike = itemId === 'rci-2' && !state.lim.tempSpikeTriggered;
-      if (triggerSpike) {
-        state.lim.tempSpikeTriggered = true;
-        paintLimChecklist();   // re-render so remaining root-cause rows supersede + escalation item appears
-      }
       updateChecklistProgress();
-      if (triggerSpike) showTempSpikeAlert();
     });
   });
 }
@@ -3304,17 +3261,24 @@ function onVerdictReject() {
 
   const slot = document.getElementById('lim-ctas-slot');
   if (!slot) return;
-  // Drop verdict section, spawn SOP-suggest dialogue
+  // Drop verdict section, spawn SOP-suggest dialogue. Escalating to the offsite expert is a deviation
+  // from the onsite-remediation path, so Lim logs his rationale before the call (Workflow Agent trace).
   slot.innerHTML = `
     <div class="sop-suggest-dialogue">
-      <div class="ssd-icon">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57a1 1 0 0 0-1.02.24l-2.2 2.2a15.05 15.05 0 0 1-6.59-6.58l2.2-2.21a1 1 0 0 0 .25-1.02A11.36 11.36 0 0 1 8.5 4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1c0 9.39 7.61 17 17 17a1 1 0 0 0 1-1v-3.5a1 1 0 0 0-1-1z"/></svg>
+      <div class="ssd-row">
+        <div class="ssd-icon">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57a1 1 0 0 0-1.02.24l-2.2 2.2a15.05 15.05 0 0 1-6.59-6.58l2.2-2.21a1 1 0 0 0 .25-1.02A11.36 11.36 0 0 1 8.5 4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1c0 9.39 7.61 17 17 17a1 1 0 0 0 1-1v-3.5a1 1 0 0 0-1-1z"/></svg>
+        </div>
+        <div class="ssd-body">
+          <div class="ssd-text">SOP suggests calling <span class="dyn-name">Dr. A. Ismail</span></div>
+          <div class="ssd-sub">SOP-BFP-VIBR-001 · escalation playbook · Senior Engineer reference</div>
+        </div>
       </div>
-      <div class="ssd-body">
-        <div class="ssd-text">SOP suggests calling <span class="dyn-name">Dr. A. Ismail</span></div>
-        <div class="ssd-sub">SOP-BFP-VIBR-001 · escalation playbook · Senior Engineer reference</div>
+      <div class="ssd-deviation">
+        <label class="ssd-dev-label">Rationale for deviation <span class="ssd-dev-req">· required</span></label>
+        <textarea class="ssd-dev-input" rows="3" placeholder="Why escalate to the offsite expert? e.g. onsite checks don't fit the bearing-spalling hypothesis — lube oil clean, no spall pattern on the inspection port; vibration + NDE temp rise point elsewhere.">${escapeHtml(state.lim.deviationRationale || '')}</textarea>
       </div>
-      <button class="ssd-action" type="button">Call</button>
+      <button class="ssd-action" type="button" disabled>Call</button>
     </div>`;
 
   wireSOPSuggestDialogue();
@@ -3322,9 +3286,42 @@ function onVerdictReject() {
 
 function wireSOPSuggestDialogue() {
   const btn = document.querySelector('.sop-suggest-dialogue .ssd-action');
-  if (!btn || btn.dataset.wired === '1') return;
-  btn.dataset.wired = '1';
-  btn.addEventListener('click', onSOPSuggestCallClick);
+  const ta = document.querySelector('.sop-suggest-dialogue .ssd-dev-input');
+  // Deviation rationale: capture + gate the Call button; auto-fill (typewriter) on first press.
+  if (ta && ta.dataset.wired !== '1') {
+    ta.dataset.wired = '1';
+    const sync = () => {
+      state.lim.deviationRationale = ta.value;
+      if (btn) btn.disabled = !ta.value.trim();
+    };
+    ta.addEventListener('input', sync);
+    const fill = () => typewriterFill(ta, 'Unexpected temperature rise not consistent with bearing issue');
+    ta.addEventListener('focus', fill);
+    ta.addEventListener('click', fill);
+    sync();
+  }
+  if (btn && btn.dataset.wired !== '1') {
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', onSOPSuggestCallClick);
+  }
+}
+
+// Demo typewriter — type `text` into a textarea char-by-char, firing input events so wired
+// listeners (button-gating, state capture) update live. Guarded so it runs once per element and
+// never overwrites text the user already has (re-entry reversibility).
+function typewriterFill(elTextarea, text, opts = {}) {
+  if (!elTextarea || elTextarea.dataset.typed === '1') return;
+  if (elTextarea.value.trim()) { elTextarea.dataset.typed = '1'; return; }
+  elTextarea.dataset.typed = '1';
+  const speed = opts.speed || 26;
+  let i = 0;
+  const tick = () => {
+    i++;
+    elTextarea.value = text.slice(0, i);
+    elTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+    if (i < text.length) setTimeout(tick, speed);
+  };
+  tick();
 }
 
 function onSOPSuggestCallClick() {
@@ -3332,6 +3329,17 @@ function onSOPSuggestCallClick() {
   if (!slot) return;
   const dialogue = slot.querySelector('.sop-suggest-dialogue');
   if (dialogue) dialogue.remove();
+
+  // Log Lim's deviation rationale to the Workflow Agent trace (SOP-adherence / deviation capture).
+  if (window.LOG && (state.lim.deviationRationale || '').trim()) {
+    window.LOG.appendLine({
+      ts: currentSGTLog(),
+      source: 'workflow',
+      text: `Deviation logged by Lim Wei Jie · escalating to offsite expert · rationale: "${state.lim.deviationRationale.trim()}"`,
+      dataSource: 'Hyperspace OS',
+      nodeChain: ['sop-bfp-vibration-investigation'],
+    });
+  }
 
   // Fire SOP Action Agent theater (3s) — shorter than original 6s since the dialogue accounted for pacing.
   slot.insertAdjacentHTML('beforeend', `
@@ -9495,10 +9503,9 @@ function init() {
   // W10 A.5 — relocate agent buckets into log dropdown as 2-tab switcher.
   // Runs AFTER seedLogLines + initAgentCardStates so orch-log + agent cards are populated before reparenting.
   initLogDropdownTabs();
-  // Part 3 switch (persona header)
-  document.querySelectorAll('#act-switch .act-seg').forEach(b => {
-    b.addEventListener('click', () => setPart3(b.dataset.act === 'part3'));
-  });
+  // Part 3 switch (persona header) — wordless toggle
+  const actToggle = document.getElementById('act-toggle');
+  if (actToggle) actToggle.addEventListener('click', () => setPart3(!state.part3));
   syncActSwitch();
 }
 
