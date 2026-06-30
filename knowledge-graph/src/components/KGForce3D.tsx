@@ -505,6 +505,14 @@ export function KGForce3D() {
   //   committed new-knowledge node → marching-ants ring + floating name label
   function nodeThreeObject(o: NodeObject): THREE.Object3D | undefined {
     const n = o as unknown as GNode
+    // zoomed into the BFP cluster → label the Symptom + Root-Cause nodes (the "what" + the "why")
+    // with their full name below the sphere; tests / units / asset-class stay unlabelled to cut clutter
+    if (bfpFocusRef.current && n.cluster === 'BFP' && !n._proposed && (n.label === 'Symptom' || n.label === 'RootCause') && (n.title || n.id)) {
+      const rr = renderedRadius(Math.max(1, (n.r ?? 12) * 0.9))
+      const lbl = makeLabelSprite(n.title ?? n.id, 3.7, '#0F1B3D')
+      lbl.position.set(0, -(rr + 11), 0)
+      return lbl
+    }
     if (n.label === 'AssetClass' && n.title) {
       if (bfpFocusRef.current) return undefined // zoomed into BFP → hide the asset-class caption
       const rr = renderedRadius(Math.max(1, (n.r ?? 28) * 0.9))

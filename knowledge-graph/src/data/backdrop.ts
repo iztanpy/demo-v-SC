@@ -45,7 +45,7 @@ export interface ClusterDef {
 }
 // 7 regions = the combined-cycle train (a real, sensible grouping)
 export const CLUSTERS: ClusterDef[] = [
-  { key: 'BFP', label: 'Boiler feed pump', color: '#00A651', syms: 3 }, // + the real focus tree
+  { key: 'BFP', label: 'Boiler feed pump', color: '#00A651', syms: 6 }, // + the real focus tree
   { key: 'GT', label: 'Compressor', color: '#2563EB', syms: 9 },
   { key: 'HRSG', label: 'Generator', color: '#F59E0B', syms: 7 },
   { key: 'ST', label: 'Air inlet', color: '#7C3AED', syms: 9 },
@@ -88,6 +88,17 @@ const CLUSTER_CHAINS: Record<string, SymDef[]> = {
     ] },
     { name: 'Low discharge pressure', tests: [
       { name: 'Performance curve test', tier: 'triage', causes: [{ name: 'Impeller wear-ring clearance' }] },
+    ] },
+    { name: 'Suction pressure low (cavitation)', tests: [
+      { name: 'NPSH margin check', tier: 'triage', causes: [{ name: 'Suction strainer fouling', kind: 'fouling' }] },
+      { name: 'Acoustic cavitation survey', tier: 'followup', causes: [{ name: 'Impeller cavitation erosion' }] },
+    ] },
+    { name: 'Thrust bearing temp high', tests: [
+      { name: 'Thrust bearing RTD trend', tier: 'triage', causes: [{ name: 'Balance-drum clearance wear', kind: 'bearing wear' }] },
+      { name: 'Axial position probe check', tier: 'followup', causes: [{ name: 'Thrust pad babbitt wear' }] },
+    ] },
+    { name: 'Gland leak-off high', tests: [
+      { name: 'Leak-off flow trend', tier: 'triage', causes: [{ name: 'Inter-stage bush wear' }] },
     ] },
   ],
   // Compressor (axial GT compressor)
