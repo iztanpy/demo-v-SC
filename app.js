@@ -1189,14 +1189,9 @@ function wireOverrideInput() {
     if (state.faye) state.faye.overrideReason = ta.value;
     refreshConfirmEnabled();
   });
-  // Auto-fill (typewriter) Faye's override rationale on first press, then the Sensor Anomaly
-  // Inspector offers to attach the exact telemetry behind the call.
-  const fill = () => typewriterFill(ta, 'specific vibration frequency suggests bearing issue', {
-    onComplete: () => showSensorClarifier(ta, {
-      msg: 'Your note is sparse. I can attach the exact telemetry behind this call — NDE bearing vibration RMS 8.4 mm/s vs 7.1 mm/s ISO 10816-7 Zone C threshold, 1×RPM dominant, ~178° NDE–DE phase shift. Add the readings to your note?',
-      append: 'NDE bearing vib RMS 8.4 mm/s vs 7.1 mm/s (ISO 10816-7 Zone C); 1×RPM dominant; ~178° NDE–DE phase shift.',
-    }),
-  });
+  // Faye types her FULL override rationale herself — sensor readings and all — in one typewriter
+  // pass on first focus. No AI clarifier; she provides the complete reasoning unprompted.
+  const fill = () => typewriterFill(ta, 'NDE bearing vib RMS 8.4 mm/s vs 7.1 mm/s (ISO 10816-7 Zone C), 1×RPM dominant, ~178° NDE–DE phase shift — early-stage race spalling, not the 2×RPM misalignment the model leads with.');
   ta.addEventListener('focus', fill);
   ta.addEventListener('click', fill);
 }
@@ -3342,7 +3337,7 @@ function wireSOPSuggestDialogue() {
     const fill = () => typewriterFill(ta, 'Unexpected temperature rise not consistent with bearing issue', {
       onComplete: () => showSensorClarifier(ta, {
         msg: 'Your rationale is sparse. Attach the onsite readings that triggered the deviation — dial-indicator runout 0.18 mm TIR at shaft mid-span (limit 0.05 mm), NDE bearing housing temp 71°C vs 55°C baseline; 1×RPM + ~180° phase = not bearing spalling. Add the readings?',
-        append: 'Dial-indicator runout 0.18 mm TIR at shaft mid-span (limit 0.05 mm); NDE bearing housing temp 71°C vs 55°C baseline; 1×RPM dominant + ~180° NDE–DE phase shift = not bearing spalling.',
+        append: 'Dial-indicator runout 0.18 mm TIR at shaft mid-span (limit 0.05 mm); NDE bearing housing temp 85°C vs 70°C baseline; 1×RPM dominant + ~180° NDE–DE phase shift = not bearing spalling.',
       }),
     });
     ta.addEventListener('focus', fill);

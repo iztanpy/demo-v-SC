@@ -20,7 +20,9 @@ interface NkCardDef {
   glyph: string
   badge: string
   title: string
-  detail: string
+  detail?: string
+  /** detail rendered as coloured segments (readings orange · test blue · root cause red) */
+  detailSeg?: { text: string; tone?: 'orange' | 'blue' | 'red' }[]
   provenance: string
   sop: string[]
   approvedMsg: string
@@ -38,28 +40,48 @@ interface NkCardDef {
 
 const CARDS: NkCardDef[] = [
   {
+    // symptoms → TEST connection (reveals temp→weld-NDT dashed + vib→weld-NDT grey support)
+    id: 'nk-connection-test', kind: 'add-edge', glyph: '+', badge: 'New connection',
+    title: 'High bearing temp → weld NDT',
+    detailSeg: [
+      { text: 'NDE temp > 70°C', tone: 'orange' }, { text: ' + ' }, { text: 'vib between 8-9 mm/s', tone: 'orange' },
+      { text: ' flag the ' }, { text: 'weld NDT', tone: 'blue' }, { text: ' test' },
+    ],
+    provenance: 'Temp rise during works suggested running the weld NDT',
+    sop: ['SOP CHECK', 'SAFETY CHECK'],
+    approvedMsg: 'Submitted for review — temp + vib now route to the weld-NDT test (provisional).',
+    rejectedMsg: 'Declined — connection not added.',
+    hi: { nodes: ['BFP-S0', 'SYM-001', 'DT-WELD-NDT'], edges: ['BFP-S0>DT-WELD-NDT', 'SYM-001>DT-WELD-NDT'] },
+    path: [{ text: 'High bearing temp', color: NODE_COLORS.Symptom, sep: '+' }, { text: 'High bearing vib.', color: NODE_COLORS.Symptom }, { text: 'Weld NDT', color: NODE_COLORS.DiagnosticTest }],
+  },
+  {
+    // symptom → ROOT-CAUSE connection (reveals temp→casing-crack dashed)
+    id: 'nk-connection', kind: 'add-edge', glyph: '+', badge: 'New connection',
+    title: 'High bearing temp → casing crack',
+    detailSeg: [
+      { text: 'NDE temp > 70°C', tone: 'orange' }, { text: ' + ' }, { text: 'vib between 8-9 mm/s', tone: 'orange' },
+      { text: ' signal a ' }, { text: 'casing crack', tone: 'red' },
+    ],
+    provenance: 'Pattern across fleet BFPs links this temp/vib signature to casing fatigue',
+    sop: ['SOP CHECK', 'SAFETY CHECK'],
+    approvedMsg: 'Submitted for review — added as a provisional (dashed) link pending fleet validation.',
+    rejectedMsg: 'Declined — connection not added.',
+    hi: { nodes: ['BFP-S0', 'RC-CASING-CRACK'], edges: ['BFP-S0>RC-CASING-CRACK'] },
+    path: [{ text: 'High bearing temp', color: NODE_COLORS.Symptom, sep: '+' }, { text: 'High bearing vib.', color: NODE_COLORS.Symptom }, { text: 'Casing crack', color: NODE_COLORS.RootCause }],
+  },
+  {
+    // re-weight — runs LAST, after the two new connections
     id: 'nk-reweight', kind: 'reweight', glyph: '~', badge: 'Re-weight',
     title: 'Update AI confidence scoring',
     detail: 'Edge weight raised 0.75 → 0.90',
     provenance: 'Most recent 10 incidents with similar initial conditions were caused by bearing spalling',
-    sop: ['SOP CHECK', 'SAFETY CHECK'],
+    sop: ['THRESHOLD CHECK', 'OEM MANUAL CHECK'],
     approvedMsg: 'Edge weight raised to 0.90 — recurrence threshold confirmed.',
     rejectedMsg: 'Declined — weight held despite the recurrence.',
     hi: { nodes: ['SYM-001', 'DT-HOUSING-INSPECT', 'RC-BEARING-SPALL'], edges: ['SYM-001>DT-HOUSING-INSPECT', 'DT-HOUSING-INSPECT>RC-BEARING-SPALL'] },
     path: [{ text: 'High bearing vib.', color: NODE_COLORS.Symptom }, { text: 'Bearing spalling', color: NODE_COLORS.RootCause }],
     trend: 'up',
     recurrence: { label: '10th case', count: 10, total: 10 },
-  },
-  {
-    id: 'nk-connection', kind: 'add-edge', glyph: '+', badge: 'New connection',
-    title: 'High bearing temp → weld NDT',
-    detail: 'High temp. and vib. readings signal a casing crack',
-    provenance: 'Temp rise during works suggested weld NDT to identify root cause',
-    sop: ['SOP CHECK', 'SAFETY CHECK'],
-    approvedMsg: 'Submitted for review — added as a provisional (dashed) link pending fleet validation.',
-    rejectedMsg: 'Declined — connection not added.',
-    hi: { nodes: ['BFP-S0', 'SYM-001', 'DT-WELD-NDT', 'RC-CASING-CRACK'], edges: ['BFP-S0>DT-WELD-NDT', 'SYM-001>DT-WELD-NDT', 'DT-WELD-NDT>RC-CASING-CRACK'] },
-    path: [{ text: 'High bearing temp', color: NODE_COLORS.Symptom, sep: '+' }, { text: 'High bearing vib.', color: NODE_COLORS.Symptom }, { text: 'Weld NDT', color: NODE_COLORS.DiagnosticTest }],
   },
 ]
 
@@ -131,7 +153,15 @@ function NkCard({ card, startDelay, decision, onApprove, onReject, runId }: {
       ) : (
         <div className="p-nk-card-title">{card.title}</div>
       )}
-      <div className="p-nk-card-detail">{card.detail}</div>
+      {card.detailSeg ? (
+        <div className="p-nk-card-detail">
+          {card.detailSeg.map((s, i) => s.tone
+            ? <span key={i} className="p-nk-read" data-tone={s.tone}>{s.text}</span>
+            : <Fragment key={i}>{s.text}</Fragment>)}
+        </div>
+      ) : card.detail ? (
+        <div className="p-nk-card-detail">{card.detail}</div>
+      ) : null}
       <div className="p-nk-card-prov">{card.provenance}</div>
 
       <div className="p-nk-checks">
@@ -172,6 +202,7 @@ export function NewKnowledgePanel() {
   const folded = useDemo((s) => s.sectionFolded.nk)
   const toggleFold = useDemo((s) => s.toggleFold)
   const setConnectionApplied = useDemo((s) => s.setConnectionApplied)
+  const setConnectionTestApplied = useDemo((s) => s.setConnectionTestApplied)
   const setReweight = useDemo((s) => s.setReweight)
   const setReweightApplied = useDemo((s) => s.setReweightApplied)
   const addLitGreen = useDemo((s) => s.addLitGreen)
@@ -189,7 +220,8 @@ export function NewKnowledgePanel() {
       if (card.id === 'nk-reweight') { setReweightApplied(true); addLitFuchsia(['SYM-001>DT-HOUSING-INSPECT', 'DT-HOUSING-INSPECT>RC-BEARING-SPALL']) }
       // reveal the headline new link (BFP-S0 → weld NDT) as a thick dashed provisional edge; the
       // supporting edges are NOT highlighted — they stay as ordinary grey arrows (they aren't new).
-      else if (card.id === 'nk-connection') { setConnectionApplied(true); addLitGreen(['BFP-S0>DT-WELD-NDT']) }
+      else if (card.id === 'nk-connection-test') { setConnectionTestApplied(true); addLitGreen(['BFP-S0>DT-WELD-NDT']) }
+      else if (card.id === 'nk-connection') { setConnectionApplied(true); addLitGreen(['BFP-S0>RC-CASING-CRACK']) }
     } else if (d === 'rejected') {
       if (card.id === 'nk-reweight') setReweight(false) // withdraw the proposed re-weight; edge keeps 0.88
     }

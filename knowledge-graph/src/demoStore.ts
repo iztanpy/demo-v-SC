@@ -32,13 +32,16 @@ interface DemoState {
   reweightApplied: boolean
   /** the exception surfaced a gap (no node for the casing crack) → feeds Panel 3 */
   gap: boolean
-  /** the human approved the new connection (temp spike → weld NDT) → the edge appears on the graph */
+  /** human approved the symptom→ROOT-CAUSE connection (temp → casing crack) → its edge appears */
   connectionApplied: boolean
+  /** human approved the symptoms→TEST connection (temp + vib → weld NDT) → its edges appear */
+  connectionTestApplied: boolean
   setMatched: (ids: string[]) => void
   setReweight: (v: boolean) => void
   setReweightApplied: (v: boolean) => void
   setGap: (v: boolean) => void
   setConnectionApplied: (v: boolean) => void
+  setConnectionTestApplied: (v: boolean) => void
 
   /** proposed-node ids the human signed off on (per-card) → the graph grows exactly these */
   committedNodes: string[]
@@ -80,12 +83,12 @@ export const useDemo = create<DemoState>((set) => ({
     started: true, runId: s.runId + 1,
     sectionRun: { docs: true, reso: false, nk: false },
     sectionFolded: { docs: false, reso: true, nk: true },
-    matchedNodes: [], reweight: false, reweightApplied: false, gap: false, connectionApplied: false, committedNodes: [], litNodes: [], litEdges: [], litGreenEdges: [], litFuchsiaEdges: [], flashPulse: null, hoverHighlight: null,
+    matchedNodes: [], reweight: false, reweightApplied: false, gap: false, connectionApplied: false, connectionTestApplied: false, committedNodes: [], litNodes: [], litEdges: [], litGreenEdges: [], litFuchsiaEdges: [], flashPulse: null, hoverHighlight: null,
   })),
   reset: () => set({
     started: false,
     sectionRun: { ...ALL_FALSE }, sectionFolded: { ...ALL_FALSE },
-    matchedNodes: [], reweight: false, reweightApplied: false, gap: false, connectionApplied: false, committedNodes: [], litNodes: [], litEdges: [], litGreenEdges: [], litFuchsiaEdges: [], flashPulse: null, hoverHighlight: null,
+    matchedNodes: [], reweight: false, reweightApplied: false, gap: false, connectionApplied: false, connectionTestApplied: false, committedNodes: [], litNodes: [], litEdges: [], litGreenEdges: [], litFuchsiaEdges: [], flashPulse: null, hoverHighlight: null,
   }),
 
   sectionRun: { ...ALL_FALSE },
@@ -115,11 +118,13 @@ export const useDemo = create<DemoState>((set) => ({
   reweightApplied: false,
   gap: false,
   connectionApplied: false,
+  connectionTestApplied: false,
   setMatched: (ids) => set({ matchedNodes: ids }),
   setReweight: (v) => set({ reweight: v }),
   setReweightApplied: (v) => set({ reweightApplied: v }),
   setGap: (v) => set({ gap: v }),
   setConnectionApplied: (v) => set({ connectionApplied: v }),
+  setConnectionTestApplied: (v) => set({ connectionTestApplied: v }),
 
   committedNodes: [],
   approveNode: (id) => set((s) => (s.committedNodes.includes(id) ? s : { committedNodes: [...s.committedNodes, id] })),

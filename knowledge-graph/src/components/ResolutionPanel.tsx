@@ -11,12 +11,22 @@ import { useResolution } from '../useResolution'
 //   • gap       — no node for the selected diagnosis → new knowledge (Panel 3)
 type EntStatus = 'match' | 'reweight' | 'gap'
 interface ResEntity { label: string; detail: string; status: EntStatus }
+// re-weight rationale shown as a confidence-bar comparison (selected pick vs the overruled AI rec)
+interface ResCompare {
+  caption: string
+  selected: { name: string; conf: number }
+  overruled: { name: string; conf: number; tag?: string }
+}
 interface ResCard {
   id: string
   incident: string
   chip: string
   chipKind: 'reaffirm' | 'reweight' | 'gap'
   entities: ResEntity[]
+  /** when set, render the confidence-bar comparison instead of the entity list */
+  compare?: ResCompare
+  /** captured Part-1 sensor readings (Faye / Lim) shown as a mono sub-line */
+  sensors?: string
   matchedNodes: string[]
   /** graph edges ("SOURCE>TARGET") this card highlights teal on hover (nodes = matchedNodes) */
   hiEdges?: string[]
@@ -70,10 +80,13 @@ const CARDS: ResCard[] = [
   // entities that have no home on the graph (the gaps that flow to New Knowledge).
   {
     id: 'c-0537-rw', incident: 'INC-0537', chip: 'unmatched', chipKind: 'gap',
-    entities: [
-      { label: 'Diagnosis', detail: 'Original proposed diagnosis was not selected', status: 'gap' },
-      { label: 'Rationale', detail: 'Vibration signature pointed to a bearing-related issue', status: 'gap' },
-    ],
+    entities: [],
+    compare: {
+      caption: 'Vibration signature pointed to bearing issue',
+      selected: { name: 'NDE bearing spalling', conf: 80 },
+      overruled: { name: 'Shaft misalignment', conf: 88, tag: 'AI rec' },
+    },
+    sensors: 'NDE vib RMS 8.4 mm/s vs 7.1 (ISO 10816-7 Zone C) · 1×RPM dominant · ~178° NDE–DE phase shift',
     matchedNodes: ['SYM-001', 'DT-PHASE'],
     hiEdges: ['DT-PHASE>RC-BENT-SHAFT'],
     reweight: true,
@@ -81,8 +94,9 @@ const CARDS: ResCard[] = [
   {
     id: 'c-0537-sop', incident: 'INC-0537', chip: 'matched', chipKind: 'reaffirm',
     entities: [
-      { label: 'Safety', detail: 'Safety steps followed fully', status: 'match' },
-      { label: 'Workflow', detail: 'Generated steps match initial diagnosis', status: 'match' },
+            { label: 'Safety', detail: 'safety steps match diagnosis, SOP and work order', status: 'match' },
+            { label: 'Workflow', detail: 'inspection steps match diagnosis, SOP and work order', status: 'match' },
+            { label: 'Deviation', detail: 'deviation due to increasing temperature, >70°C temp range', status: 'gap' }
     ],
     matchedNodes: ['SYM-001', 'AC-BFP', 'DT-PHASE', 'DT-HOUSING-INSPECT'],
     hiEdges: ['SYM-001>AC-BFP', 'SYM-001>DT-PHASE', 'SYM-001>DT-HOUSING-INSPECT'],
@@ -94,7 +108,9 @@ const CARDS: ResCard[] = [
     entities: [
       { label: 'Test', detail: 'Weld NDT (dye-penetrant) test advised as a troubleshooting step ', status: 'match' },
       { label: 'Root cause', detail: 'Vibration and temperature readings pointed to casing crack', status: 'gap' },
+      { label: 'Impact', detail: 'Casing crack shutdown impact detailed in SOP', status: 'match' },
     ],
+    sensors: 'NDE bearing temp 71°C rising · NDE vib RMS 8.4 mm/s',
     matchedNodes: ['RC-CASING-CRACK', 'DT-WELD-NDT', 'BFP-S0'],
     hiEdges: ['BFP-S0>DT-WELD-NDT', 'DT-WELD-NDT>RC-CASING-CRACK'],
     gap: true,
@@ -301,6 +317,18 @@ export function ResolutionPanel() {
                           </div>
                           {matching ? (
                             <div className="p-reveal"><span className="p-dots"><span /><span /><span /></span><span className="p-reveal-msg">resolving entities against the knowledge graph…</span></div>
+                          ) : card.compare ? (
+                            <div className="p-res-compare">
+                              <div className="p-res-compare-cap"><span className="p-res-cmp-gap">⚠</span>{card.compare.caption}</div>
+                              {[{ ...card.compare.selected, on: true }, { ...card.compare.overruled, on: false }].map((d) => (
+                                <div key={d.name} className="p-res-cmp-row" data-selected={d.on}>
+                                  <span className="p-res-cmp-dot" />
+                                  <span className="p-res-cmp-chip">{d.name} · {d.conf}%</span>
+                                  {'tag' in d && d.tag && <span className="p-res-cmp-tag">{d.tag}</span>}
+                                  <span className="p-res-cmp-verdict">{d.on ? '✓ selected' : '✕ overruled'}</span>
+                                </div>
+                              ))}
+                            </div>
                           ) : (
                             <ul className="p-ent-list">
                               {card.entities.map((e, i) => (
@@ -311,6 +339,9 @@ export function ResolutionPanel() {
                                 </li>
                               ))}
                             </ul>
+                          )}
+                          {!matching && card.sensors && (
+                            <div className="p-res-sensors"><span className="p-sensors-tag">SENSOR</span>{card.sensors}</div>
                           )}
                         </div>
                       )

@@ -67,6 +67,18 @@
 .kg3-tip { font: 600 12px ui-sans-serif, system-ui, sans-serif; color: #0F1B3D; background: rgba(255,255,255,0.95); border: 1px solid var(--line); border-radius: 7px; padding: 5px 9px; box-shadow: 0 4px 14px rgba(15,27,61,0.14); }
 .kg3-tip span { display: block; font: 500 10px ui-monospace, monospace; color: var(--slate); margin-top: 2px; }
 
+/* on-screen focus title — top-centre header that fades in once the Run zoom lands on the BFP region */
+.kg3-focus-title {
+  position: absolute; top: 16px; left: 50%; transform: translate(-50%, -8px); z-index: 3;
+  padding: 7px 18px;
+  background: rgba(255, 255, 255, 0.9); border: 1px solid #E2E8F0; border-radius: 999px;
+  font: 700 17px ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.01em; color: #0F1B3D;
+  box-shadow: 0 2px 10px rgba(15, 27, 61, 0.08); backdrop-filter: blur(3px);
+  pointer-events: none; opacity: 0;
+  transition: opacity 400ms ease, transform 400ms ease;
+}
+.kg3-focus-title[data-show="true"] { opacity: 1; transform: translate(-50%, 0); }
+
 /* legend overlay — absolutely positioned inside .demo-right, above the canvas (v2 #1) */
 .kg3-legend {
   position: absolute; top: 14px; left: 16px; z-index: 2;
@@ -270,6 +282,34 @@
 .p-ent-label { color: var(--slate); font-weight: 600; white-space: nowrap; }
 .p-ent-detail { color: var(--ink); }
 
+/* re-weight rationale — chip comparison (selected pick vs overruled AI rec), gap kept as a bullet */
+.p-res-compare { display: flex; flex-direction: column; gap: 7px; margin-top: 7px; }
+.p-res-compare-cap { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--slate); }
+.p-res-cmp-gap { color: #B45309; font-weight: 700; flex: 0 0 auto; }
+.p-res-cmp-row { display: flex; align-items: center; gap: 7px; }
+.p-res-cmp-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; box-sizing: border-box; }
+.p-res-cmp-row[data-selected="true"]  .p-res-cmp-dot { background: var(--green); }
+.p-res-cmp-row[data-selected="false"] .p-res-cmp-dot { background: transparent; border: 1.5px solid #94A3B8; }
+.p-res-cmp-chip { font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+.p-res-cmp-row[data-selected="true"]  .p-res-cmp-chip { color: #047857; background: #DCFCE7; border-color: rgba(4,120,87,0.35); }
+.p-res-cmp-row[data-selected="false"] .p-res-cmp-chip { color: #B45309; background: #FEF3C7; border-color: rgba(180,83,9,0.3); text-decoration: line-through; text-decoration-color: rgba(180,83,9,0.5); }
+.p-res-cmp-tag { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--slate); background: #F1F5F9; border: 1px solid var(--line); border-radius: 999px; padding: 1px 6px; }
+.p-res-cmp-verdict { margin-left: auto; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.p-res-cmp-row[data-selected="true"]  .p-res-cmp-verdict { color: var(--green); }
+.p-res-cmp-row[data-selected="false"] .p-res-cmp-verdict { color: #B45309; }
+
+/* captured Part-1 sensor readings — faint monospace readout sub-line on a card */
+.p-res-sensors, .p-nk-sensors {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px;
+  margin-top: 6px; padding: 5px 8px;
+  font: 500 10.5px ui-monospace, SFMono-Regular, monospace; line-height: 1.4; color: var(--slate);
+  background: #F8FAFC; border: 1px solid var(--line); border-radius: 6px;
+}
+.p-sensors-tag {
+  flex: 0 0 auto; font: 700 8.5px ui-sans-serif, system-ui, sans-serif; letter-spacing: 0.06em;
+  color: #B45309; background: #FEF3C7; border-radius: 999px; padding: 1px 6px;
+}
+
 /* new-knowledge panel */
 .p-nk-body { padding: 11px; overflow: auto; display: flex; flex-direction: column; }
 .p-nk-candidate { display: flex; flex-direction: column; gap: 2px; padding: 9px 11px; border: 1px solid #FDE9C8; background: #FEF6E9; border-radius: 8px; margin-bottom: 8px; }
@@ -357,6 +397,10 @@ label.p-nk-change { display: flex; align-items: center; gap: 7px; font-size: 12p
 
 .p-nk-card-title { font-size: 13.5px; font-weight: 600; margin-top: 5px; }
 .p-nk-card-detail { font: 600 11px ui-monospace, monospace; color: var(--slate); margin-top: 1px; }
+.p-nk-read { font-weight: 700; }
+.p-nk-read[data-tone="orange"] { color: #EA580C; }
+.p-nk-read[data-tone="blue"] { color: #2563EB; }
+.p-nk-read[data-tone="red"] { color: #DC2626; }
 .p-nk-card-prov { font-size: 10.5px; color: #94A3B8; line-height: 1.35; margin: 3px 0 0; }
 .p-nk-card .p-nk-blocks { margin-bottom: 2px; }
 

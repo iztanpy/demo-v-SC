@@ -403,10 +403,13 @@ export const PROPOSED_EDGES: SimEdgeData[] = [
   ...FOCUS_EDGES
     .filter((e) => e.state === 'proposed' || PROPOSED.has(e.source) || PROPOSED.has(e.target))
     .map((e) => ({ source: e.source, target: e.target, type: e.type, context: false })),
-  // THE week's new connections into the (existing) weld-NDT → casing-crack path: BOTH the DE-bearing
-  // temperature spike AND high NDE vibration now route to the weld NDT. Hidden until the human
-  // approves them in Panel 3 (connectionApplied). BFP-S0 = "DE bearing temp high" backdrop symptom;
-  // SYM-001 = "BFP NDE vib high".
+  // THE week's two NEW connections, each its own Panel-3 card / reveal flag:
+  //  • symptom → ROOT CAUSE  (card A, connectionApplied): high bearing temp indicates the casing crack
+  //    directly — a brand-new symptom→root-cause link, drawn thick dashed/cyan.
+  //  • symptoms → TEST  (card B, connectionTestApplied): temp + vib route to the weld NDT. temp→weld-NDT
+  //    is the new dashed link; vib→weld-NDT is its supporting (grey) connector.
+  // Gated in rebuild() by edge TARGET: → RC-CASING-CRACK = card A, → DT-WELD-NDT = card B.
+  { source: 'BFP-S0', target: 'RC-CASING-CRACK', type: 'INDICATES', context: false },
   { source: 'BFP-S0', target: 'DT-WELD-NDT', type: 'TRIGGERS', context: false },
   { source: 'SYM-001', target: 'DT-WELD-NDT', type: 'TRIGGERS', context: false },
 ]
@@ -414,14 +417,12 @@ export const PROPOSED_EDGES: SimEdgeData[] = [
 // drop the generated BFP hub in favour of the real AC-BFP; reroute generated BFP symptoms to it
 const SIM_NODES: SimNodeData[] = [...backdrop.nodes.filter((n) => n.id !== 'BFP-AC'), ...focusNodes]
 
-// integrate the BFP units INTO the diagnostic pathway: each unit exhibits the SYM-001 symptom, so
-// a reaffirming incident lights its machine → SYM-001 → test → cause as one connected green chain.
-const machineSymptomEdges: SimEdgeData[] = BFP_UNITS.map((u) => ({ source: u, target: 'SYM-001', type: 'OCCURS_IN', context: true }))
+// BFP units connect to their ASSET CLASS only (the INSTANCE_OF edges below, retargeted BFP-AC → AC-BFP).
+// They deliberately do NOT link to the SYM-001 "vib high" symptom — a machine isn't the symptom.
 
 const SIM_EDGES: SimEdgeData[] = [
   ...backdrop.edges.map((e) => (e.target === 'BFP-AC' ? { ...e, target: 'AC-BFP' } : e)),
   ...focusEdges,
-  ...machineSymptomEdges,
 ]
 
 export const FLEET_NODES = SIM_NODES

@@ -58,7 +58,7 @@ export type NodeLabel = 'AssetClass' | 'Machine' | 'Symptom' | 'DiagnosticTest' 
 // 1 layer when a triage test is decisive; 2 layers when it escalates via a single FOLLOW_UP hop.
 // SIMILAR_TO = a cross-asset-class bridge (same failure mode / test recurring on another class) —
 // what makes the fleet graph one interconnected web while each class stays its own region.
-export type RelType = 'OCCURS_IN' | 'TRIGGERS' | 'FOLLOW_UP' | 'CONFIRMS' | 'RULES_OUT' | 'INCONCLUSIVE' | 'SHORTCUT' | 'SIMILAR_TO' | 'INSTANCE_OF'
+export type RelType = 'OCCURS_IN' | 'TRIGGERS' | 'FOLLOW_UP' | 'CONFIRMS' | 'RULES_OUT' | 'INCONCLUSIVE' | 'SHORTCUT' | 'SIMILAR_TO' | 'INSTANCE_OF' | 'INDICATES'
 
 export type PropVal = string | number | boolean | string[]
 

@@ -91,6 +91,14 @@ export const FOCUS_EDGES: GraphEdge[] = [
   { source: 'DT-OIL-ANALYSIS', target: 'RC-LUBE-FAIL', type: 'CONFIRMS', band: 'high', probability: 0.9, result: 'High particle/water count; viscosity off-spec' },
   { source: 'DT-OIL-ANALYSIS', target: 'RC-BEARING-SPALL', type: 'CONFIRMS', band: 'med', probability: 0.65, result: 'Ferrous spall debris in ferrography' },
 
+  // direct symptom → root-cause links — the symptom indicates each candidate cause directly, alongside
+  // the test-confirmed path. Casing crack is deliberately EXCLUDED: that connection is the week's NEW
+  // knowledge revealed in Panel 3, so the graph must not already know it.
+  { source: 'SYM-001', target: 'RC-BENT-SHAFT', type: 'INDICATES', result: 'Vibration signature consistent with shaft misalignment' },
+  { source: 'SYM-001', target: 'RC-MISALIGN', type: 'INDICATES', result: 'Vibration signature consistent with coupling misalignment' },
+  { source: 'SYM-001', target: 'RC-BEARING-SPALL', type: 'INDICATES', result: 'Vibration signature consistent with NDE bearing race spalling' },
+  { source: 'SYM-001', target: 'RC-LUBE-FAIL', type: 'INDICATES', result: 'Vibration can stem from lubrication failure / oil starvation' },
+
   // INCONCLUSIVE — the second outcome of each confirmatory test (test ran, didn't confirm → escalate)
   { source: 'DT-RUNOUT', target: 'NEEDS-INFO', type: 'INCONCLUSIVE', result: 'TIR within tolerance → shaft misalignment not confirmed; gather more data' },
   { source: 'DT-ALIGNMENT', target: 'NEEDS-INFO', type: 'INCONCLUSIVE', result: 'Alignment within tolerance → misalignment not confirmed; gather more data' },
