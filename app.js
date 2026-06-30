@@ -1151,8 +1151,14 @@ function wireOverrideInput() {
     if (state.faye) state.faye.overrideReason = ta.value;
     refreshConfirmEnabled();
   });
-  // Auto-fill (typewriter) Faye's override rationale on first press.
-  const fill = () => typewriterFill(ta, 'specific vibration frequency suggests bearing issue');
+  // Auto-fill (typewriter) Faye's override rationale on first press, then the Sensor Anomaly
+  // Inspector offers to attach the exact telemetry behind the call.
+  const fill = () => typewriterFill(ta, 'specific vibration frequency suggests bearing issue', {
+    onComplete: () => showSensorClarifier(ta, {
+      msg: 'Your note is sparse. I can attach the exact telemetry behind this call — NDE bearing vibration RMS 8.4 mm/s vs 7.1 mm/s ISO 10816-7 Zone C threshold, 1×RPM dominant, ~178° NDE–DE phase shift. Add the readings to your note?',
+      append: 'NDE bearing vib RMS 8.4 mm/s vs 7.1 mm/s (ISO 10816-7 Zone C); 1×RPM dominant; ~178° NDE–DE phase shift.',
+    }),
+  });
   ta.addEventListener('focus', fill);
   ta.addEventListener('click', fill);
 }
@@ -3295,7 +3301,12 @@ function wireSOPSuggestDialogue() {
       if (btn) btn.disabled = !ta.value.trim();
     };
     ta.addEventListener('input', sync);
-    const fill = () => typewriterFill(ta, 'Unexpected temperature rise not consistent with bearing issue');
+    const fill = () => typewriterFill(ta, 'Unexpected temperature rise not consistent with bearing issue', {
+      onComplete: () => showSensorClarifier(ta, {
+        msg: 'Your rationale is sparse. Attach the onsite readings that triggered the deviation — dial-indicator runout 0.18 mm TIR at shaft mid-span (limit 0.05 mm), NDE bearing housing temp 71°C vs 55°C baseline; 1×RPM + ~180° phase = bent-shaft signature, not bearing spalling. Add the readings?',
+        append: 'Dial-indicator runout 0.18 mm TIR at shaft mid-span (limit 0.05 mm); NDE bearing housing temp 71°C vs 55°C baseline; 1×RPM dominant + ~180° NDE–DE phase shift = bent-shaft signature, not bearing spalling.',
+      }),
+    });
     ta.addEventListener('focus', fill);
     ta.addEventListener('click', fill);
     sync();
@@ -3320,6 +3331,56 @@ function typewriterFill(elTextarea, text, opts = {}) {
     elTextarea.value = text.slice(0, i);
     elTextarea.dispatchEvent(new Event('input', { bubbles: true }));
     if (i < text.length) setTimeout(tick, speed);
+    else if (typeof opts.onComplete === 'function') setTimeout(opts.onComplete, 350);
+  };
+  tick();
+}
+
+// Sensor-data clarifier — after a sparse note auto-types, the Sensor Anomaly Inspector offers to
+// attach the exact telemetry behind the call. Accept appends precise readings; Dismiss removes it.
+// Shows once per textarea (dataset.clarified guard).
+function showSensorClarifier(textarea, cfg) {
+  if (!textarea || textarea.dataset.clarified === '1') return;
+  const container = textarea.parentElement;
+  if (!container) return;
+  textarea.dataset.clarified = '1';
+  const box = el('div', 'sensor-clarifier');
+  box.innerHTML = `
+    <div class="scl-row">
+      <div class="scl-icon">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M12 2a2 2 0 0 1 2 2v1h3a2 2 0 0 1 2 2v3h1a2 2 0 0 1 0 4h-1v3a2 2 0 0 1-2 2h-3v-2a2 2 0 0 0-4 0v2H7a2 2 0 0 1-2-2v-3H4a2 2 0 0 1 0-4h1V7a2 2 0 0 1 2-2h3V4a2 2 0 0 1 2-2z"/></svg>
+      </div>
+      <div class="scl-body">
+        <div class="scl-agent">Sensor Anomaly Inspector</div>
+        <div class="scl-msg">${cfg.msg}</div>
+      </div>
+    </div>
+    <div class="scl-actions">
+      <button class="scl-btn scl-dismiss" type="button">Dismiss</button>
+      <button class="scl-btn scl-accept" type="button">Accept</button>
+    </div>`;
+  container.insertAdjacentElement('afterend', box);
+  box.querySelector('.scl-dismiss').addEventListener('click', () => box.remove());
+  box.querySelector('.scl-accept').addEventListener('click', () => {
+    box.remove();
+    typewriterAppend(textarea, cfg.append);
+  });
+}
+
+// Append precise readings to an existing note char-by-char, firing input events so wired
+// listeners (state capture, Confirm/Call gating) update live. Bypasses typewriterFill's once-guard.
+function typewriterAppend(textarea, addition) {
+  if (!textarea) return;
+  const base = textarea.value.replace(/\s+$/, '');
+  const sep = base ? (/[.;:!?]$/.test(base) ? ' ' : '. ') : '';
+  const full = base + sep + addition;
+  let i = (base + sep).length;
+  const tick = () => {
+    i++;
+    textarea.value = full.slice(0, i);
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    textarea.scrollTop = textarea.scrollHeight;
+    if (i < full.length) setTimeout(tick, 22);
   };
   tick();
 }

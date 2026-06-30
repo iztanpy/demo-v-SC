@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { SPEED } from '../data/feed'
+import { NODE_COLORS } from '../data/graph'
 import { useDemo } from '../demoStore'
 
 // Panel ③ — New Knowledge. The exception (INC-0537) surfaces THREE proposed graph changes, each
@@ -12,7 +13,7 @@ import { useDemo } from '../demoStore'
 const REVIEWER = 'P. Subramaniam · Reliability Eng'
 const SIGN_TS = '02:59 SGT'
 
-type Kind = 'reweight' | 'add-node'
+type Kind = 'reweight' | 'add-edge' | 'strengthen'
 interface NkCardDef {
   id: string
   kind: Kind
@@ -26,38 +27,36 @@ interface NkCardDef {
   rejectedMsg: string
   /** graph node/edge ids this card highlights teal on hover (edges = "SOURCE>TARGET") */
   hi: { nodes: string[]; edges: string[] }
+  /** optional legend-coloured chip path (symptom → test …) shown on the card; `sep` = the connector
+   *  AFTER this chip ('+' to combine inputs, default '→') */
+  path?: { text: string; color: string; sep?: string }[]
+  /** show a trailing trend arrow after the path — 'up' (green, confidence ↑) or 'down' (amber, ↓) */
+  trend?: 'up' | 'down'
 }
 
 const CARDS: NkCardDef[] = [
   {
     id: 'nk-reweight', kind: 'reweight', glyph: '~', badge: 'Re-weight',
     title: 'Update AI confidence scoring',
-    detail: '7/10 Similar past incidents had the same diagnosis',
-    provenance: 'Faye selected an alternative diagnosis because of specific temperature and vibration readings',
+    detail: '7/10 prior incidents with similar initial readings were caused by bearing spalling',
+    provenance: 'Suggested from Faye’s rationale (alternative diagnosis on specific vibration readings)',
     sop: ['SOP CHECK', 'SAFETY CHECK'],
-    approvedMsg: 'Edge recalculated to 0.70.',
-    rejectedMsg: 'Declined — edge held at 0.88 pending more fleet cases.',
-    hi: { nodes: ['DT-PHASE', 'RC-BENT-SHAFT'], edges: ['DT-PHASE>RC-BENT-SHAFT'] },
+    approvedMsg: 'Confidence increased on the bearing-spalling link.',
+    rejectedMsg: 'Declined — confidence held pending more fleet cases.',
+    hi: { nodes: ['SYM-001', 'DT-HOUSING-INSPECT', 'RC-BEARING-SPALL'], edges: ['SYM-001>DT-HOUSING-INSPECT', 'DT-HOUSING-INSPECT>RC-BEARING-SPALL'] },
+    path: [{ text: 'High bearing vib.', color: NODE_COLORS.Symptom }, { text: 'Bearing spalling', color: NODE_COLORS.RootCause }],
+    trend: 'up',
   },
   {
-    id: 'nk-test', kind: 'add-node', glyph: '+', badge: 'New test',
-    title: 'Dye-penetrant inspection (PT/MT)',
-    detail: 'new DiagnosticTest node · DT-WELD-NDT · confirms casing crack',
-    provenance: 'L. Lim onsite — discontinuity ~60 mm from discharge weld',
+    id: 'nk-connection', kind: 'add-edge', glyph: '+', badge: 'New connection',
+    title: 'High bearing temp → weld NDT',
+    detail: 'High temp. and vib. readings signal a casing crack',
+    provenance: 'INC-0537 onsite — the temp spike preceded the off-path weld NDT that found the crack',
     sop: ['SOP CHECK', 'SAFETY CHECK'],
-    approvedMsg: 'Dye-penetrant test committed + linked to casing crack.',
-    rejectedMsg: 'Declined — held for 2nd opinion.',
-    hi: { nodes: ['DT-PHASE', 'DT-WELD-NDT', 'RC-CASING-CRACK'], edges: ['DT-PHASE>DT-WELD-NDT', 'DT-WELD-NDT>RC-CASING-CRACK'] },
-  },
-  {
-    id: 'nk-crack', kind: 'add-node', glyph: '+', badge: 'New root cause',
-    title: 'Casing weld-toe crack (volute)',
-    detail: 'new RootCause node · RC-CASING-CRACK',
-    provenance: 'Dr. A. Ismail phase analysis + onsite PT finding',
-    sop: ['SOP CHECK', 'SAFETY CHECK'],
-    approvedMsg: 'Casing-crack root cause committed to the graph.',
-    rejectedMsg: 'Declined — not added.',
-    hi: { nodes: ['DT-WELD-NDT', 'RC-CASING-CRACK'], edges: ['DT-WELD-NDT>RC-CASING-CRACK'] },
+    approvedMsg: 'Connection committed — temp spike now routes to the weld-NDT / casing-crack path.',
+    rejectedMsg: 'Declined — connection not added.',
+    hi: { nodes: ['BFP-S0', 'SYM-001', 'DT-WELD-NDT', 'RC-CASING-CRACK'], edges: ['BFP-S0>DT-WELD-NDT', 'SYM-001>DT-WELD-NDT', 'DT-WELD-NDT>RC-CASING-CRACK'] },
+    path: [{ text: 'High bearing temp', color: NODE_COLORS.Symptom, sep: '+' }, { text: 'High bearing vib.', color: NODE_COLORS.Symptom }, { text: 'Weld NDT', color: NODE_COLORS.DiagnosticTest }],
   },
 ]
 
@@ -94,7 +93,19 @@ function NkCard({ card, startDelay, decision, onApprove, onReject, runId }: {
           {decision === 'approved' ? 'approved ✓' : decision === 'rejected' ? 'rejected ✕' : stage === 'passed' ? 'awaiting sign-off' : 'validating…'}
         </span>
       </div>
-      <div className="p-nk-card-title">{card.title}</div>
+      {card.path ? (
+        <div className="p-nk-path">
+          {card.path.map((p, i) => (
+            <Fragment key={p.text}>
+              <span className="p-nk-pathchip" style={{ color: p.color, borderColor: p.color, background: `${p.color}1A` }}>{p.text}</span>
+              {i < card.path!.length - 1 && <span className="p-nk-patharrow">{p.sep ?? '→'}</span>}
+            </Fragment>
+          ))}
+          {card.trend && <span className={card.trend === 'up' ? 'p-nk-pathup' : 'p-nk-pathdown'} title={card.trend === 'up' ? 'confidence increased' : 'confidence decreased'}>{card.trend === 'up' ? '↑' : '↓'}</span>}
+        </div>
+      ) : (
+        <div className="p-nk-card-title">{card.title}</div>
+      )}
       <div className="p-nk-card-detail">{card.detail}</div>
       <div className="p-nk-card-prov">{card.provenance}</div>
 
@@ -135,10 +146,12 @@ export function NewKnowledgePanel() {
   const run = useDemo((s) => s.sectionRun.nk)
   const folded = useDemo((s) => s.sectionFolded.nk)
   const toggleFold = useDemo((s) => s.toggleFold)
-  const approveNode = useDemo((s) => s.approveNode)
+  const setConnectionApplied = useDemo((s) => s.setConnectionApplied)
   const setReweight = useDemo((s) => s.setReweight)
   const setReweightApplied = useDemo((s) => s.setReweightApplied)
-  const pulse = useDemo((s) => s.pulse)
+  const addLit = useDemo((s) => s.addLit)
+  const addLitGreen = useDemo((s) => s.addLitGreen)
+  const addLitFuchsia = useDemo((s) => s.addLitFuchsia)
 
   const [decisions, setDecisions] = useState<Record<string, Decision>>({})
   useEffect(() => { setDecisions({}) }, [runId])
@@ -148,9 +161,10 @@ export function NewKnowledgePanel() {
   const decide = (card: NkCardDef, d: Decision) => {
     setDecisions((prev) => ({ ...prev, [card.id]: d }))
     if (d === 'approved') {
-      if (card.id === 'nk-reweight') { setReweightApplied(true); pulse(['RC-BENT-SHAFT'], ['DT-PHASE>RC-BENT-SHAFT'], 5000) } // light the re-weighted edge for 5s
-      else if (card.id === 'nk-crack') approveNode('RC-CASING-CRACK')
-      else if (card.id === 'nk-test') approveNode('DT-WELD-NDT')
+      // light the WHOLE flow FUCHSIA: high bearing vib → housing inspect → bearing spalling (edges only)
+      if (card.id === 'nk-reweight') { setReweightApplied(true); addLitFuchsia(['SYM-001>DT-HOUSING-INSPECT', 'DT-HOUSING-INSPECT>RC-BEARING-SPALL']) }
+      // reveal: temp high → weld NDT lights GREEN (the headline new link); the other edges stay amber
+      else if (card.id === 'nk-connection') { setConnectionApplied(true); addLitGreen(['BFP-S0>DT-WELD-NDT']); addLit([], ['SYM-001>DT-WELD-NDT', 'DT-WELD-NDT>RC-CASING-CRACK']) }
     } else if (d === 'rejected') {
       if (card.id === 'nk-reweight') setReweight(false) // withdraw the proposed re-weight; edge keeps 0.88
     }

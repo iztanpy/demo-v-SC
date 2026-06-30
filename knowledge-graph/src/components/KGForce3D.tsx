@@ -22,7 +22,7 @@ const HOVER_HL = 'rgba(13,148,136,1)' // default card-hover highlight (teal); Pa
 // v2 #5 — commit camera standoff (world units from the new node). The resting view sits ~1030 from
 // the BFP region, so a larger standoff = gentler push-in. Bump down for a stronger zoom, up for subtler.
 // Kept comfortably > node radius (~12) so the single settle-then-fly push-in never clips the sphere.
-const COMMIT_STANDOFF = 820
+const COMMIT_STANDOFF = 380
 
 // 3D cluster anchors — keep the familiar 2D constellation (BFP centre, four around) but lift each
 // region to its own depth so orbiting reveals real 3D separation. Same SPREAD ordering as the 2D map.
@@ -123,8 +123,13 @@ export function KGForce3D() {
   const flashTimerRef = useRef(0)
   const hoverNodesRef = useRef<Set<string>>(new Set()) // persistent highlight while a card is hovered
   const hoverEdgesRef = useRef<Set<string>>(new Set())
+  const litNodesRef = useRef<Set<string>>(new Set())   // persistent highlight after a New-Knowledge confirm
+  const litEdgesRef = useRef<Set<string>>(new Set())
+  const litGreenEdgesRef = useRef<Set<string>>(new Set()) // cyan-lit new-connection edges
+  const litFuchsiaEdgesRef = useRef<Set<string>>(new Set()) // fuchsia-lit re-weighted edges
   const hoverColorRef = useRef<string>(HOVER_HL)        // hover highlight colour (teal default / orange for NK)
   const reweightAppliedRef = useRef(false)              // re-weight stays lit on the graph once approved
+  const connectionAppliedRef = useRef(false)            // the one new connection (temp spike → weld NDT) shows once approved
   const idleSpinTimerRef = useRef(0) // resume idle auto-rotate ~3s after the user stops interacting
 
   // persistent node/link objects (reused across graphData() calls so positions + physics survive)
@@ -136,6 +141,11 @@ export function KGForce3D() {
   const flashPulse = useDemo((s) => s.flashPulse)
   const hoverHighlight = useDemo((s) => s.hoverHighlight)
   const reweightApplied = useDemo((s) => s.reweightApplied)
+  const connectionApplied = useDemo((s) => s.connectionApplied)
+  const litNodes = useDemo((s) => s.litNodes)
+  const litEdges = useDemo((s) => s.litEdges)
+  const litGreenEdges = useDemo((s) => s.litGreenEdges)
+  const litFuchsiaEdges = useDemo((s) => s.litFuchsiaEdges)
 
   // ── build the graph once ──
   useEffect(() => {
@@ -294,12 +304,56 @@ export function KGForce3D() {
 
   // ── re-weight stays lit: once the human approves the re-weight, keep the DT-PHASE→Shaft-misalignment
   // edge amber (+ its "0.88 → 0.70" label) persistently, instead of letting the approval flash fade.
+  // Also fly the camera in to frame the re-weighted edge (mirrors the new-connection zoom).
   useEffect(() => {
     const G = graphRef.current
     if (!G) return
     reweightAppliedRef.current = reweightApplied
     G.nodeColor(G.nodeColor()).linkColor(G.linkColor()).linkWidth(G.linkWidth()).linkThreeObject(G.linkThreeObject())
+    zoomTimersRef.current.forEach(clearTimeout)
+    clearTimeout(idleSpinTimerRef.current)
+    const controls = G.controls() as { autoRotate?: boolean }
+    if (!reweightApplied) {
+      if (controls) controls.autoRotate = true
+      G.cameraPosition({ x: 0, y: 0, z: 1150 }, { x: 0, y: 0, z: 0 }, 1400)
+      return
+    }
+    if (controls) controls.autoRotate = false
+    zoomTimersRef.current = [window.setTimeout(() => flyToNodes(['SYM-001', 'DT-HOUSING-INSPECT', 'RC-BEARING-SPALL']), 1400)]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reweightApplied])
+
+  // ── new connection: when the human approves it in Panel 3, reveal the temp-spike → weld-NDT edge
+  //    AND fly the camera in to frame the new path (mirrors the old node-commit zoom). ──
+  useEffect(() => {
+    connectionAppliedRef.current = connectionApplied
+    const G = graphRef.current
+    if (!G) return
+    rebuild()
+    zoomTimersRef.current.forEach(clearTimeout)
+    clearTimeout(idleSpinTimerRef.current)
+    const controls = G.controls() as { autoRotate?: boolean }
+    if (!connectionApplied) {
+      // reset / not-yet-approved → resume the idle orbit and pull back to the full-fleet framing
+      if (controls) controls.autoRotate = true
+      G.cameraPosition({ x: 0, y: 0, z: 1150 }, { x: 0, y: 0, z: 0 }, 1400)
+      return
+    }
+    if (controls) controls.autoRotate = false
+    // fly after the revealed edge/nodes settle so the target isn't moving under the camera
+    zoomTimersRef.current = [window.setTimeout(() => flyToNodes(['BFP-S0', 'SYM-001', 'DT-WELD-NDT', 'RC-CASING-CRACK']), 1400)]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connectionApplied])
+
+  // ── persistent lit highlight: each approved New-Knowledge card leaves its nodes/edges lit ──
+  useEffect(() => {
+    litNodesRef.current = new Set(litNodes)
+    litEdgesRef.current = new Set(litEdges)
+    litGreenEdgesRef.current = new Set(litGreenEdges)
+    litFuchsiaEdgesRef.current = new Set(litFuchsiaEdges)
+    const G = graphRef.current
+    if (G) G.nodeColor(G.nodeColor()).linkColor(G.linkColor()).linkWidth(G.linkWidth()).linkDirectionalArrowLength(G.linkDirectionalArrowLength())
+  }, [litNodes, litEdges, litGreenEdges, litFuchsiaEdges])
 
   // ── per-node commit growth: grow each approved proposed node/link into the live graph ──
   // v2 #5 — commit-only camera: on sign-off, pause the idle orbit and fly the camera to the new
@@ -330,11 +384,14 @@ export function KGForce3D() {
   }, [committedNodes])
 
   // average the committed nodes' live positions and frame them (pulled back along +z)
-  function flyToCommitted() {
+  function flyToCommitted() { flyToNodes([...committedRef.current]) }
+
+  // fly the camera to centre-frame a given set of node ids (averaged live positions)
+  function flyToNodes(ids: string[]) {
     const G = graphRef.current
     if (!G) return
-    const committed = committedRef.current
-    const nodes = allNodesRef.current.filter((n) => committed.has(n.id) && n.x != null)
+    const idset = new Set(ids)
+    const nodes = allNodesRef.current.filter((n) => idset.has(n.id) && n.x != null)
     if (!nodes.length) return
     let cx = 0, cy = 0, cz = 0
     for (const n of nodes) { cx += n.x ?? 0; cy += n.y ?? 0; cz += n.z ?? 0 }
@@ -349,7 +406,12 @@ export function KGForce3D() {
     const committed = committedRef.current
     const nodes = allNodesRef.current.filter((n) => baseIdsRef.current.has(n.id) || committed.has(n.id))
     const visible = new Set(nodes.map((n) => n.id))
-    const links = allLinksRef.current.filter((l) => visible.has(linkEnd(l.source)) && visible.has(linkEnd(l.target)))
+    const links = allLinksRef.current.filter((l) => {
+      if (!visible.has(linkEnd(l.source)) || !visible.has(linkEnd(l.target))) return false
+      // the lone proposed link (temp spike → weld NDT) stays hidden until the human approves it
+      if (l._proposed && !connectionAppliedRef.current) return false
+      return true
+    })
     // orphan guard: casing crack approved without its confirming test → provisional edge from DT-PHASE
     if (visible.has('RC-CASING-CRACK') && !visible.has('DT-WELD-NDT') && visible.has('DT-PHASE')) {
       links.push({ source: 'DT-PHASE', target: 'RC-CASING-CRACK', type: 'CONFIRMS', context: false, _proposed: true })
@@ -389,24 +451,18 @@ export function KGForce3D() {
     const l = o as unknown as GLink
     if (!isReweightEdge(l)) return undefined
     if (!isFlashEdge(l) && !reweightAppliedRef.current) return undefined // show during the flash OR once applied
-    return makeLabelSprite('0.88 → 0.70', 9, '#B45309', true)
+    return makeLabelSprite('0.75 → 0.90', 9, '#A21CAF', true)
   }
 
   function nodeColor(o: NodeObject): string {
     const n = o as unknown as GNode
-    if (flashNodesRef.current.has(n.id)) return 'rgba(245,158,11,1)' // amber flash (~1s, gap/re-weight beat)
-    if (hoverNodesRef.current.has(n.id)) return hoverColorRef.current // hovered card path → highlight colour
-    if (reweightAppliedRef.current && n.id === RW_T) return 'rgba(245,158,11,1)' // re-weight target stays amber
-    // v2 #2 — committed new-knowledge nodes POP: full opacity (vs the uniform 0.55 fade) so the
-    // freshly-grown casing-crack / weld-NDT nodes draw the eye against the faded fleet.
-    if (n._proposed) return hexToRgba(NODE_COLORS[n.label], 1)
-    // colour by node LABEL (maps to legend): AssetClass slate · Machine green · Symptom amber ·
-    // DiagnosticTest blue · RootCause red · Inconclusive violet. Every node uniformly faded so only
-    // the growing new-knowledge nodes draw the eye.
+    // Nodes keep their own colour at all times (highlighting happens on the EDGES only). Colour by
+    // node LABEL (maps to legend): AssetClass slate · Machine green · Symptom amber · DiagnosticTest
+    // blue · RootCause red · Inconclusive violet.
     return hexToRgba(NODE_COLORS[n.label], 0.55)
   }
   // v2 #4 — the over-confident edge targeted by the re-weight beat
-  const RW_S = 'DT-PHASE', RW_T = 'RC-BENT-SHAFT'
+  const RW_S = 'DT-HOUSING-INSPECT', RW_T = 'RC-BEARING-SPALL'
   const isReweightEdge = (l: GLink) => {
     const s = linkEnd(l.source), t = linkEnd(l.target)
     return (s === RW_S && t === RW_T) || (s === RW_T && t === RW_S)
@@ -421,6 +477,21 @@ export function KGForce3D() {
     const s = linkEnd(l.source), t = linkEnd(l.target)
     return hoverEdgesRef.current.has(`${s}>${t}`) || hoverEdgesRef.current.has(`${t}>${s}`)
   }
+  // persistent lit edge (after a New-Knowledge confirm) — same either-direction key match
+  const isLitEdge = (l: GLink) => {
+    const s = linkEnd(l.source), t = linkEnd(l.target)
+    return litEdgesRef.current.has(`${s}>${t}`) || litEdgesRef.current.has(`${t}>${s}`)
+  }
+  // cyan-lit new-connection edge (the headline temp → weld-NDT link)
+  const isLitGreenEdge = (l: GLink) => {
+    const s = linkEnd(l.source), t = linkEnd(l.target)
+    return litGreenEdgesRef.current.has(`${s}>${t}`) || litGreenEdgesRef.current.has(`${t}>${s}`)
+  }
+  // fuchsia-lit re-weighted edge
+  const isLitFuchsiaEdge = (l: GLink) => {
+    const s = linkEnd(l.source), t = linkEnd(l.target)
+    return litFuchsiaEdgesRef.current.has(`${s}>${t}`) || litFuchsiaEdgesRef.current.has(`${t}>${s}`)
+  }
   // edge classification — drives a clear visual hierarchy so connections read as concrete:
   //   proposed (new red) > focus diagnostic tree > region-internal > cross-region
   const isFocus = (l: GLink) => !l.context && !l.cross && !l.loose // the SYM-001 diagnostic-tree edges
@@ -429,7 +500,9 @@ export function KGForce3D() {
     const l = o as unknown as GLink
     if (isFlashEdge(l)) return 'rgba(245,158,11,1)' // amber flash (~1s, gap/re-weight beat)
     if (isHoverEdge(l)) return hoverColorRef.current // hovered card → highlight colour (above proposed)
-    if (isReweightEdge(l) && reweightAppliedRef.current) return 'rgba(245,158,11,1)' // re-weight stays amber after approval
+    if (isLitGreenEdge(l)) return 'rgba(6,182,212,1)'   // new connection → cyan
+    if (isLitFuchsiaEdge(l) || (isReweightEdge(l) && reweightAppliedRef.current)) return 'rgba(192,38,211,1)' // re-weight → fuchsia
+    if (isLitEdge(l)) return 'rgba(245,158,11,1)'       // supporting links → amber
     if (l._proposed) return 'rgba(220,38,38,0.9)'       // newly committed knowledge → solid red
     // when a hover is active, dim every non-highlighted connector back so the path stands out
     return hoverEdgesRef.current.size > 0 ? 'rgba(100,116,139,0.16)' : 'rgba(100,116,139,0.55)'
@@ -439,6 +512,8 @@ export function KGForce3D() {
     if (isFlashEdge(l)) return 3.2 // amber flash — briefly emphasised
     if (isHoverEdge(l)) return 3.4 // hovered card path — emphasised
     if (isReweightEdge(l) && reweightAppliedRef.current) return 3.2 // re-weight stays emphasised after approval
+    if (isLitGreenEdge(l) || isLitFuchsiaEdge(l)) return 3.2 // new connection / re-weight → emphasised
+    if (isLitEdge(l)) return 3.2                        // stays emphasised after a New-Knowledge confirm
     if (l._proposed) return 2.4
     return 1.1                                          // every connector (focus + all fleet) → same weight
   }
@@ -468,6 +543,21 @@ export function KGForce3D() {
             {text}
           </div>
         ))}
+        {/* edge-state legend — appears once new knowledge lands on the graph (after the zoom-in) */}
+        {(connectionApplied || reweightApplied) && (
+          <>
+            <div className="kg3-legend-sep" />
+            {connectionApplied && (
+              <>
+                <div className="kg3-legend-row"><span className="kg3-legend-bar" style={{ background: 'rgb(6,182,212)' }} />New edge</div>
+                <div className="kg3-legend-row"><span className="kg3-legend-bar" style={{ background: 'rgb(245,158,11)' }} />Supporting link</div>
+              </>
+            )}
+            {reweightApplied && (
+              <div className="kg3-legend-row"><span className="kg3-legend-bar" style={{ background: 'rgb(192,38,211)' }} />Updated edge</div>
+            )}
+          </>
+        )}
       </div>
     </>
   )

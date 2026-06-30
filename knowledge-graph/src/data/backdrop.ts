@@ -279,9 +279,12 @@ export const PROPOSED_EDGES: SimEdgeData[] = [
   ...FOCUS_EDGES
     .filter((e) => e.state === 'proposed' || PROPOSED.has(e.source) || PROPOSED.has(e.target))
     .map((e) => ({ source: e.source, target: e.target, type: e.type, context: false })),
-  // The DE-bearing temperature spike is what prompted the dye-penetrant weld NDT — renders when
-  // DT-WELD-NDT is committed (Panel 3 approval). BFP-S0 = "DE bearing temp high" backdrop symptom.
+  // THE week's new connections into the (existing) weld-NDT → casing-crack path: BOTH the DE-bearing
+  // temperature spike AND high NDE vibration now route to the weld NDT. Hidden until the human
+  // approves them in Panel 3 (connectionApplied). BFP-S0 = "DE bearing temp high" backdrop symptom;
+  // SYM-001 = "BFP NDE vib high".
   { source: 'BFP-S0', target: 'DT-WELD-NDT', type: 'TRIGGERS', context: false },
+  { source: 'SYM-001', target: 'DT-WELD-NDT', type: 'TRIGGERS', context: false },
 ]
 
 // drop the generated BFP hub in favour of the real AC-BFP; reroute generated BFP symptoms to it

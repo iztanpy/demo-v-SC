@@ -60,9 +60,10 @@ export const FOCUS_NODES: GraphNode[] = [
   // ── inconclusive sink — the second outcome of every confirmatory test ──
   { id: 'NEEDS-INFO', label: 'Inconclusive', title: 'More info needed', x: 1850, y: 1050, props: { name: 'More information needed', description: 'Confirmatory test inconclusive — escalate for expert review / further data before committing a repair' } },
 
-  // ── PROPOSED nodes (the week's recommended add — dashed/ghost until approval at step 8) ──
-  { id: 'DT-WELD-NDT', label: 'DiagnosticTest', title: 'Weld NDT', x: COLS.l2, y: 940, tier: 'followup', state: 'proposed', proposeStep: 6, batch: 1, props: { name: 'Weld NDT / dye-penetrant inspection (volute, near discharge)', layer: 'follow-up (confirmatory)', method: 'PT/MT of casing volute & discharge-weld region', cost_band: 'med', required_certs: ['NDT Level 2 (PT/MT)'] } },
-  { id: 'RC-CASING-CRACK', label: 'RootCause', title: 'Casing crack', x: COLS.cause, y: 970, state: 'proposed', proposeStep: 6, batch: 1, props: { name: 'Pump casing crack / weld fatigue', description: 'Volute / discharge weld-toe crack; casing fatigue mimicking shaft-misalignment vibration signatures', solution: 'Weld repair + PWHT of volute / discharge weld; MPI re-check; review casing fatigue life' } },
+  // ── Casing-crack path — EXISTING knowledge (the SOP already knows casing crack + the weld NDT
+  //    that confirms it). The week's new knowledge is a CONNECTION into this path, not these nodes. ──
+  { id: 'DT-WELD-NDT', label: 'DiagnosticTest', title: 'Weld NDT', x: COLS.l2, y: 940, tier: 'followup', props: { name: 'Weld NDT / dye-penetrant inspection (volute, near discharge)', layer: 'follow-up (confirmatory)', method: 'PT/MT of casing volute & discharge-weld region', cost_band: 'med', required_certs: ['NDT Level 2 (PT/MT)'] } },
+  { id: 'RC-CASING-CRACK', label: 'RootCause', title: 'Casing crack', x: COLS.cause, y: 970, props: { name: 'Pump casing crack / weld fatigue', description: 'Volute / discharge weld-toe crack; casing fatigue mimicking shaft-misalignment vibration signatures', solution: 'Weld repair + PWHT of volute / discharge weld; MPI re-check; review casing fatigue life' } },
 ]
 
 // `result` on every test edge = the observed test finding that drives it (shown when the
@@ -95,10 +96,10 @@ export const FOCUS_EDGES: GraphEdge[] = [
   { source: 'DT-ALIGNMENT', target: 'NEEDS-INFO', type: 'INCONCLUSIVE', result: 'Alignment within tolerance → misalignment not confirmed; gather more data' },
   { source: 'DT-OIL-ANALYSIS', target: 'NEEDS-INFO', type: 'INCONCLUSIVE', result: 'Oil clean → lube failure / spalling not confirmed; gather more data' },
 
-  // ── PROPOSED edges (wiring for the new cause — dashed until approval) ──
-  { source: 'DT-PHASE', target: 'DT-WELD-NDT', type: 'FOLLOW_UP', result: 'Harmonics near discharge weld → run weld NDT', state: 'proposed', proposeStep: 6, batch: 1 },
-  { source: 'DT-WELD-NDT', target: 'RC-CASING-CRACK', type: 'CONFIRMS', band: 'high', probability: 0.9, result: 'PT/MT indication at volute weld toe', state: 'proposed', proposeStep: 6, batch: 1 },
-  { source: 'DT-WELD-NDT', target: 'NEEDS-INFO', type: 'INCONCLUSIVE', result: 'No weld indication → casing crack not confirmed; gather more data', state: 'proposed', proposeStep: 6, batch: 1 },
+  // ── EXISTING wiring for the casing-crack path (weld NDT confirms casing crack) ──
+  { source: 'DT-PHASE', target: 'DT-WELD-NDT', type: 'FOLLOW_UP', result: 'Harmonics near discharge weld → run weld NDT' },
+  { source: 'DT-WELD-NDT', target: 'RC-CASING-CRACK', type: 'CONFIRMS', band: 'high', probability: 0.9, result: 'PT/MT indication at volute weld toe' },
+  { source: 'DT-WELD-NDT', target: 'NEEDS-INFO', type: 'INCONCLUSIVE', result: 'No weld indication → casing crack not confirmed; gather more data' },
 
   // ── PROPOSED shortcut (batch 2) — captured from a call: skip triage, go straight to runout.
   // On approval this formalises into a first-line TRIGGERS edge (Shaft runout promoted to L1). ──

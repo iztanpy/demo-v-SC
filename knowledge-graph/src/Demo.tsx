@@ -13,6 +13,9 @@ export default function Demo() {
   const started = useDemo((s) => s.started)
   const start = useDemo((s) => s.start)
   const reset = useDemo((s) => s.reset)
+  // More open panels = a more crowded left column, so we widen it (and shrink the KG) accordingly.
+  const folded = useDemo((s) => s.sectionFolded)
+  const openPanels = Object.values(folded).filter((f) => !f).length
 
   return (
     <div className="demo-stage">
@@ -28,7 +31,7 @@ export default function Demo() {
         </button>
       </header>
 
-      <main className="demo-main">
+      <main className="demo-main" data-open-panels={openPanels}>
         <div className="demo-left">
           <DocumentsPanel />
           <ResolutionPanel />

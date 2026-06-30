@@ -54,7 +54,10 @@
 .demo-run:hover { filter: brightness(1.05); }
 
 /* main two-zone layout — LEFT 45% = the 3 process panels in a ROW; RIGHT 55% = graph hero */
-.demo-main { flex: 1; display: grid; grid-template-columns: 45% 55%; min-height: 0; }
+.demo-main { flex: 1; display: grid; grid-template-columns: 45% 55%; min-height: 0; transition: grid-template-columns .35s ease; }
+/* As more left-column panels open, give them more room and shrink the KG so cards stay readable. */
+.demo-main[data-open-panels="2"] { grid-template-columns: 60% 40%; }
+.demo-main[data-open-panels="3"] { grid-template-columns: 70% 30%; }
 .demo-left { display: flex; gap: 10px; padding: 12px; min-height: 0; overflow: hidden; }
 .demo-right { position: relative; border-left: 1px solid var(--line); overflow: hidden; }
 
@@ -76,6 +79,8 @@
 }
 .kg3-legend-row { display: flex; align-items: center; gap: 8px; }
 .kg3-legend-dot { width: 11px; height: 11px; border-radius: 50%; flex: 0 0 auto; }
+.kg3-legend-bar { width: 16px; height: 3px; border-radius: 2px; flex: 0 0 auto; }
+.kg3-legend-sep { height: 1px; background: #CBD5E1; margin: 4px 0 2px; }
 
 /* panels — each a full-height column in the row. Dormant ones dim; collapsed ones fold to header. */
 .p-panel {
@@ -251,14 +256,18 @@
 .p-res-chip[data-kind="reaffirm"] { color: #047857; background: #DCFCE7; }
 .p-res-chip[data-kind="reweight"] { color: #B45309; background: #FEF3C7; }
 .p-res-chip[data-kind="gap"] { color: #B45309; background: #FEE9C8; }
+/* grouped (Documents-style) Resolution: sub-card chip sits on the left; amber flag on the outer head */
+.p-wf-subs .p-res-row { background: #fff; }
+.p-wf-subs .p-res-chip { margin-left: 0; }
+.p-res-flag { color: var(--amber); font-weight: 800; font-size: 12px; flex: 0 0 auto; }
 
 .p-ent-list { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
-.p-ent { display: grid; grid-template-columns: 16px 64px 1fr; align-items: baseline; gap: 7px; font-size: 12px; line-height: 1.35; }
+.p-ent { display: grid; grid-template-columns: 16px 78px 1fr; align-items: baseline; gap: 7px; font-size: 12px; line-height: 1.35; }
 .p-ent-glyph { font-weight: 700; text-align: center; }
 .p-ent-glyph[data-status="match"] { color: var(--green); }
 .p-ent-glyph[data-status="reweight"] { color: var(--amber); }
 .p-ent-glyph[data-status="gap"] { color: #DC2626; }
-.p-ent-label { color: var(--slate); font-weight: 600; }
+.p-ent-label { color: var(--slate); font-weight: 600; white-space: nowrap; }
 .p-ent-detail { color: var(--ink); }
 
 /* new-knowledge panel */
@@ -317,6 +326,8 @@ label.p-nk-change { display: flex; align-items: center; gap: 7px; font-size: 12p
 
 .p-nk-card { border: 1px solid var(--line); border-left: 3px solid var(--amber); border-radius: 9px; background: #fff; padding: 10px 11px; margin-bottom: 10px; transition: border-color 220ms, box-shadow 220ms, opacity 220ms; }
 .p-nk-card[data-kind="add-node"] { border-left-color: var(--green); }
+.p-nk-card[data-kind="add-edge"] { border-left-color: var(--green); }
+.p-nk-card[data-kind="strengthen"] { border-left-color: var(--green); }
 .p-nk-card[data-decision="approved"] { border-left-color: var(--green); box-shadow: 0 0 0 1px rgba(0,166,81,0.12); }
 .p-nk-card[data-decision="rejected"] { border-left-color: #94A3B8; opacity: 0.72; }
 
@@ -324,6 +335,14 @@ label.p-nk-change { display: flex; align-items: center; gap: 7px; font-size: 12p
 .p-nk-glyph { font-weight: 800; width: 16px; height: 16px; line-height: 16px; text-align: center; border-radius: 5px; font-size: 12px; }
 .p-nk-glyph[data-kind="reweight"] { color: var(--amber); background: #FEF3C7; }
 .p-nk-glyph[data-kind="add-node"] { color: var(--green); background: #E7F8EF; }
+.p-nk-glyph[data-kind="add-edge"] { color: var(--green); background: #E7F8EF; }
+.p-nk-glyph[data-kind="strengthen"] { color: var(--green); background: #E7F8EF; }
+/* legend-coloured chip path on the New-connection card (symptom → test) */
+.p-nk-path { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 7px 0 3px; }
+.p-nk-pathchip { font-size: 14px; font-weight: 700; padding: 3px 12px; border-radius: 999px; border: 1.5px solid; white-space: nowrap; }
+.p-nk-patharrow { color: var(--slate); font-weight: 700; font-size: 16px; }
+.p-nk-pathdown { color: var(--amber); font-weight: 800; font-size: 20px; line-height: 1; margin-left: 2px; }
+.p-nk-pathup { color: var(--green); font-weight: 800; font-size: 20px; line-height: 1; margin-left: 2px; }
 .p-nk-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--slate); }
 .p-nk-status { margin-left: auto; font-size: 10px; font-weight: 600; color: var(--slate); }
 .p-nk-status[data-decision="approved"] { color: var(--green); }

@@ -69,40 +69,34 @@ const CARDS: ResCard[] = [
   // (symptom, asset, first-line tests), one over-confident edge to re-weight, and the casing-crack
   // entities that have no home on the graph (the gaps that flow to New Knowledge).
   {
-    id: 'c-0537-sop', incident: 'INC-0537', chip: 'matched', chipKind: 'reaffirm',
+    id: 'c-0537-rw', incident: 'INC-0537', chip: 'unmatched', chipKind: 'gap',
     entities: [
-      { label: 'Workflow', detail: 'Workflows generated for the initial work order matched SOP standards', status: 'match' },
-      { label: 'Tests run', detail: 'Phase analysis + housing inspection on the graph’s path', status: 'match' },
-    ],
-    matchedNodes: ['SYM-001', 'AC-BFP', 'DT-PHASE', 'DT-HOUSING-INSPECT'],
-    hiEdges: ['SYM-001>AC-BFP', 'SYM-001>DT-PHASE', 'SYM-001>DT-HOUSING-INSPECT'],
-  },
-  {
-    id: 'c-0537-rw', incident: 'INC-0537', chip: 're-weight confidence', chipKind: 'reweight',
-    entities: [
-      { label: 'Diagnosis', detail: 'Original proposed diagnosis was not selected', status: 'reweight' },
-      { label: 'Signature', detail: 'Specific temperature + vibration signature pointed to a bearing-related issue', status: 'reweight' },
+      { label: 'Diagnosis', detail: 'Original proposed diagnosis was not selected', status: 'gap' },
+      { label: 'Rationale', detail: 'Vibration signature pointed to a bearing-related issue', status: 'gap' },
     ],
     matchedNodes: ['SYM-001', 'DT-PHASE'],
     hiEdges: ['DT-PHASE>RC-BENT-SHAFT'],
     reweight: true,
   },
   {
-    id: 'c-0537-gap', incident: 'INC-0537', chip: 'gap — new knowledge', chipKind: 'gap',
+    id: 'c-0537-sop', incident: 'INC-0537', chip: 'matched', chipKind: 'reaffirm',
     entities: [
-      { label: 'Root cause', detail: 'Additional temperature spike suggests casing crack as the root cause', status: 'gap' },
+      { label: 'Safety', detail: 'Safety steps followed fully', status: 'match' },
+      { label: 'Workflow', detail: 'Generated steps match initial diagnosis', status: 'match' },
     ],
-    matchedNodes: [],
-    hiEdges: ['SYM-001>DT-PHASE'],
-    gap: true,
+    matchedNodes: ['SYM-001', 'AC-BFP', 'DT-PHASE', 'DT-HOUSING-INSPECT'],
+    hiEdges: ['SYM-001>AC-BFP', 'SYM-001>DT-PHASE', 'SYM-001>DT-HOUSING-INSPECT'],
   },
   {
-    id: 'c-0537-ndt', incident: 'INC-0537', chip: 'gap — new test', chipKind: 'gap',
+    // Casing crack + weld-NDT already EXIST on the graph (matched). The single gap is the missing
+    // CONNECTION from the temperature spike into that path.
+    id: 'c-0537-gap', incident: 'INC-0537', chip: 'unmatched', chipKind: 'gap',
     entities: [
-      { label: 'Test', detail: 'New test needed to confirm the casing crack — liquid-penetrant inspection, off the graph’s path', status: 'gap' },
+      { label: 'Test', detail: 'Weld NDT (dye-penetrant) test advised as a troubleshooting step ', status: 'match' },
+      { label: 'Root cause', detail: 'Vibration and temperature readings pointed to casing crack', status: 'gap' },
     ],
-    matchedNodes: [],
-    hiEdges: ['SYM-001>DT-HOUSING-INSPECT'],
+    matchedNodes: ['RC-CASING-CRACK', 'DT-WELD-NDT', 'BFP-S0'],
+    hiEdges: ['BFP-S0>DT-WELD-NDT', 'DT-WELD-NDT>RC-CASING-CRACK'],
     gap: true,
   },
 ]
@@ -126,9 +120,8 @@ const HERO_STEP_MS = 600 // spacing between successive hero-card reveals
 // on a representative EXISTING node/edge for ~1s. The gaps' own nodes (casing crack / NDT) aren't on
 // the graph yet, so we flash the nearest node already there. Edge keys are "SOURCE>TARGET".
 const FLASH_BY_CARD: Record<string, { nodes: string[]; edges: string[] }> = {
-  'c-0537-rw':  { nodes: ['RC-BENT-SHAFT'],      edges: ['DT-PHASE>RC-BENT-SHAFT'] },
-  'c-0537-gap': { nodes: ['DT-PHASE'],           edges: ['SYM-001>DT-PHASE'] },
-  'c-0537-ndt': { nodes: ['DT-HOUSING-INSPECT'], edges: ['SYM-001>DT-HOUSING-INSPECT'] },
+  'c-0537-rw':  { nodes: ['RC-BENT-SHAFT'],                   edges: ['DT-PHASE>RC-BENT-SHAFT'] },
+  'c-0537-gap': { nodes: ['BFP-S0', 'DT-WELD-NDT', 'RC-CASING-CRACK'], edges: ['DT-WELD-NDT>RC-CASING-CRACK'] },
 }
 
 // ── cross-panel particle flow: dots fly from a resolved card toward the graph (reaffirming it) ──
@@ -207,18 +200,25 @@ export function ResolutionPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phaseKey])
 
-  // Focus incident (INC-0537) groups at the TOP in its authored narrative order (matches →
-  // re-weight → gaps); the mini reaffirm cards sit below, ordered by work-queue priority.
-  const PRIORITY: Record<ResCard['chipKind'], number> = { gap: 0, reweight: 1, reaffirm: 2 }
-  const visibleCards = CARDS
-    .filter((c) => (phases.get(c.incident) ?? 'pending') !== 'pending')
-    .sort((a, b) => {
-      const fa = a.incident === FOCUS_INCIDENT ? 0 : 1
-      const fb = b.incident === FOCUS_INCIDENT ? 0 : 1
-      if (fa !== fb) return fa - fb
-      if (fa === 0) return 0 // focus cards keep their array order (stable)
-      return PRIORITY[a.chipKind] - PRIORITY[b.chipKind]
-    })
+  // Per-incident expand state (mirrors the Documents tab): the hero (INC-0537) opens by default,
+  // reaffirm incidents stay compact until clicked.
+  const [manual, setManual] = useState<Record<string, boolean>>({})
+  useEffect(() => { setManual({}) }, [runId])
+  const isExpanded = (incId: string) => manual[incId] ?? (incId === FOCUS_INCIDENT)
+  const toggleInc = (incId: string) => setManual((m) => ({ ...m, [incId]: !isExpanded(incId) }))
+
+  // a card is still "matching" until its turn comes up (hero cascade) or its incident resolves
+  const cardMatching = (card: ResCard) => {
+    const phase = phases.get(card.incident) ?? 'pending'
+    if (card.incident !== FOCUS_INCIDENT) return phase === 'matching'
+    const idx = FOCUS_CARDS.findIndex((c) => c.id === card.id)
+    return phase === 'matching' || (phase === 'resolved' && heroResolved <= idx)
+  }
+
+  // group visible incidents (INC-0537 first via INCIDENTS order), each holding its resolution cards
+  const groups = INCIDENTS
+    .map((inc) => ({ inc, cards: CARDS.filter((c) => c.incident === inc.id) }))
+    .filter((g) => (phases.get(g.inc.id) ?? 'pending') !== 'pending')
 
   // keep the hero (INC-0537, sorted to the top) in view — don't follow the stream down
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -260,42 +260,63 @@ export function ResolutionPanel() {
 
       {expanded && run && (
         <div className="p-res-body" ref={bodyRef}>
-          {visibleCards.map((card) => {
-            const phase = phases.get(card.incident) ?? 'pending'
-            const color = INCIDENT_COLOR[card.incident]
-            const focus = card.incident === FOCUS_INCIDENT
-            // hero cards cascade: each stays in matching until its turn in the sequence comes up
-            const focusIndex = focus ? FOCUS_CARDS.findIndex((c) => c.id === card.id) : -1
-            const matching = focus
-              ? phase === 'matching' || (phase === 'resolved' && heroResolved <= focusIndex)
-              : phase === 'matching'
+          {groups.map(({ inc, cards }) => {
+            const phase = phases.get(inc.id) ?? 'pending'
+            const color = INCIDENT_COLOR[inc.id]
+            const focus = inc.id === FOCUS_INCIDENT
+            const open = isExpanded(inc.id)
+            const working = phase === 'matching'
+            const revealed = cards.filter((c) => !cardMatching(c)).length
+            const hasFlag = cards.some((c) => c.chipKind !== 'reaffirm')
+            const allNodes = [...new Set(cards.flatMap((c) => c.matchedNodes))]
+            const allEdges = [...new Set(cards.flatMap((c) => c.hiEdges ?? []))]
             return (
-              <div key={card.id} ref={(el) => { cardRefs.current[card.id] = el }} className="p-res-row" data-kind={matching ? 'matching' : card.chipKind} data-mini={!focus} style={{ ['--inc' as string]: color }}
-                onMouseEnter={() => setHover({ nodes: card.matchedNodes, edges: card.hiEdges ?? [], color: card.chipKind === 'reaffirm' ? undefined : '#F59E0B' })}
-                onMouseLeave={() => setHover(null)}>
-                <div className="p-res-top">
-                  <span className="p-res-dot" style={{ background: color }} />
-                  <span className="p-res-incident" style={{ color }}>{card.incident}</span>
-                  <span className="p-res-chip" data-kind={matching ? 'matching' : card.chipKind}>
-                    {matching ? 'matching...' : card.chip}
-                  </span>
-                  {!focus && !matching && <span className="p-res-tick">✓</span>}
+              <div key={inc.id} className="p-wf-card" data-outcome={inc.outcome} style={{ borderLeftColor: color, ['--inc' as string]: color }}>
+                <div className="p-wf-head" onClick={() => toggleInc(inc.id)}
+                  onMouseEnter={() => setHover({ nodes: allNodes, edges: allEdges, color: hasFlag ? '#F59E0B' : undefined })}
+                  onMouseLeave={() => setHover(null)}>
+                  <span className="p-doc-entry" style={{ background: color }}>incident</span>
+                  <span className="p-doc-incident" style={{ color }}>{inc.id}</span>
+                  <span className="p-doc-docs">{working ? 'matching…' : focus ? `${revealed}/${cards.length}` : 'matched'}</span>
+                  {working
+                    ? <span className="p-doc-spin"><span className="p-dots"><span /><span /><span /></span></span>
+                    : hasFlag
+                      ? <span className="p-res-flag">⚠</span>
+                      : <span className="p-doc-tick">✓</span>}
+                  <span className="p-wf-caret" data-open={open}>▾</span>
                 </div>
-                {/* Mini cards (reaffirm incidents) stop here — just the chip + ✓. Only the hero
-                    (INC-0537) shows the matching theater + the full entity breakdown. */}
-                {focus && (matching ? (
-                  <div className="p-reveal"><span className="p-dots"><span /><span /><span /></span><span className="p-reveal-msg">resolving entities against the knowledge graph…</span></div>
-                ) : (
-                  <ul className="p-ent-list">
-                    {card.entities.map((e, i) => (
-                      <li key={i} className="p-ent" data-status={e.status}>
-                        <span className="p-ent-glyph" data-status={e.status}>{STATUS_GLYPH[e.status]}</span>
-                        <span className="p-ent-label">{e.label}</span>
-                        <span className="p-ent-detail">{e.detail}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ))}
+
+                {open && (
+                  <div className="p-wf-subs">
+                    {cards.map((card) => {
+                      const matching = cardMatching(card)
+                      return (
+                        <div key={card.id} ref={(el) => { cardRefs.current[card.id] = el }} className="p-res-row" data-kind={matching ? 'matching' : card.chipKind} style={{ ['--inc' as string]: color }}
+                          onMouseEnter={() => setHover({ nodes: card.matchedNodes, edges: card.hiEdges ?? [], color: card.chipKind === 'reaffirm' ? undefined : '#F59E0B' })}
+                          onMouseLeave={() => setHover(null)}>
+                          <div className="p-res-top">
+                            <span className="p-res-chip" data-kind={matching ? 'matching' : card.chipKind}>
+                              {matching ? 'matching...' : card.chip}
+                            </span>
+                          </div>
+                          {matching ? (
+                            <div className="p-reveal"><span className="p-dots"><span /><span /><span /></span><span className="p-reveal-msg">resolving entities against the knowledge graph…</span></div>
+                          ) : (
+                            <ul className="p-ent-list">
+                              {card.entities.map((e, i) => (
+                                <li key={i} className="p-ent" data-status={e.status}>
+                                  <span className="p-ent-glyph" data-status={e.status}>{STATUS_GLYPH[e.status]}</span>
+                                  <span className="p-ent-label">{e.label}</span>
+                                  <span className="p-ent-detail">{e.detail}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             )
           })}

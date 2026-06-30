@@ -2086,14 +2086,14 @@
       position: absolute;
       inset: 0;
       overflow: auto;
-      background: #0A0F1C;
+      background: #FFFFFF;
       z-index: 1;
     }
     .kg-svg {
       width: 100%;
       height: auto;
       display: block;
-      background: #0A0F1C;
+      background: #FFFFFF;
       overflow: visible;
       /* W18 Section C — mouse-parallax tilt (rotateX/Y updated via JS) */
       transform-style: preserve-3d;
@@ -2134,7 +2134,7 @@
     }
     .kg-svg-label {
       font-size: 10px;
-      fill: white;
+      fill: #0F1B3D;
       font-family: inherit;
       pointer-events: none;
       font-weight: 500;
@@ -2172,15 +2172,16 @@
     .kg-legend-overlay {
       position: absolute;
       top: 8px;
-      left: 50%;
-      transform: translateX(-50%);
+      left: 8px;
+      transform: scale(1.5);
+      transform-origin: top left;
       background: rgba(10,15,28,0.85);
       border: 1px solid rgba(255,255,255,0.15);
       border-radius: 8px;
       padding: 10px 14px;
       display: flex;
-      flex-direction: row;
-      gap: 22px;
+      flex-direction: column;
+      gap: 12px;
       color: #fff;
       font-family: ui-monospace, monospace;
       font-size: 10.5px;
@@ -2226,6 +2227,18 @@
     #kg-floating-window[data-persona="onsite"] .kg-leg-row[data-layer="L7"],
     #kg-floating-window[data-persona="onsite"] .kg-leg-row[data-layer="L8"] {
       display: none;
+    }
+
+    /* White SVG KG views (onsite / analyst) — legend blends with the white background */
+    #kg-floating-window[data-persona="onsite"] .kg-legend-overlay,
+    #kg-floating-window[data-persona="analyst"] .kg-legend-overlay {
+      background: transparent;
+      border-color: transparent;
+      color: #0F1B3D;
+    }
+    #kg-floating-window[data-persona="onsite"] .kg-leg-col-title,
+    #kg-floating-window[data-persona="analyst"] .kg-leg-col-title {
+      color: rgba(15,27,61,0.55);
     }
 
     /* ═══════════════════════════════════════════════
@@ -2722,6 +2735,47 @@
       padding: 2px 6px; border-radius: 999px;
       margin-right: 6px;
     }
+
+    /* Sensor-data clarifier — agent prompts for precise readings when a note is sparse */
+    .sensor-clarifier {
+      margin-top: 10px;
+      padding: 10px 12px;
+      background: #EFF4FF;
+      border: 1px solid #BFD3FB;
+      border-left: 3px solid var(--blue-vivid);
+      border-radius: 8px;
+      display: flex; flex-direction: column; gap: 8px;
+      animation: reveal-slide 0.3s ease-out;
+    }
+    .scl-row { display: flex; align-items: flex-start; gap: 9px; }
+    .scl-icon {
+      width: 26px; height: 26px; flex-shrink: 0;
+      background: #fff; color: var(--blue-vivid);
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .scl-body { flex: 1; min-width: 0; }
+    .scl-agent {
+      font-size: 11px; font-weight: 800; color: var(--blue-vivid);
+      letter-spacing: .01em;
+    }
+    .scl-msg {
+      font-size: 11.5px; line-height: 1.5; color: var(--text-secondary);
+      font-style: italic; margin-top: 2px;
+    }
+    .scl-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .scl-btn {
+      padding: 6px 14px; border-radius: 6px; font-family: inherit;
+      font-size: 11.5px; font-weight: 700; cursor: pointer; border: none;
+      transition: background 150ms;
+    }
+    .scl-accept { background: var(--blue-vivid); color: #fff; }
+    .scl-accept:hover { background: #1D4FD7; }
+    .scl-dismiss {
+      background: transparent; color: var(--text-muted);
+      border: 1px solid var(--border-subtle);
+    }
+    .scl-dismiss:hover { background: rgba(0,0,0,0.03); }
 
     /* W13 R2 — SOP Anticipation Theater (intermediate, before Step 1) */
     .sop-anticipation-theater {
@@ -7469,6 +7523,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=w55"></script>
+  <script src="app.js?v=w56"></script>
 </body>
 </html>

@@ -148,15 +148,15 @@ export function DocumentsPanel() {
                                   <span className="p-reveal-msg"><span className="p-agent">{c.agent}</span> · {ph === 'parsing' ? 'parsing…' : 'extracting…'}</span>
                                 </div>
                               )}
+                              {ph === 'done' && c.extras && c.extras.map((x) => (
+                                <div key={x.k} className="p-finding"><span className="p-finding-k">{x.k}</span>{x.v}</div>
+                              ))}
                               {ph === 'done' && (
                                 <>
                                   {(c.field || c.value) && <div className="p-finding"><span className="p-finding-k">{c.field}</span>{c.value}</div>}
                                   {c.rationale && <div className="p-doc-rationale">Rationale · {c.rationale}</div>}
                                 </>
                               )}
-                              {ph === 'done' && c.extras && c.extras.map((x) => (
-                                <div key={x.k} className="p-finding"><span className="p-finding-k">{x.k}</span>{x.v}</div>
-                              ))}
                               {(isWorking(ph) || ph === 'done') && c.steps && (
                                 <div className="p-wf-steplist">
                                   {c.steps.map((s) => {
