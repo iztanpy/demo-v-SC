@@ -63,7 +63,7 @@ export function DocumentsPanel() {
     <section className="p-panel p-docs" data-active={run} data-folded={folded}>
       <header className="p-panel-head" onClick={() => toggleFold('docs')}>
         <span className="p-panel-num">1</span>
-        <span className="p-panel-title">Documents</span>
+        <span className="p-panel-title">Multi-agent knowledge extraction</span>
         <span className="p-panel-sub">{!run ? 'waiting' : active ? 'extraction · JRG-CCGT-1' : 'all parsed ✓'}</span>
         {run && <span className="p-panel-count">{doneCount}/{FEED.length}</span>}
         <span className="p-caret" data-open={expanded}>▾</span>

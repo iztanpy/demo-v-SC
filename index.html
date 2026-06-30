@@ -2587,6 +2587,36 @@
       color: var(--amber-soft-text);
     }
 
+    /* Part 3 — machine-history block (KG-sourced) inside Full reasoning */
+    .sr-machine-history {
+      margin-top: 10px;
+      padding: 9px 11px;
+      background: #EFF4FF;
+      border: 1px solid #BFD3FB;
+      border-left: 3px solid var(--blue-vivid);
+      border-radius: 8px;
+    }
+    .sr-mh-head {
+      font-size: 10.5px; font-weight: 800; letter-spacing: 0.02em;
+      color: var(--blue-vivid);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .sr-mh-ic { margin-right: 3px; }
+    .sr-mh-row {
+      padding: 5px 0;
+      font-size: 11.5px; line-height: 1.45;
+      color: var(--text-primary);
+      border-top: 1px solid #D6E2FB;
+    }
+    .sr-mh-row:first-of-type { border-top: none; }
+    .sr-mh-src {
+      display: block;
+      margin-top: 1px;
+      font-size: 10px; color: var(--text-muted);
+    }
+    .sr-mh-src { padding-left: 12px; }
+
     /* W19 — Diagnosis options list (recommended + alternates, selectable) */
     .sr-options { display: flex; flex-direction: column; gap: 8px; }
     .sr-option {

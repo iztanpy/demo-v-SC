@@ -43,13 +43,18 @@ export interface ClusterDef {
   color: string
   syms: number
 }
-// 5 regions = the combined-cycle train (a real, sensible grouping)
+// 7 regions = the combined-cycle train (a real, sensible grouping)
 export const CLUSTERS: ClusterDef[] = [
   { key: 'BFP', label: 'Boiler feed pump', color: '#00A651', syms: 3 }, // + the real focus tree
   { key: 'GT', label: 'Compressor', color: '#2563EB', syms: 9 },
   { key: 'HRSG', label: 'Generator', color: '#F59E0B', syms: 7 },
   { key: 'ST', label: 'Air inlet', color: '#7C3AED', syms: 9 },
   { key: 'GEN', label: 'Combustor', color: '#0EA5A4', syms: 7 },
+  { key: 'TX', label: 'Transformer', color: '#0891B2', syms: 7 },
+  { key: 'COND', label: 'Condenser', color: '#DB2777', syms: 6 },
+  { key: 'STMT', label: 'Steam turbine', color: '#9333EA', syms: 7 },
+  { key: 'CT', label: 'Cooling tower', color: '#0D9488', syms: 6 },
+  { key: 'SWG', label: 'Switchyard / GIS', color: '#EA580C', syms: 6 },
 ]
 
 export const CLUSTER_LABEL: Record<string, string> = Object.fromEntries(CLUSTERS.map((c) => [c.key, c.label]))
@@ -57,7 +62,9 @@ export const CLUSTER_COLOR: Record<string, string> = Object.fromEntries(CLUSTERS
 
 const seeded = (n: number) => { const x = Math.sin(n * 12.9898) * 43758.5453; return x - Math.floor(x) }
 
-// the real BFP units (match the incident assets so a reaffirm can light its own machine green)
+// the real BFP units (match the incident assets so a reaffirm can light its own machine green).
+// Kept to the canonical roster so the BFP region stays visually clean — these are the units
+// referenced by feed.ts / incidents.ts and must stay.
 const BFP_UNITS = ['BFP-1A', 'BFP-2A', 'BFP-3A', 'BFP-4A', 'BFP-5A', 'BFP-1B', 'BFP-2B', 'BFP-3B']
 
 // per-class curated diagnostic chains — each symptom carries its OWN coherent test→cause tree
@@ -86,7 +93,7 @@ const CLUSTER_CHAINS: Record<string, SymDef[]> = {
   // Compressor (axial GT compressor)
   GT: [
     { name: 'Compressor fouling', tests: [
-      { name: 'Wash-cycle trend analysis', tier: 'triage', causes: [{ name: 'Airfoil deposit fouling', kind: 'fouling' }] },
+      { name: 'Wash-cycle trend analysis', tier: 'triage', causes: [{ name: 'Airfoil deposit fouling', kind: 'fouling' }, { name: 'Inlet filter carryover' }] },
       { name: 'Borescope inspection', tier: 'followup', causes: [{ name: 'Blade leading-edge erosion' }] },
     ] },
     { name: 'Surge margin loss', tests: [
@@ -99,11 +106,11 @@ const CLUSTER_CHAINS: Record<string, SymDef[]> = {
       { name: 'Thermocouple cross-check', tier: 'triage', causes: [{ name: 'Inter-stage seal leakage' }] },
     ] },
     { name: 'High axial vibration', tests: [
-      { name: 'Vibration spectrum (1×/2×)', tier: 'triage', causes: [{ name: 'Rotor unbalance' }] },
+      { name: 'Vibration spectrum (1×/2×)', tier: 'triage', causes: [{ name: 'Rotor unbalance' }, { name: 'Shaft thermal bow' }] },
       { name: 'Laser alignment check', tier: 'followup', causes: [{ name: 'Coupling misalignment', kind: 'misalignment' }] },
     ] },
     { name: 'Bearing metal temp high', tests: [
-      { name: 'Bearing RTD trend', tier: 'triage', causes: [{ name: 'Journal bearing wear', kind: 'bearing wear' }] },
+      { name: 'Bearing RTD trend', tier: 'triage', causes: [{ name: 'Journal bearing wear', kind: 'bearing wear' }, { name: 'Oil-film instability (oil whirl)' }] },
       { name: 'Lube oil analysis', tier: 'followup', causes: [{ name: 'Oil film breakdown', kind: 'lubrication' }] },
     ] },
     { name: 'Blade tip-clearance drift', tests: [
@@ -119,7 +126,7 @@ const CLUSTER_CHAINS: Record<string, SymDef[]> = {
   // Generator (electrical generator)
   HRSG: [
     { name: 'Stator winding temp high', tests: [
-      { name: 'Stator RTD trend', tier: 'triage', causes: [{ name: 'Stator cooling restriction', kind: 'fouling' }] },
+      { name: 'Stator RTD trend', tier: 'triage', causes: [{ name: 'Stator cooling restriction', kind: 'fouling' }, { name: 'Hydrogen purity / cooling loss' }] },
       { name: 'Partial-discharge test', tier: 'followup', causes: [{ name: 'Stator insulation degradation' }] },
     ] },
     { name: 'Rotor ground fault', tests: [
@@ -130,7 +137,7 @@ const CLUSTER_CHAINS: Record<string, SymDef[]> = {
       { name: 'Pedestal phase check', tier: 'followup', causes: [{ name: 'Bearing pedestal looseness' }] },
     ] },
     { name: 'Bearing oil temp high', tests: [
-      { name: 'Bearing RTD trend', tier: 'triage', causes: [{ name: 'Journal bearing wear', kind: 'bearing wear' }] },
+      { name: 'Bearing RTD trend', tier: 'triage', causes: [{ name: 'Journal bearing wear', kind: 'bearing wear' }, { name: 'Lube-oil supply restriction' }] },
       { name: 'Lube oil analysis', tier: 'followup', causes: [{ name: 'Lube oil contamination', kind: 'lubrication' }] },
     ] },
     { name: 'Seal-oil pressure low', tests: [
@@ -146,7 +153,7 @@ const CLUSTER_CHAINS: Record<string, SymDef[]> = {
   // Air inlet (GT inlet / filter house)
   ST: [
     { name: 'Inlet filter dP high', tests: [
-      { name: 'Filter dP trend', tier: 'triage', causes: [{ name: 'Filter media fouling', kind: 'fouling' }] },
+      { name: 'Filter dP trend', tier: 'triage', causes: [{ name: 'Filter media fouling', kind: 'fouling' }, { name: 'Filter media moisture saturation' }] },
       { name: 'Pulse-clean system check', tier: 'followup', causes: [{ name: 'Pulse valve failure' }] },
     ] },
     { name: 'Evap-cooler dP rise', tests: [
@@ -177,7 +184,7 @@ const CLUSTER_CHAINS: Record<string, SymDef[]> = {
   // Combustor (GT combustion system)
   GEN: [
     { name: 'Exhaust temp spread high', tests: [
-      { name: 'EGT thermocouple mapping', tier: 'triage', causes: [{ name: 'Fuel nozzle coking', kind: 'fouling' }] },
+      { name: 'EGT thermocouple mapping', tier: 'triage', causes: [{ name: 'Fuel nozzle coking', kind: 'fouling' }, { name: 'Thermocouple drift / fault' }] },
       { name: 'Fuel-split rebalance check', tier: 'followup', causes: [{ name: 'Fuel distribution imbalance' }] },
     ] },
     { name: 'Combustion dynamics high', tests: [
@@ -199,6 +206,123 @@ const CLUSTER_CHAINS: Record<string, SymDef[]> = {
       { name: 'Emissions trend analysis', tier: 'triage', causes: [{ name: 'DLN tuning drift' }] },
     ] },
   ],
+  // Transformer (GSU / step-up power transformer)
+  TX: [
+    { name: 'Dissolved-gas alarm', tests: [
+      { name: 'DGA (Duval triangle)', tier: 'triage', causes: [{ name: 'Partial discharge in windings' }, { name: 'Thermal fault (overheated joint)' }] },
+      { name: 'Furan / DP analysis', tier: 'followup', causes: [{ name: 'Paper insulation ageing' }] },
+    ] },
+    { name: 'Top-oil temp high', tests: [
+      { name: 'Cooling-stage trend', tier: 'triage', causes: [{ name: 'Radiator / cooler fouling', kind: 'fouling' }] },
+    ] },
+    { name: 'Winding hot-spot high', tests: [
+      { name: 'WTI / fibre-optic check', tier: 'triage', causes: [{ name: 'Cooling-oil flow restriction', kind: 'fouling' }] },
+    ] },
+    { name: 'Bushing power-factor high', tests: [
+      { name: 'Tan-delta / PF test', tier: 'triage', causes: [{ name: 'Bushing insulation degradation' }] },
+    ] },
+    { name: 'OLTC operation fault', tests: [
+      { name: 'OLTC contact-resistance test', tier: 'triage', causes: [{ name: 'Tap-changer contact wear' }] },
+    ] },
+    { name: 'Buchholz gas alarm', tests: [
+      { name: 'Gas collection / inspection', tier: 'triage', causes: [{ name: 'Internal insulation breakdown' }] },
+    ] },
+    { name: 'Oil moisture high', tests: [
+      { name: 'Karl Fischer moisture test', tier: 'triage', causes: [{ name: 'Moisture ingress via gasket' }] },
+      { name: 'Oil dielectric (BDV) test', tier: 'followup', causes: [{ name: 'Dielectric strength loss' }] },
+    ] },
+  ],
+  // Condenser (surface condenser / vacuum system)
+  COND: [
+    { name: 'Back-pressure high', tests: [
+      { name: 'Vacuum trend analysis', tier: 'triage', causes: [{ name: 'Tube-side biofouling', kind: 'fouling' }, { name: 'Cooling-water flow reduction' }] },
+      { name: 'Helium air in-leak test', tier: 'followup', causes: [{ name: 'Air in-leakage' }] },
+    ] },
+    { name: 'CW differential pressure high', tests: [
+      { name: 'Tube-side dP trend', tier: 'triage', causes: [{ name: 'Tube blockage / debris', kind: 'fouling' }] },
+    ] },
+    { name: 'Hotwell conductivity high', tests: [
+      { name: 'Conductivity trend', tier: 'triage', causes: [{ name: 'Condenser tube leak' }] },
+      { name: 'Tube helium leak test', tier: 'followup', causes: [{ name: 'Tube-wall perforation' }] },
+    ] },
+    { name: 'Tube-bundle vibration', tests: [
+      { name: 'Bundle borescope inspection', tier: 'triage', causes: [{ name: 'Support-plate fretting wear', kind: 'bearing wear' }] },
+    ] },
+    { name: 'Terminal temp difference high', tests: [
+      { name: 'TTD performance test', tier: 'triage', causes: [{ name: 'Air binding / non-condensables' }] },
+    ] },
+    { name: 'CW outlet temp high', tests: [
+      { name: 'Heat-balance trend', tier: 'triage', causes: [{ name: 'Cooling-tower performance loss', kind: 'fouling' }] },
+    ] },
+  ],
+  // Steam turbine (HP/IP/LP steam turbine)
+  STMT: [
+    { name: 'Shaft eccentricity high', tests: [
+      { name: 'Eccentricity / TSI trend', tier: 'triage', causes: [{ name: 'Rotor thermal bow', kind: 'misalignment' }] },
+      { name: 'Turning-gear runout check', tier: 'followup', causes: [{ name: 'Residual shaft bow' }] },
+    ] },
+    { name: 'Bearing vibration high', tests: [
+      { name: 'Proximity-probe spectrum', tier: 'triage', causes: [{ name: 'Journal bearing wear', kind: 'bearing wear' }, { name: 'Oil-film whirl instability' }] },
+    ] },
+    { name: 'Differential expansion high', tests: [
+      { name: 'DE / casing expansion trend', tier: 'triage', causes: [{ name: 'Rapid load-ramp thermal stress' }] },
+    ] },
+    { name: 'Gland steam leakage', tests: [
+      { name: 'Gland-seal inspection', tier: 'triage', causes: [{ name: 'Labyrinth seal wear' }] },
+    ] },
+    { name: 'Thrust-bearing wear', tests: [
+      { name: 'Axial-position probe trend', tier: 'triage', causes: [{ name: 'Thrust pad babbitt wear', kind: 'bearing wear' }] },
+    ] },
+    { name: 'Steam-valve sticking', tests: [
+      { name: 'Governor-valve stroke test', tier: 'triage', causes: [{ name: 'Valve-stem deposit binding', kind: 'fouling' }] },
+    ] },
+    { name: 'Blade-path temp deviation', tests: [
+      { name: 'Stage-pressure / temp survey', tier: 'triage', causes: [{ name: 'Blade-path solid-particle erosion' }] },
+    ] },
+  ],
+  // Cooling tower (mechanical-draft wet cooling tower)
+  CT: [
+    { name: 'Approach temperature high', tests: [
+      { name: 'Thermal-performance test', tier: 'triage', causes: [{ name: 'Fill fouling / scaling', kind: 'fouling' }] },
+      { name: 'Water-distribution check', tier: 'followup', causes: [{ name: 'Nozzle clogging', kind: 'fouling' }] },
+    ] },
+    { name: 'Fan vibration high', tests: [
+      { name: 'Fan-deck vibration trend', tier: 'triage', causes: [{ name: 'Fan blade imbalance' }] },
+    ] },
+    { name: 'Gearbox temp high', tests: [
+      { name: 'Gearbox oil analysis', tier: 'triage', causes: [{ name: 'Gear / bearing wear', kind: 'bearing wear' }] },
+    ] },
+    { name: 'Drift / carryover high', tests: [
+      { name: 'Drift-eliminator inspection', tier: 'triage', causes: [{ name: 'Drift eliminator damage' }] },
+    ] },
+    { name: 'Basin level deviation', tests: [
+      { name: 'Make-up / blowdown check', tier: 'triage', causes: [{ name: 'Float-valve / blowdown fault' }] },
+    ] },
+    { name: 'Cell water-quality drift', tests: [
+      { name: 'Conductivity / biocide trend', tier: 'triage', causes: [{ name: 'Biological fouling', kind: 'fouling' }] },
+    ] },
+  ],
+  // Switchyard / GIS (HV substation switchgear)
+  SWG: [
+    { name: 'SF6 gas pressure low', tests: [
+      { name: 'SF6 density trend', tier: 'triage', causes: [{ name: 'SF6 enclosure leak' }] },
+    ] },
+    { name: 'Breaker timing deviation', tests: [
+      { name: 'Breaker travel / timing test', tier: 'triage', causes: [{ name: 'Operating-mechanism wear' }] },
+    ] },
+    { name: 'Contact resistance high', tests: [
+      { name: 'Micro-ohm (DLRO) test', tier: 'triage', causes: [{ name: 'Main-contact erosion' }] },
+    ] },
+    { name: 'Partial discharge detected', tests: [
+      { name: 'UHF PD survey', tier: 'triage', causes: [{ name: 'Insulation void / contamination', kind: 'fouling' }] },
+    ] },
+    { name: 'CT / VT signal drift', tests: [
+      { name: 'Instrument-transformer calibration', tier: 'triage', causes: [{ name: 'Instrument-transformer ageing' }] },
+    ] },
+    { name: 'Busbar hotspot', tests: [
+      { name: 'IR thermography scan', tier: 'triage', causes: [{ name: 'Loose busbar connection' }] },
+    ] },
+  ],
 }
 
 function buildBackdrop(): { nodes: SimNodeData[]; edges: SimEdgeData[] } {
@@ -211,7 +335,7 @@ function buildBackdrop(): { nodes: SimNodeData[]; edges: SimEdgeData[] } {
     nodes.push({ id: `${c.key}-AC`, label: 'AssetClass', cluster: c.key, r: 28, context: true, title: c.label })
     // physical machines (units) per asset class — green instance nodes off the hub. The BFP units
     // are the REAL incident assets, so a reaffirming incident can light up its own machine.
-    const units = c.key === 'BFP' ? BFP_UNITS : Array.from({ length: 2 + Math.floor(rnd() * 3) }, (_, m) => `${c.key}-M${m}`)
+    const units = c.key === 'BFP' ? BFP_UNITS : Array.from({ length: 12 + Math.floor(rnd() * 8) }, (_, m) => `${c.key}-M${m}`)
     for (const mid of units) {
       nodes.push({ id: mid, label: 'Machine', cluster: c.key, r: c.key === 'BFP' ? 13 : 11 + rnd() * 3, context: true, title: c.key === 'BFP' ? mid : undefined })
       edges.push({ source: mid, target: `${c.key}-AC`, type: 'INSTANCE_OF', context: true })

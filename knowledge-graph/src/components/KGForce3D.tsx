@@ -2,6 +2,9 @@ import { useEffect, useRef } from 'react'
 import ForceGraph3D, { type NodeObject, type LinkObject } from '3d-force-graph'
 import { forceX, forceY, forceZ, forceManyBody, forceCollide } from 'd3-force-3d'
 import * as THREE from 'three'
+import { Line2 } from 'three/examples/jsm/lines/Line2.js'
+import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js'
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
 import SpriteText from 'three-spritetext'
 import {
   FLEET_NODES, FLEET_EDGES, PROPOSED_NODES, PROPOSED_EDGES, CLUSTERS,
@@ -24,11 +27,25 @@ const HOVER_HL = 'rgba(13,148,136,1)' // default card-hover highlight (teal); Pa
 // Kept comfortably > node radius (~12) so the single settle-then-fly push-in never clips the sphere.
 const COMMIT_STANDOFF = 380
 
-// 3D cluster anchors — keep the familiar 2D constellation (BFP centre, four around) but lift each
-// region to its own depth so orbiting reveals real 3D separation. Same SPREAD ordering as the 2D map.
-const SPREAD: [number, number][] = [[0.5, 0.5], [0.26, 0.28], [0.74, 0.28], [0.3, 0.76], [0.74, 0.76]]
-const SPAN = 720
-const DEPTH = [120, -110, 130, -130, 110] // per-cluster z, alternating for depth
+// "Once it starts" — on Run, gently push the camera in toward the BFP region (the centre cluster,
+// where the live incident lives) without going all the way to a single-node close-up. Larger than
+// COMMIT_STANDOFF so it's a soft framing of the whole region, not a tight node zoom — but small
+// enough that the push-in actually reads on the projector (800 was too gentle to notice).
+const BFP_START_STANDOFF = 520
+
+// 3D cluster anchors — keep the familiar constellation (BFP centre, the rest ringing it) but lift each
+// region to its own depth so orbiting reveals real 3D separation. 7 distinct positions = 7 asset-class
+// regions (BFP + 6 around) with no modulo-overlap; SPAN widened so the denser fleet doesn't crowd.
+const SPREAD: [number, number][] = [
+  [0.5, 0.5],   // BFP centre
+  [0.26, 0.26], [0.74, 0.26],   // GT, HRSG (upper corners)
+  [0.26, 0.74], [0.74, 0.74],   // ST, GEN (lower corners)
+  [0.5, 0.08],  [0.5, 0.92],    // TX (top), COND (bottom)
+  [0.08, 0.5],  [0.92, 0.5],    // STMT (left), CT (right)
+  [0.92, 0.10],                 // SWG (upper-right edge)
+]
+const SPAN = 1080
+const DEPTH = [120, -110, 130, -130, 110, 220, -220, 180, -180, 240] // per-cluster z, alternating for depth
 const ANCHORS: Record<string, { x: number; y: number; z: number }> = {}
 CLUSTERS.forEach((c, i) => {
   const [fx, fy] = SPREAD[i % SPREAD.length]
@@ -112,6 +129,14 @@ function makeMarchingRing(id: string, worldRadius: number, color: string): March
   return { id, sprite, draw }
 }
 
+// the single NEW edge the "New connection" card adds — once approved it enters the graph as a
+// PROVISIONAL (under-review) link, drawn as a THICK dashed line via Line2 (the fat-line addon, so it
+// isn't capped at ~1px like THREE.Line). The supporting edges are left as ordinary grey arrows.
+const NEW_EDGE_KEYS = new Set(['BFP-S0>DT-WELD-NDT'])
+// the other two edges into / out of weld NDT are PROPOSED (so they'd default to the solid-red proposed
+// styling) but they aren't new knowledge — keep them as plain grey lines (no red, no particles).
+const SUPPORT_EDGE_KEYS = new Set(['SYM-001>DT-WELD-NDT', 'DT-WELD-NDT>RC-CASING-CRACK'])
+
 export function KGForce3D() {
   const hostRef = useRef<HTMLDivElement>(null)
   const graphRef = useRef<InstanceType<typeof ForceGraph3D> | null>(null)
@@ -131,12 +156,15 @@ export function KGForce3D() {
   const reweightAppliedRef = useRef(false)              // re-weight stays lit on the graph once approved
   const connectionAppliedRef = useRef(false)            // the one new connection (temp spike → weld NDT) shows once approved
   const idleSpinTimerRef = useRef(0) // resume idle auto-rotate ~3s after the user stops interacting
+  const bfpFocusRef = useRef(false) // while zoomed into BFP (the Run), dim every non-BFP node/edge back
+  const dashMatsRef = useRef<LineMaterial[]>([]) // fat dashed-line materials; their resolution is kept in sync on resize
 
   // persistent node/link objects (reused across graphData() calls so positions + physics survive)
   const allNodesRef = useRef<GNode[]>([])
   const allLinksRef = useRef<GLink[]>([])
   const baseIdsRef = useRef<Set<string>>(new Set())
 
+  const started = useDemo((s) => s.started)
   const committedNodes = useDemo((s) => s.committedNodes)
   const flashPulse = useDemo((s) => s.flashPulse)
   const hoverHighlight = useDemo((s) => s.hoverHighlight)
@@ -185,6 +213,7 @@ export function KGForce3D() {
       .linkColor(linkColor)
       .linkThreeObjectExtend(true)
       .linkThreeObject(linkThreeObject as (o: LinkObject) => THREE.Object3D)
+      .linkPositionUpdate(linkPositionUpdate as never)
       .linkWidth(linkWidth)
       .linkOpacity(0.92)
       .linkResolution(6)
@@ -236,11 +265,13 @@ export function KGForce3D() {
 
     rebuild()
     // pull the camera back so the whole clustered fleet is framed
-    Graph.cameraPosition({ z: 1150 })
+    Graph.cameraPosition({ z: 1650 })
 
     const ro = new ResizeObserver(() => {
       if (!hostRef.current) return
-      Graph.width(hostRef.current.clientWidth).height(hostRef.current.clientHeight)
+      const w = hostRef.current.clientWidth, h = hostRef.current.clientHeight
+      Graph.width(w).height(h)
+      dashMatsRef.current.forEach((m) => m.resolution.set(w, h)) // fat dashed lines need the live viewport size
     })
     ro.observe(host)
 
@@ -267,6 +298,37 @@ export function KGForce3D() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // ── "once it starts": on Run, fly the camera in to softly frame the BFP region (centre cluster),
+  // and let the idle orbit continue around it. On reset, pull back to the full-fleet framing. Beats
+  // that fire later (commit / re-weight / new-connection) still override this with their own fly-to.
+  useEffect(() => {
+    const G = graphRef.current
+    if (!G) return
+    zoomTimersRef.current.forEach(clearTimeout)
+    zoomTimersRef.current = []
+    clearTimeout(idleSpinTimerRef.current)
+    const controls = G.controls() as { autoRotate?: boolean }
+    if (!started) {
+      bfpFocusRef.current = false // restore full-fleet colour
+      G.nodeColor(G.nodeColor()).linkColor(G.linkColor())
+      if (controls) controls.autoRotate = true
+      G.cameraPosition({ x: 0, y: 0, z: 1650 }, { x: 0, y: 0, z: 0 }, 1400)
+      return
+    }
+    // mirror the working commit fly-in: pause the orbit, then fire ONE fly-to from a clean async tick
+    // (not synchronously mid-commit) over the BFP focus nodes' live positions. Resume the gentle
+    // orbit once the push-in settles. As the push-in lands, dim every non-BFP node/edge back so the
+    // surrounding fleet stops crossing in front of the BFP region while it spins.
+    if (controls) controls.autoRotate = false
+    zoomTimersRef.current = [window.setTimeout(() => {
+      flyToNodes(['SYM-001', 'BFP-3A', 'BFP-1A', 'BFP-3B'], BFP_START_STANDOFF)
+      bfpFocusRef.current = true
+      G.nodeColor(G.nodeColor()).linkColor(G.linkColor())
+      idleSpinTimerRef.current = window.setTimeout(() => { if (controls) controls.autoRotate = true }, 1900)
+    }, 700)]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [started])
 
   // ── amber flash: each graph-imperfection beat (re-weight + the 2 gaps) pulses a node/edge amber
   // for ~1s then reverts (the re-weight edge also surfaces its "0.88 → 0.70" label during the flash).
@@ -315,7 +377,7 @@ export function KGForce3D() {
     const controls = G.controls() as { autoRotate?: boolean }
     if (!reweightApplied) {
       if (controls) controls.autoRotate = true
-      G.cameraPosition({ x: 0, y: 0, z: 1150 }, { x: 0, y: 0, z: 0 }, 1400)
+      G.cameraPosition({ x: 0, y: 0, z: 1650 }, { x: 0, y: 0, z: 0 }, 1400)
       return
     }
     if (controls) controls.autoRotate = false
@@ -336,7 +398,7 @@ export function KGForce3D() {
     if (!connectionApplied) {
       // reset / not-yet-approved → resume the idle orbit and pull back to the full-fleet framing
       if (controls) controls.autoRotate = true
-      G.cameraPosition({ x: 0, y: 0, z: 1150 }, { x: 0, y: 0, z: 0 }, 1400)
+      G.cameraPosition({ x: 0, y: 0, z: 1650 }, { x: 0, y: 0, z: 0 }, 1400)
       return
     }
     if (controls) controls.autoRotate = false
@@ -352,7 +414,7 @@ export function KGForce3D() {
     litGreenEdgesRef.current = new Set(litGreenEdges)
     litFuchsiaEdgesRef.current = new Set(litFuchsiaEdges)
     const G = graphRef.current
-    if (G) G.nodeColor(G.nodeColor()).linkColor(G.linkColor()).linkWidth(G.linkWidth()).linkDirectionalArrowLength(G.linkDirectionalArrowLength())
+    if (G) G.nodeColor(G.nodeColor()).linkColor(G.linkColor()).linkWidth(G.linkWidth()).linkDirectionalArrowLength(G.linkDirectionalArrowLength()).linkThreeObject(G.linkThreeObject())
   }, [litNodes, litEdges, litGreenEdges, litFuchsiaEdges])
 
   // ── per-node commit growth: grow each approved proposed node/link into the live graph ──
@@ -367,16 +429,16 @@ export function KGForce3D() {
     if (!G) return
     rebuild()
 
+    // No commits → the [started] effect owns the camera (fleet view on reset, BFP zoom on Run). Do
+    // NOT clear its zoom timer or re-frame here: start() hands us a fresh empty `committedNodes`
+    // array on every Run, which re-runs this effect — and the old reset-to-fleet branch was clobbering
+    // the just-scheduled Run zoom every time (the "Run the week does nothing" bug).
+    if (committedNodes.length === 0) return
+
     zoomTimersRef.current.forEach(clearTimeout)
     zoomTimersRef.current = []
     clearTimeout(idleSpinTimerRef.current) // don't let a pending idle-resume re-spin the held frame
     const controls = G.controls() as { autoRotate?: boolean }
-
-    if (committedNodes.length === 0) {
-      if (controls) controls.autoRotate = true
-      G.cameraPosition({ x: 0, y: 0, z: 1150 }, { x: 0, y: 0, z: 0 }, 1400)
-      return
-    }
     if (controls) controls.autoRotate = false
     // single fly, after the node has settled so the target isn't moving under the camera
     zoomTimersRef.current = [window.setTimeout(flyToCommitted, 1400)]
@@ -387,7 +449,7 @@ export function KGForce3D() {
   function flyToCommitted() { flyToNodes([...committedRef.current]) }
 
   // fly the camera to centre-frame a given set of node ids (averaged live positions)
-  function flyToNodes(ids: string[]) {
+  function flyToNodes(ids: string[], standoff = COMMIT_STANDOFF) {
     const G = graphRef.current
     if (!G) return
     const idset = new Set(ids)
@@ -396,7 +458,7 @@ export function KGForce3D() {
     let cx = 0, cy = 0, cz = 0
     for (const n of nodes) { cx += n.x ?? 0; cy += n.y ?? 0; cz += n.z ?? 0 }
     cx /= nodes.length; cy /= nodes.length; cz /= nodes.length
-    G.cameraPosition({ x: cx, y: cy, z: cz + COMMIT_STANDOFF }, { x: cx, y: cy, z: cz }, 1800)
+    G.cameraPosition({ x: cx, y: cy, z: cz + standoff }, { x: cx, y: cy, z: cz }, 1800)
   }
 
   // recompute the visible subset = base fleet + approved proposed nodes (+ edges with both ends shown)
@@ -447,15 +509,41 @@ export function KGForce3D() {
     return undefined
   }
   // v2 #4 — the "0.88 → 0.70" sprite label, surfaced on the re-weight edge only during its amber flash
+  // a thick dashed Line2 (fat-line addon) for the new provisional link; endpoints are filled in each
+  // frame by linkPositionUpdate. worldUnits → linewidth/dash sizes scale with the scene like the tubes.
+  function makeDashedLine(color: string): Line2 {
+    const geom = new LineGeometry()
+    geom.setPositions([0, 0, 0, 0, 0, 0])
+    const mat = new LineMaterial({ color, linewidth: 4, dashed: true, dashSize: 10, gapSize: 7, worldUnits: true, transparent: true, depthWrite: false })
+    mat.resolution.set(hostRef.current?.clientWidth ?? 1, hostRef.current?.clientHeight ?? 1)
+    dashMatsRef.current.push(mat)
+    const line = new Line2(geom, mat)
+    line.userData.dashed = true
+    line.frustumCulled = false // 2-point geometry → unreliable bounding sphere; never cull it
+    return line
+  }
   function linkThreeObject(o: LinkObject): THREE.Object3D | undefined {
     const l = o as unknown as GLink
+    // the new connection → a thick cyan dashed provisional line
+    if (connectionAppliedRef.current && isNewEdge(l)) return makeDashedLine('#06b6d4')
     if (!isReweightEdge(l)) return undefined
     if (!isFlashEdge(l) && !reweightAppliedRef.current) return undefined // show during the flash OR once applied
     return makeLabelSprite('0.75 → 0.90', 9, '#A21CAF', true)
   }
+  // position the dashed connection line between its endpoints each frame (return true → skip the lib's
+  // default centring); every other custom link object falls through to the default positioning.
+  function linkPositionUpdate(obj: THREE.Object3D | undefined, c: { start: { x: number; y: number; z: number }; end: { x: number; y: number; z: number } }): boolean | void {
+    if (!obj?.userData?.dashed) return
+    const line = obj as Line2
+    line.geometry.setPositions([c.start.x, c.start.y, c.start.z, c.end.x, c.end.y, c.end.z])
+    line.computeLineDistances()
+    return true
+  }
 
   function nodeColor(o: NodeObject): string {
     const n = o as unknown as GNode
+    // while zoomed into BFP, fade every non-BFP node back so it stops crossing in front of the region
+    if (bfpFocusRef.current && n.cluster !== 'BFP') return 'rgba(148,163,184,0.07)'
     // Nodes keep their own colour at all times (highlighting happens on the EDGES only). Colour by
     // node LABEL (maps to legend): AssetClass slate · Machine green · Symptom amber · DiagnosticTest
     // blue · RootCause red · Inconclusive violet.
@@ -495,36 +583,60 @@ export function KGForce3D() {
   // edge classification — drives a clear visual hierarchy so connections read as concrete:
   //   proposed (new red) > focus diagnostic tree > region-internal > cross-region
   const isFocus = (l: GLink) => !l.context && !l.cross && !l.loose // the SYM-001 diagnostic-tree edges
+  // the new-connection card's NEW edge — once approved (connectionApplied) it renders as a thick dashed
+  // provisional line (the supporting edges are left untouched as ordinary grey arrows)
+  const isNewEdge = (l: GLink) => {
+    const s = linkEnd(l.source), t = linkEnd(l.target)
+    return NEW_EDGE_KEYS.has(`${s}>${t}`) || NEW_EDGE_KEYS.has(`${t}>${s}`)
+  }
+  const isSupportEdge = (l: GLink) => {
+    const s = linkEnd(l.source), t = linkEnd(l.target)
+    return SUPPORT_EDGE_KEYS.has(`${s}>${t}`) || SUPPORT_EDGE_KEYS.has(`${t}>${s}`)
+  }
+  // a link counts as BFP-internal only if BOTH endpoints live in the BFP cluster (used by the focus dim)
+  const clusterOf = (e: string | GNode): string | undefined =>
+    typeof e === 'object' ? e.cluster : allNodesRef.current.find((n) => n.id === e)?.cluster
+  const isBfpLink = (l: GLink) => clusterOf(l.source) === 'BFP' && clusterOf(l.target) === 'BFP'
 
   function linkColor(o: LinkObject): string {
     const l = o as unknown as GLink
+    // the new connection is drawn by its dashed Line2 (linkThreeObject) → hide the default solid line
+    if (connectionAppliedRef.current && isNewEdge(l)) return 'rgba(0,0,0,0)'
     if (isFlashEdge(l)) return 'rgba(245,158,11,1)' // amber flash (~1s, gap/re-weight beat)
     if (isHoverEdge(l)) return hoverColorRef.current // hovered card → highlight colour (above proposed)
     if (isLitGreenEdge(l)) return 'rgba(6,182,212,1)'   // new connection → cyan
     if (isLitFuchsiaEdge(l) || (isReweightEdge(l) && reweightAppliedRef.current)) return 'rgba(192,38,211,1)' // re-weight → fuchsia
     if (isLitEdge(l)) return 'rgba(245,158,11,1)'       // supporting links → amber
+    if (isSupportEdge(l)) return 'rgba(100,116,139,0.55)' // weld-NDT supporting links → plain grey (not proposed-red)
     if (l._proposed) return 'rgba(220,38,38,0.9)'       // newly committed knowledge → solid red
+    // while zoomed into BFP, fade any edge touching a non-BFP node right back (matches the node dim)
+    if (bfpFocusRef.current && !isBfpLink(l)) return 'rgba(100,116,139,0.04)'
     // when a hover is active, dim every non-highlighted connector back so the path stands out
     return hoverEdgesRef.current.size > 0 ? 'rgba(100,116,139,0.16)' : 'rgba(100,116,139,0.55)'
   }
   function linkWidth(o: LinkObject): number {
     const l = o as unknown as GLink
+    if (connectionAppliedRef.current && isNewEdge(l)) return 0 // drawn as a thick dashed Line2 instead
     if (isFlashEdge(l)) return 3.2 // amber flash — briefly emphasised
     if (isHoverEdge(l)) return 3.4 // hovered card path — emphasised
     if (isReweightEdge(l) && reweightAppliedRef.current) return 3.2 // re-weight stays emphasised after approval
     if (isLitGreenEdge(l) || isLitFuchsiaEdge(l)) return 3.2 // new connection / re-weight → emphasised
     if (isLitEdge(l)) return 3.2                        // stays emphasised after a New-Knowledge confirm
+    if (isSupportEdge(l)) return 1.1                    // weld-NDT supporting links → plain fleet weight
     if (l._proposed) return 2.4
     return 1.1                                          // every connector (focus + all fleet) → same weight
   }
   // arrows on the directed diagnostic tree + active paths + hovered card edges (fleet edges stay plain)
   function arrowLen(o: LinkObject): number {
     const l = o as unknown as GLink
+    if (connectionAppliedRef.current && isNewEdge(l)) return 0 // no arrowhead on the dashed provisional link
     return l._proposed || isFocus(l) || isHoverEdge(l) ? 4 : 0
   }
   // flowing particles only on the newly committed paths so they feel alive without cluttering the fleet
   function particleCount(o: LinkObject): number {
     const l = o as unknown as GLink
+    if (connectionAppliedRef.current && isNewEdge(l)) return 0 // dashed provisional line → no travelling dots
+    if (isSupportEdge(l)) return 0 // no flowing particles on the plain-grey supporting links
     if (l._proposed) return 2
     return 0
   }
@@ -548,10 +660,7 @@ export function KGForce3D() {
           <>
             <div className="kg3-legend-sep" />
             {connectionApplied && (
-              <>
-                <div className="kg3-legend-row"><span className="kg3-legend-bar" style={{ background: 'rgb(6,182,212)' }} />New edge</div>
-                <div className="kg3-legend-row"><span className="kg3-legend-bar" style={{ background: 'rgb(245,158,11)' }} />Supporting link</div>
-              </>
+              <div className="kg3-legend-row"><span className="kg3-legend-bar" style={{ background: 'rgb(6,182,212)' }} />New edge</div>
             )}
             {reweightApplied && (
               <div className="kg3-legend-row"><span className="kg3-legend-bar" style={{ background: 'rgb(192,38,211)' }} />Updated edge</div>

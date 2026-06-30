@@ -344,6 +344,13 @@ label.p-nk-change { display: flex; align-items: center; gap: 7px; font-size: 12p
 .p-nk-pathdown { color: var(--amber); font-weight: 800; font-size: 20px; line-height: 1; margin-left: 2px; }
 .p-nk-pathup { color: var(--green); font-weight: 800; font-size: 20px; line-height: 1; margin-left: 2px; }
 .p-nk-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--slate); }
+/* recurrence count chip + tally (threshold-triggered re-weight) */
+.p-nk-count { margin-left: auto; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: #B45309; background: #FEF3C7; border: 1px solid #FCD34D; padding: 2px 8px; border-radius: 999px; }
+.p-nk-count + .p-nk-status { margin-left: 6px; }
+.p-nk-tally { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin: 8px 0 2px; }
+.p-nk-tally-dot { width: 9px; height: 9px; border-radius: 50%; background: #E5E7EB; transition: background 130ms ease-out, box-shadow 130ms ease-out, transform 130ms ease-out; }
+.p-nk-tally-dot[data-on="true"] { background: var(--amber); box-shadow: 0 0 4px rgba(245, 158, 11, 0.55); transform: scale(1.12); }
+.p-nk-tally-label { font-size: 10px; font-weight: 700; color: #B45309; margin-left: 4px; }
 .p-nk-status { margin-left: auto; font-size: 10px; font-weight: 600; color: var(--slate); }
 .p-nk-status[data-decision="approved"] { color: var(--green); }
 .p-nk-status[data-decision="rejected"] { color: #64748B; }

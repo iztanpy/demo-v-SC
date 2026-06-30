@@ -298,14 +298,16 @@ const INCIDENT = {
 const CASING_CRACK_RATIONALE = [
   { text: 'Discharge-weld-toe fatigue signature — matches the resolved JRG-CCGT-1 BFP-3A casing crack (INC-2026-0537)',
     strength: 'met',     badgeLabel: 'fully met' },
-  { text: 'Weld-NDT (dye-penetrant) confirmation step now part of the BFP vibration SOP after that case',
-    strength: 'met',     badgeLabel: 'fully met' },
   { text: 'NDE bearing vibration + temperature rise consistent with secondary damage from a propagating casing crack',
     strength: 'met',     badgeLabel: 'fully met' },
-  { text: '1×RPM dominance present — bearing-spalling look-alike now correctly de-prioritised',
-    strength: 'partial', badgeLabel: 'partially met' },
-  { text: 'Cyclic discharge-pressure loading on the Block 2 BFP volute — fatigue-conducive duty',
-    strength: 'partial', badgeLabel: 'partially met' },
+];
+
+// ── Part 3 — machine-specific history pulled from the Knowledge Graph. Asset age + a logged
+// discharge-weld repair push the diagnosis toward weld-toe fatigue (casing crack). The KG payoff:
+// reasoning isn't just the live signal — it's this machine's record. Figures illustrative. ──
+const CASING_CRACK_MACHINE_HISTORY = [
+  { fact: 'Commissioned 2009 · ~17 yr in service — long-term fatigue accumulation', source: 'asset master record' },
+  { fact: 'Discharge-nozzle weld repair logged 2018 — known weld-toe stress riser at the crack location', source: 'maintenance history' },
 ];
 
 // ── Part 3 incident — same vibration readings, weeks later, sister unit (BFP-2B). The graph has
@@ -325,7 +327,7 @@ const ACT3_INCIDENT = {
   options: [
     { id: 'casing-crack', name: 'Pump casing crack / weld-toe fatigue', conf: 91, recommended: true,
       rationale: 'Discharge weld-toe fatigue — same failure mode the system confirmed on JRG-CCGT-1 BFP-3A (INC-2026-0537); weld-NDT step now standard',
-      details: CASING_CRACK_RATIONALE, detailLabel: 'Full reasoning' },
+      details: CASING_CRACK_RATIONALE, machineHistory: CASING_CRACK_MACHINE_HISTORY, detailLabel: 'Full reasoning' },
     { id: 'shaft-misalign', name: 'Shaft misalignment', conf: 77, recommended: false,
       rationale: 'Elevated 2×RPM + ~180° NDE-DE phase shift — misalignment signature · down-weighted after the prior over-weight was corrected',
       details: SHAFT_MISALIGN_RATIONALE, detailLabel: 'Full reasoning' },
@@ -948,10 +950,10 @@ function renderOpsIncidentDetail(root) {
     paintActionStepsComplete(actionSlot);
     setTimeout(appendDispatchCaptureFooter, 200);
   } else if (state.part3) {
-    // Part 3 — the AI re-analysed after learning and now recommends casing crack. Play the same
-    // 2-stage agent loading theater as the initial triage, then STOP at the diagnosis (the
-    // re-entry action-steps branch is gated on diagnosisConfirmed, false on a fresh switch).
-    startScreenDRevealW39(summarySlot, actionSlot);
+    // Part 3 — the AI re-analysed after learning and now recommends casing crack. Skip the full
+    // 2-stage triage theater; show a brief "re-analysing with learned patterns" pulse, then paint
+    // the diagnosis and STOP there (action-steps branch is gated on diagnosisConfirmed = false).
+    startPart3QuickReveal(summarySlot);
   } else {
     // First open or in-progress — kick off the 2-stage reveal; Action Steps now gated on Confirm click.
     startScreenDRevealW39(summarySlot, actionSlot);
@@ -1025,6 +1027,24 @@ function startScreenDRevealW39(summarySlot, actionSlot) {
   // Action Steps gated on Confirm click → onInitialDiagnosisConfirmClick → spawnSOPRelevantNextBestActions.
 }
 
+// Part 3 quick reveal — brief (~1.5s) "re-analysing with learned patterns" pulse, then paint the
+// diagnosis. No full triage theater; the switch reads as a fast A/B on the same readings.
+function startPart3QuickReveal(summarySlot) {
+  summarySlot.innerHTML = `
+    <div class="reveal-pending" data-stage="summary">
+      <div class="reveal-dots"><span></span><span></span><span></span></div>
+      <div class="reveal-msg">
+        <span class="reveal-agent">Equipment Diagnostic Agent</span> ·
+        Re-analysing with learned patterns
+      </div>
+    </div>`;
+  fireAgentCardsParallel(['inspection', 'triage', 'critic-power-gen'], 1500);
+  // Fixed ~1.5s (NOT dotsMs-scaled — dotsSpeed 0.25 would shrink it to 375ms). Registered in
+  // revealTimers so cancelInProgressReveal() clears it if the switch is flipped again mid-pulse.
+  const h = setTimeout(() => paintSummaryComplete(summarySlot), 1500);
+  state.revealTimers.push(h);
+}
+
 // W19 — diagnosis options: primary (recommended) + 3 alternates, each w/ confidence + rationale + dropdown rows.
 // W40 — name of the diagnosis Faye actually captured (may differ from the AI recommendation after override).
 function capturedDiagnosisName() {
@@ -1060,6 +1080,23 @@ function buildRationaleRows(details) {
   `).join('');
 }
 
+// Part 3 — machine-specific history block inside the Full reasoning dropdown. Each row is a fact +
+// its Knowledge-Graph source, showing the diagnosis is grounded in this machine's record, not just
+// the live signal.
+function buildMachineHistory(items) {
+  if (!items || !items.length) return '';
+  const rows = items.map(m => `
+    <div class="sr-mh-row">
+      <span class="sr-mh-fact">${m.fact}</span>
+      <span class="sr-mh-src">↳ ${m.source}</span>
+    </div>`).join('');
+  return `
+    <div class="sr-machine-history">
+      <div class="sr-mh-head"><span class="sr-mh-ic">⧉</span> Machine history · Knowledge Graph</div>
+      ${rows}
+    </div>`;
+}
+
 function paintSummaryComplete(summarySlot) {
   // W19 — heading "Initial Diagnosis" now lists ALL options (recommended + alternates) w/ confidence + rationale.
   // User picks one (default = recommended); Confirm captures the choice. Primary keeps the detailed rationale dropdown.
@@ -1087,6 +1124,7 @@ function paintSummaryComplete(summarySlot) {
           </button>
           <div class="sr-rationale-list" style="display:none">
             ${buildRationaleRows(o.details)}
+            ${buildMachineHistory(o.machineHistory)}
           </div>
         </div>` : ''}
       </div>
@@ -3303,8 +3341,8 @@ function wireSOPSuggestDialogue() {
     ta.addEventListener('input', sync);
     const fill = () => typewriterFill(ta, 'Unexpected temperature rise not consistent with bearing issue', {
       onComplete: () => showSensorClarifier(ta, {
-        msg: 'Your rationale is sparse. Attach the onsite readings that triggered the deviation — dial-indicator runout 0.18 mm TIR at shaft mid-span (limit 0.05 mm), NDE bearing housing temp 71°C vs 55°C baseline; 1×RPM + ~180° phase = bent-shaft signature, not bearing spalling. Add the readings?',
-        append: 'Dial-indicator runout 0.18 mm TIR at shaft mid-span (limit 0.05 mm); NDE bearing housing temp 71°C vs 55°C baseline; 1×RPM dominant + ~180° NDE–DE phase shift = bent-shaft signature, not bearing spalling.',
+        msg: 'Your rationale is sparse. Attach the onsite readings that triggered the deviation — dial-indicator runout 0.18 mm TIR at shaft mid-span (limit 0.05 mm), NDE bearing housing temp 71°C vs 55°C baseline; 1×RPM + ~180° phase = not bearing spalling. Add the readings?',
+        append: 'Dial-indicator runout 0.18 mm TIR at shaft mid-span (limit 0.05 mm); NDE bearing housing temp 71°C vs 55°C baseline; 1×RPM dominant + ~180° NDE–DE phase shift = not bearing spalling.',
       }),
     });
     ta.addEventListener('focus', fill);
@@ -3363,26 +3401,19 @@ function showSensorClarifier(textarea, cfg) {
   box.querySelector('.scl-dismiss').addEventListener('click', () => box.remove());
   box.querySelector('.scl-accept').addEventListener('click', () => {
     box.remove();
-    typewriterAppend(textarea, cfg.append);
+    appendReadings(textarea, cfg.append);
   });
 }
 
-// Append precise readings to an existing note char-by-char, firing input events so wired
-// listeners (state capture, Confirm/Call gating) update live. Bypasses typewriterFill's once-guard.
-function typewriterAppend(textarea, addition) {
+// Append precise readings to an existing note in full, firing an input event so wired
+// listeners (state capture, Confirm/Call gating) update.
+function appendReadings(textarea, addition) {
   if (!textarea) return;
   const base = textarea.value.replace(/\s+$/, '');
   const sep = base ? (/[.;:!?]$/.test(base) ? ' ' : '. ') : '';
-  const full = base + sep + addition;
-  let i = (base + sep).length;
-  const tick = () => {
-    i++;
-    textarea.value = full.slice(0, i);
-    textarea.dispatchEvent(new Event('input', { bubbles: true }));
-    textarea.scrollTop = textarea.scrollHeight;
-    if (i < full.length) setTimeout(tick, 22);
-  };
-  tick();
+  textarea.value = base + sep + addition;
+  textarea.dispatchEvent(new Event('input', { bubbles: true }));
+  textarea.scrollTop = textarea.scrollHeight;
 }
 
 function onSOPSuggestCallClick() {

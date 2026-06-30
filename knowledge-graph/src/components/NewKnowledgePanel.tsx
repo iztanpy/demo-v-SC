@@ -32,28 +32,31 @@ interface NkCardDef {
   path?: { text: string; color: string; sep?: string }[]
   /** show a trailing trend arrow after the path — 'up' (green, confidence ↑) or 'down' (amber, ↓) */
   trend?: 'up' | 'down'
+  /** recurrence tally for a threshold-triggered re-weight (count chip + N-dot tally) */
+  recurrence?: { label: string; count: number; total: number }
 }
 
 const CARDS: NkCardDef[] = [
   {
     id: 'nk-reweight', kind: 'reweight', glyph: '~', badge: 'Re-weight',
     title: 'Update AI confidence scoring',
-    detail: '7/10 prior incidents with similar initial readings were caused by bearing spalling',
-    provenance: 'Suggested from Faye’s rationale (alternative diagnosis on specific vibration readings)',
+    detail: 'Edge weight raised 0.75 → 0.90',
+    provenance: 'Most recent 10 incidents with similar initial conditions were caused by bearing spalling',
     sop: ['SOP CHECK', 'SAFETY CHECK'],
-    approvedMsg: 'Confidence increased on the bearing-spalling link.',
-    rejectedMsg: 'Declined — confidence held pending more fleet cases.',
+    approvedMsg: 'Edge weight raised to 0.90 — recurrence threshold confirmed.',
+    rejectedMsg: 'Declined — weight held despite the recurrence.',
     hi: { nodes: ['SYM-001', 'DT-HOUSING-INSPECT', 'RC-BEARING-SPALL'], edges: ['SYM-001>DT-HOUSING-INSPECT', 'DT-HOUSING-INSPECT>RC-BEARING-SPALL'] },
     path: [{ text: 'High bearing vib.', color: NODE_COLORS.Symptom }, { text: 'Bearing spalling', color: NODE_COLORS.RootCause }],
     trend: 'up',
+    recurrence: { label: '10th case', count: 10, total: 10 },
   },
   {
     id: 'nk-connection', kind: 'add-edge', glyph: '+', badge: 'New connection',
     title: 'High bearing temp → weld NDT',
     detail: 'High temp. and vib. readings signal a casing crack',
-    provenance: 'INC-0537 onsite — the temp spike preceded the off-path weld NDT that found the crack',
+    provenance: 'Temp rise during works suggested weld NDT to identify root cause',
     sop: ['SOP CHECK', 'SAFETY CHECK'],
-    approvedMsg: 'Connection committed — temp spike now routes to the weld-NDT / casing-crack path.',
+    approvedMsg: 'Submitted for review — added as a provisional (dashed) link pending fleet validation.',
     rejectedMsg: 'Declined — connection not added.',
     hi: { nodes: ['BFP-S0', 'SYM-001', 'DT-WELD-NDT', 'RC-CASING-CRACK'], edges: ['BFP-S0>DT-WELD-NDT', 'SYM-001>DT-WELD-NDT', 'DT-WELD-NDT>RC-CASING-CRACK'] },
     path: [{ text: 'High bearing temp', color: NODE_COLORS.Symptom, sep: '+' }, { text: 'High bearing vib.', color: NODE_COLORS.Symptom }, { text: 'Weld NDT', color: NODE_COLORS.DiagnosticTest }],
@@ -70,6 +73,7 @@ function NkCard({ card, startDelay, decision, onApprove, onReject, runId }: {
 }) {
   const [stage, setStage] = useState<'idle' | 'checking' | 'passed'>('idle')
   const [checked, setChecked] = useState(0)
+  const [lit, setLit] = useState(0) // recurrence dots fill one-by-one in a quick burst
 
   useEffect(() => {
     setStage('idle'); setChecked(0)
@@ -82,6 +86,18 @@ function NkCard({ card, startDelay, decision, onApprove, onReject, runId }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runId])
 
+  // recurrence tally: light the dots up in quick succession once the card appears
+  useEffect(() => {
+    if (!card.recurrence) return
+    setLit(0)
+    const { total } = card.recurrence
+    const dot = 55 * SPEED // per-dot stagger — fast cascade
+    const timers = Array.from({ length: total }, (_, i) =>
+      window.setTimeout(() => setLit(i + 1), startDelay + dot * (i + 1)))
+    return () => timers.forEach(clearTimeout)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runId])
+
   const decided = decision !== 'pending'
 
   return (
@@ -89,10 +105,19 @@ function NkCard({ card, startDelay, decision, onApprove, onReject, runId }: {
       <div className="p-nk-card-head">
         <span className="p-nk-glyph" data-kind={card.kind}>{card.glyph}</span>
         <span className="p-nk-badge" data-kind={card.kind}>{card.badge}</span>
+        {card.recurrence && <span className="p-nk-count">{card.recurrence.label}</span>}
         <span className="p-nk-status" data-decision={decision}>
-          {decision === 'approved' ? 'approved ✓' : decision === 'rejected' ? 'rejected ✕' : stage === 'passed' ? 'awaiting sign-off' : 'validating…'}
+          {decision === 'approved' ? (card.kind === 'add-edge' ? 'under review' : 'approved ✓') : decision === 'rejected' ? 'rejected ✕' : stage === 'passed' ? 'awaiting sign-off' : 'validating…'}
         </span>
       </div>
+      {card.recurrence && (
+        <div className="p-nk-tally">
+          {Array.from({ length: card.recurrence.total }).map((_, i) => (
+            <span key={i} className="p-nk-tally-dot" data-on={i < lit} />
+          ))}
+          <span className="p-nk-tally-label">10th occurrence, threshold hit</span>
+        </div>
+      )}
       {card.path ? (
         <div className="p-nk-path">
           {card.path.map((p, i) => (
@@ -125,7 +150,7 @@ function NkCard({ card, startDelay, decision, onApprove, onReject, runId }: {
       {!decided && stage === 'passed' && (
         <div className="p-nk-actions">
           <button className="p-nk-btn p-nk-reject" onClick={onReject}>Reject</button>
-          <button className="p-nk-btn p-nk-approve2" onClick={onApprove}>Approve &amp; commit</button>
+          <button className="p-nk-btn p-nk-approve2" onClick={onApprove}>{card.kind === 'add-edge' ? 'Submit for review' : 'Approve & commit'}</button>
         </div>
       )}
       {decided && (
@@ -149,7 +174,6 @@ export function NewKnowledgePanel() {
   const setConnectionApplied = useDemo((s) => s.setConnectionApplied)
   const setReweight = useDemo((s) => s.setReweight)
   const setReweightApplied = useDemo((s) => s.setReweightApplied)
-  const addLit = useDemo((s) => s.addLit)
   const addLitGreen = useDemo((s) => s.addLitGreen)
   const addLitFuchsia = useDemo((s) => s.addLitFuchsia)
 
@@ -163,8 +187,9 @@ export function NewKnowledgePanel() {
     if (d === 'approved') {
       // light the WHOLE flow FUCHSIA: high bearing vib → housing inspect → bearing spalling (edges only)
       if (card.id === 'nk-reweight') { setReweightApplied(true); addLitFuchsia(['SYM-001>DT-HOUSING-INSPECT', 'DT-HOUSING-INSPECT>RC-BEARING-SPALL']) }
-      // reveal: temp high → weld NDT lights GREEN (the headline new link); the other edges stay amber
-      else if (card.id === 'nk-connection') { setConnectionApplied(true); addLitGreen(['BFP-S0>DT-WELD-NDT']); addLit([], ['SYM-001>DT-WELD-NDT', 'DT-WELD-NDT>RC-CASING-CRACK']) }
+      // reveal the headline new link (BFP-S0 → weld NDT) as a thick dashed provisional edge; the
+      // supporting edges are NOT highlighted — they stay as ordinary grey arrows (they aren't new).
+      else if (card.id === 'nk-connection') { setConnectionApplied(true); addLitGreen(['BFP-S0>DT-WELD-NDT']) }
     } else if (d === 'rejected') {
       if (card.id === 'nk-reweight') setReweight(false) // withdraw the proposed re-weight; edge keeps 0.88
     }
@@ -183,7 +208,7 @@ export function NewKnowledgePanel() {
     <section className="p-panel p-newknow" data-active={run} data-folded={folded}>
       <header className="p-panel-head" onClick={() => toggleFold('nk')}>
         <span className="p-panel-num">3</span>
-        <span className="p-panel-title">New Knowledge</span>
+        <span className="p-panel-title">Updating knowledge graph</span>
         <span className="p-panel-sub">{run ? `human sign-off · ${decidedCount}/${CARDS.length}` : 'waiting'}</span>
         <span className="p-caret" data-open={expanded}>▾</span>
       </header>
