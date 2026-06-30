@@ -79,7 +79,7 @@ const CARDS: ResCard[] = [
   // (symptom, asset, first-line tests), one over-confident edge to re-weight, and the casing-crack
   // entities that have no home on the graph (the gaps that flow to New Knowledge).
   {
-    id: 'c-0537-rw', incident: 'INC-0537', chip: 'unmatched', chipKind: 'gap',
+    id: 'c-0537-rw', incident: 'INC-0537', chip: 'conflict', chipKind: 'gap',
     entities: [],
     compare: {
       caption: 'Vibration signature pointed to bearing issue',
@@ -94,9 +94,7 @@ const CARDS: ResCard[] = [
   {
     id: 'c-0537-sop', incident: 'INC-0537', chip: 'matched', chipKind: 'reaffirm',
     entities: [
-            { label: 'Safety', detail: 'safety steps match diagnosis, SOP and work order', status: 'match' },
-            { label: 'Workflow', detail: 'inspection steps match diagnosis, SOP and work order', status: 'match' },
-            { label: 'Deviation', detail: 'deviation due to increasing temperature, >70°C temp range', status: 'gap' }
+      { label: 'Diagnostic', detail: 'Weld NDT test used to confirm presence of casing crack; knowledge already present in knowledge graph', status: 'match' },
     ],
     matchedNodes: ['SYM-001', 'AC-BFP', 'DT-PHASE', 'DT-HOUSING-INSPECT'],
     hiEdges: ['SYM-001>AC-BFP', 'SYM-001>DT-PHASE', 'SYM-001>DT-HOUSING-INSPECT'],
@@ -104,11 +102,10 @@ const CARDS: ResCard[] = [
   {
     // Casing crack + weld-NDT already EXIST on the graph (matched). The single gap is the missing
     // CONNECTION from the temperature spike into that path.
-    id: 'c-0537-gap', incident: 'INC-0537', chip: 'unmatched', chipKind: 'gap',
+    id: 'c-0537-gap', incident: 'INC-0537', chip: 'conflict', chipKind: 'gap',
     entities: [
       { label: 'Test', detail: 'Weld NDT (dye-penetrant) test advised as a troubleshooting step ', status: 'match' },
       { label: 'Root cause', detail: 'Vibration and temperature readings pointed to casing crack', status: 'gap' },
-      { label: 'Impact', detail: 'Casing crack shutdown impact detailed in SOP', status: 'match' },
     ],
     sensors: 'NDE bearing temp 71°C rising · NDE vib RMS 8.4 mm/s',
     matchedNodes: ['RC-CASING-CRACK', 'DT-WELD-NDT', 'BFP-S0'],
@@ -116,8 +113,6 @@ const CARDS: ResCard[] = [
     gap: true,
   },
 ]
-
-const STATUS_GLYPH: Record<EntStatus, string> = { match: '✓', reweight: '~', gap: '⚠' }
 
 // hidden for now — flip to true to re-enable the dots flying from resolved cards toward the graph
 const SHOW_PARTICLES = false
@@ -294,11 +289,7 @@ export function ResolutionPanel() {
                   <span className="p-doc-entry" style={{ background: color }}>incident</span>
                   <span className="p-doc-incident" style={{ color }}>{inc.id}</span>
                   <span className="p-doc-docs">{working ? 'matching…' : focus ? `${revealed}/${cards.length}` : 'matched'}</span>
-                  {working
-                    ? <span className="p-doc-spin"><span className="p-dots"><span /><span /><span /></span></span>
-                    : hasFlag
-                      ? <span className="p-res-flag">⚠</span>
-                      : <span className="p-doc-tick">✓</span>}
+                  {working && <span className="p-doc-spin"><span className="p-dots"><span /><span /><span /></span></span>}
                   <span className="p-wf-caret" data-open={open}>▾</span>
                 </div>
 
@@ -319,13 +310,13 @@ export function ResolutionPanel() {
                             <div className="p-reveal"><span className="p-dots"><span /><span /><span /></span><span className="p-reveal-msg">resolving entities against the knowledge graph…</span></div>
                           ) : card.compare ? (
                             <div className="p-res-compare">
-                              <div className="p-res-compare-cap"><span className="p-res-cmp-gap">⚠</span>{card.compare.caption}</div>
+                              <div className="p-res-compare-cap">{card.compare.caption}</div>
                               {[{ ...card.compare.selected, on: true }, { ...card.compare.overruled, on: false }].map((d) => (
                                 <div key={d.name} className="p-res-cmp-row" data-selected={d.on}>
                                   <span className="p-res-cmp-dot" />
                                   <span className="p-res-cmp-chip">{d.name} · {d.conf}%</span>
                                   {'tag' in d && d.tag && <span className="p-res-cmp-tag">{d.tag}</span>}
-                                  <span className="p-res-cmp-verdict">{d.on ? '✓ selected' : '✕ overruled'}</span>
+                                  <span className="p-res-cmp-verdict">{d.on ? 'selected' : 'overruled'}</span>
                                 </div>
                               ))}
                             </div>
@@ -333,7 +324,6 @@ export function ResolutionPanel() {
                             <ul className="p-ent-list">
                               {card.entities.map((e, i) => (
                                 <li key={i} className="p-ent" data-status={e.status}>
-                                  <span className="p-ent-glyph" data-status={e.status}>{STATUS_GLYPH[e.status]}</span>
                                   <span className="p-ent-label">{e.label}</span>
                                   <span className="p-ent-detail">{e.detail}</span>
                                 </li>

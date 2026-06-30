@@ -13,7 +13,7 @@ import type { GraphNode, GraphEdge, NodeLabel } from '../types'
 export const VIEWBOX = { x: 1030, y: 120, w: 1490, h: 1010 }
 
 // Column x positions — the focus cluster sits to the RIGHT of the central AssetClass hub.
-export const COLS = { asset: 1150, symptom: 1430, l1: 1710, l2: 2000, cause: 2350 }
+export const COLS = { asset: 1150, symptom: 1430, l1: 1710, l2: 2000, l3: 2185, cause: 2380 }
 
 export const NODE_COLORS: Record<NodeLabel, string> = {
   AssetClass: '#64748B',     // slate — the equipment class
@@ -45,20 +45,25 @@ export const FOCUS_NODES: GraphNode[] = [
   // ── TEST LAYER 1 (triage, off the symptom) ──
   { id: 'DT-PHASE', label: 'DiagnosticTest', title: 'Phase / spectrum', x: COLS.l1, y: 360, tier: 'triage', props: { name: 'Vibration phase / spectrum analysis', layer: 'triage (first-line)', method: 'Compare NDE-DE phase and harmonic content', cost_band: 'low', required_certs: ['ISO 10816-7 Vibration Analysis'] } },
   { id: 'DT-HOUSING-INSPECT', label: 'DiagnosticTest', title: 'Housing inspect', x: COLS.l1, y: 680, tier: 'triage', props: { name: 'NDE bearing housing inspection', layer: 'triage (first-line)', method: 'Visual / borescope inspection of NDE bearing race', cost_band: 'low', required_certs: ['Sulzer BFP Maintenance'] } },
+  // widen: extra first-line condition-monitoring tests off the symptom
+  { id: 'DT-THERMOGRAPHY', label: 'DiagnosticTest', title: 'IR thermography', x: COLS.l1, y: 170, tier: 'triage', props: { name: 'Infrared thermography survey (NDE bearing housing)', layer: 'triage (first-line)', method: 'IR camera survey of bearing housing & coupling-guard hot-spots', cost_band: 'low', required_certs: ['Thermography Level 1'] } },
+  { id: 'DT-MCSA', label: 'DiagnosticTest', title: 'Motor current sig.', x: COLS.l1, y: 880, tier: 'triage', props: { name: 'Motor current signature analysis (MCSA)', layer: 'triage (first-line)', method: 'Stator-current spectrum for mechanical-fault sidebands', cost_band: 'low', required_certs: ['MCSA / Electrical Signature Analysis'] } },
 
   // ── TEST LAYER 2 (follow-up / confirmatory, smaller; reached via FOLLOW_UP) ──
   { id: 'DT-RUNOUT', label: 'DiagnosticTest', title: 'Shaft runout', x: COLS.l2, y: 210, tier: 'followup', props: { name: 'Dial-indicator shaft runout test', layer: 'follow-up (confirmatory)', method: 'Dial indicator on shaft, measure total indicated runout', cost_band: 'med', required_certs: ['Rotating Equipment Specialist', 'ISO 10816-7 Vibration Analysis'] } },
   { id: 'DT-ALIGNMENT', label: 'DiagnosticTest', title: 'Laser alignment', x: COLS.l2, y: 490, tier: 'followup', props: { name: 'Laser shaft alignment check', layer: 'follow-up (confirmatory)', method: 'Laser alignment of pump-driver coupling', cost_band: 'med', required_certs: ['Laser Alignment Certified', 'Rotating Equipment Specialist'] } },
   { id: 'DT-OIL-ANALYSIS', label: 'DiagnosticTest', title: 'Oil analysis', x: COLS.l2, y: 725, tier: 'followup', props: { name: 'Lubricant / oil debris analysis', layer: 'follow-up (confirmatory)', method: 'Sample bearing oil; ferrography + particle count', cost_band: 'med', required_certs: ['Lubrication Analysis Level 1'] } },
 
+  // ── TEST LAYER 3 (deepen: confirmatory tests that sit between layer-2 and the root causes) ──
+  { id: 'DT-ENVELOPE', label: 'DiagnosticTest', title: 'Envelope spectrum', x: COLS.l3, y: 600, tier: 'followup', props: { name: 'Envelope (demodulation) spectrum analysis', layer: 'confirmatory (layer 3)', method: 'High-frequency envelope spectrum for bearing defect frequencies (BPFO / BPFI / BSF)', cost_band: 'med', required_certs: ['ISO 18436-2 Cat II Vibration'] } },
+  { id: 'DT-ODS', label: 'DiagnosticTest', title: 'Deflection shape', x: COLS.l3, y: 300, tier: 'followup', props: { name: 'Operating deflection shape (ODS) study', layer: 'confirmatory (layer 3)', method: 'Multi-point phase-referenced ODS of the pump-driver train', cost_band: 'med', required_certs: ['ISO 18436-2 Cat III Vibration'] } },
+  { id: 'DT-LUBE-LAB', label: 'DiagnosticTest', title: 'Lube lab test', x: COLS.l3, y: 790, tier: 'followup', props: { name: 'Laboratory lubricant analysis', layer: 'confirmatory (layer 3)', method: 'Lab viscosity, water (Karl Fischer), particle count & ferrography', cost_band: 'med', required_certs: ['Lubrication Analysis Level II'] } },
+
   // ── ROOT CAUSES (LAST column) — each carries a `solution` remedy ──
   { id: 'RC-BENT-SHAFT', label: 'RootCause', title: 'Shaft misalignment', x: COLS.cause, y: 210, props: { name: 'Shaft misalignment', description: 'Pump-driver shaft misalignment driving elevated vibration and bearing load', solution: 'Laser-align pump-driver shaft to tolerance; correct soft foot; renew worn coupling element' } },
   { id: 'RC-MISALIGN', label: 'RootCause', title: 'Coupling misalignment', x: COLS.cause, y: 400, props: { name: 'Coupling misalignment', description: 'Pump-driver coupling misalignment driving 2×RPM vibration and bearing load', solution: 'Laser-align pump-driver coupling to tolerance; renew worn coupling element' } },
   { id: 'RC-BEARING-SPALL', label: 'RootCause', title: 'Bearing spalling', x: COLS.cause, y: 590, props: { name: 'Bearing race spalling', description: 'NDE bearing race surface fatigue / spalling', solution: 'Replace NDE bearing; verify lubrication & housing fit' } },
   { id: 'RC-LUBE-FAIL', label: 'RootCause', title: 'Lube failure', x: COLS.cause, y: 780, props: { name: 'Lubrication failure', description: 'Oil starvation / contamination degrading the NDE bearing', solution: 'Flush & replace lubricant; correct oil supply / cooler; fit breather' } },
-
-  // ── inconclusive sink — the second outcome of every confirmatory test ──
-  { id: 'NEEDS-INFO', label: 'Inconclusive', title: 'More info needed', x: 1850, y: 1050, props: { name: 'More information needed', description: 'Confirmatory test inconclusive — escalate for expert review / further data before committing a repair' } },
 
   // ── Casing-crack path — EXISTING knowledge (the SOP already knows casing crack + the weld NDT
   //    that confirms it). The week's new knowledge is a CONNECTION into this path, not these nodes. ──
@@ -75,11 +80,20 @@ export const FOCUS_EDGES: GraphEdge[] = [
   // symptom → layer-1 (triage) tests (cheap/decisive first)
   { source: 'SYM-001', target: 'DT-PHASE', type: 'TRIGGERS', order: 1, result: 'First-line: cheap, non-invasive, most discriminating' },
   { source: 'SYM-001', target: 'DT-HOUSING-INSPECT', type: 'TRIGGERS', order: 2, result: 'First-line visual / borescope of NDE bearing race' },
+  { source: 'SYM-001', target: 'DT-THERMOGRAPHY', type: 'TRIGGERS', order: 3, result: 'First-line: IR survey of NDE bearing housing for thermal rise' },
+  { source: 'SYM-001', target: 'DT-MCSA', type: 'TRIGGERS', order: 4, result: 'First-line: stator-current spectrum for mechanical-fault sidebands' },
 
   // FOLLOW_UP — single L1→L2 hop when a triage test isn't decisive on its own
   { source: 'DT-PHASE', target: 'DT-RUNOUT', type: 'FOLLOW_UP', result: 'Directional phase signature → confirm with shaft runout (TIR)' },
   { source: 'DT-PHASE', target: 'DT-ALIGNMENT', type: 'FOLLOW_UP', result: '2×RPM dominant → confirm with alignment check' },
   { source: 'DT-HOUSING-INSPECT', target: 'DT-OIL-ANALYSIS', type: 'FOLLOW_UP', result: 'No visible spalling → escalate to oil debris analysis' },
+
+  // FOLLOW_UP — deepen: layer-2 → layer-3 confirmatory hop when L2 isn't decisive on its own
+  { source: 'DT-HOUSING-INSPECT', target: 'DT-ENVELOPE', type: 'FOLLOW_UP', result: 'Surface marks ambiguous → demodulate bearing defect frequencies' },
+  { source: 'DT-OIL-ANALYSIS', target: 'DT-ENVELOPE', type: 'FOLLOW_UP', result: 'Ferrous debris found → corroborate with envelope spectrum' },
+  { source: 'DT-OIL-ANALYSIS', target: 'DT-LUBE-LAB', type: 'FOLLOW_UP', result: 'Field kit inconclusive → send sample for lab analysis' },
+  { source: 'DT-RUNOUT', target: 'DT-ODS', type: 'FOLLOW_UP', result: 'TIR borderline → map operating deflection shape' },
+  { source: 'DT-ALIGNMENT', target: 'DT-ODS', type: 'FOLLOW_UP', result: 'Alignment near tolerance → resolve with ODS' },
 
   // test → root cause (probability = how diagnostic). 1-layer (triage confirms) + 2-layer (follow-up confirms).
   // ⭐ re-weight target: phase over-confirms shaft misalignment at 0.88 today; week proposes 0.70
@@ -91,6 +105,18 @@ export const FOCUS_EDGES: GraphEdge[] = [
   { source: 'DT-OIL-ANALYSIS', target: 'RC-LUBE-FAIL', type: 'CONFIRMS', band: 'high', probability: 0.9, result: 'High particle/water count; viscosity off-spec' },
   { source: 'DT-OIL-ANALYSIS', target: 'RC-BEARING-SPALL', type: 'CONFIRMS', band: 'med', probability: 0.65, result: 'Ferrous spall debris in ferrography' },
 
+  // widen: the extra first-line tests point at candidate causes with modest confidence
+  { source: 'DT-THERMOGRAPHY', target: 'RC-LUBE-FAIL', type: 'CONFIRMS', band: 'med', probability: 0.6, result: 'Bearing-housing thermal rise consistent with oil starvation' },
+  { source: 'DT-THERMOGRAPHY', target: 'RC-BEARING-SPALL', type: 'CONFIRMS', band: 'med', probability: 0.55, result: 'Localised hot-spot at NDE bearing' },
+  { source: 'DT-MCSA', target: 'RC-MISALIGN', type: 'CONFIRMS', band: 'med', probability: 0.6, result: '2×line-frequency sidebands consistent with misalignment' },
+  { source: 'DT-MCSA', target: 'RC-BENT-SHAFT', type: 'CONFIRMS', band: 'med', probability: 0.55, result: 'Current sidebands consistent with a bent / misaligned shaft' },
+
+  // deepen: layer-3 confirmatory tests close out their causes at high confidence
+  { source: 'DT-ENVELOPE', target: 'RC-BEARING-SPALL', type: 'CONFIRMS', band: 'high', probability: 0.93, result: 'BPFO / BPFI defect-frequency peaks in the envelope spectrum' },
+  { source: 'DT-ODS', target: 'RC-BENT-SHAFT', type: 'CONFIRMS', band: 'high', probability: 0.9, result: 'ODS shows a bent-shaft / coupling bending mode shape' },
+  { source: 'DT-ODS', target: 'RC-MISALIGN', type: 'CONFIRMS', band: 'med', probability: 0.7, result: 'ODS shows angular coupling motion' },
+  { source: 'DT-LUBE-LAB', target: 'RC-LUBE-FAIL', type: 'CONFIRMS', band: 'high', probability: 0.92, result: 'Water / particle count off-spec; viscosity degraded' },
+
   // direct symptom → root-cause links — the symptom indicates each candidate cause directly, alongside
   // the test-confirmed path. Casing crack is deliberately EXCLUDED: that connection is the week's NEW
   // knowledge revealed in Panel 3, so the graph must not already know it.
@@ -99,15 +125,9 @@ export const FOCUS_EDGES: GraphEdge[] = [
   { source: 'SYM-001', target: 'RC-BEARING-SPALL', type: 'INDICATES', result: 'Vibration signature consistent with NDE bearing race spalling' },
   { source: 'SYM-001', target: 'RC-LUBE-FAIL', type: 'INDICATES', result: 'Vibration can stem from lubrication failure / oil starvation' },
 
-  // INCONCLUSIVE — the second outcome of each confirmatory test (test ran, didn't confirm → escalate)
-  { source: 'DT-RUNOUT', target: 'NEEDS-INFO', type: 'INCONCLUSIVE', result: 'TIR within tolerance → shaft misalignment not confirmed; gather more data' },
-  { source: 'DT-ALIGNMENT', target: 'NEEDS-INFO', type: 'INCONCLUSIVE', result: 'Alignment within tolerance → misalignment not confirmed; gather more data' },
-  { source: 'DT-OIL-ANALYSIS', target: 'NEEDS-INFO', type: 'INCONCLUSIVE', result: 'Oil clean → lube failure / spalling not confirmed; gather more data' },
-
   // ── EXISTING wiring for the casing-crack path (weld NDT confirms casing crack) ──
   { source: 'DT-PHASE', target: 'DT-WELD-NDT', type: 'FOLLOW_UP', result: 'Harmonics near discharge weld → run weld NDT' },
   { source: 'DT-WELD-NDT', target: 'RC-CASING-CRACK', type: 'CONFIRMS', band: 'high', probability: 0.9, result: 'PT/MT indication at volute weld toe' },
-  { source: 'DT-WELD-NDT', target: 'NEEDS-INFO', type: 'INCONCLUSIVE', result: 'No weld indication → casing crack not confirmed; gather more data' },
 
   // ── PROPOSED shortcut (batch 2) — captured from a call: skip triage, go straight to runout.
   // On approval this formalises into a first-line TRIGGERS edge (Shaft runout promoted to L1). ──

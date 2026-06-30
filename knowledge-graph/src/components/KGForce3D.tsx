@@ -669,8 +669,8 @@ export function KGForce3D() {
       {/* v2 #1 — legend overlay (DOM sibling of the WebGL canvas, not inside it) */}
       <div className="kg3-legend">
         {([
-          ['AssetClass', 'Asset class'], ['Machine', 'Machine'], ['Symptom', 'Symptom'],
-          ['DiagnosticTest', 'Test'], ['RootCause', 'Root cause'], ['Inconclusive', 'Inconclusive'],
+          ['AssetClass', 'Equipment class'], ['Machine', 'Equipment'], ['Symptom', 'Symptom'],
+          ['DiagnosticTest', 'Diagnostic test'], ['RootCause', 'Root cause'],
         ] as const).map(([label, text]) => (
           <div key={label} className="kg3-legend-row">
             <span className="kg3-legend-dot" style={{ background: NODE_COLORS[label] }} />

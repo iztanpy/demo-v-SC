@@ -40,6 +40,20 @@ interface NkCardDef {
 
 const CARDS: NkCardDef[] = [
   {
+    // re-weight — runs FIRST
+    id: 'nk-reweight', kind: 'reweight', glyph: '~', badge: 'Re-weight',
+    title: 'Update AI confidence scoring',
+    detail: 'Edge weight raised 0.75 → 0.90',
+    provenance: 'Most recent 10 incidents with similar initial conditions were caused by bearing spalling',
+    sop: ['THRESHOLD CHECK', 'OEM MANUAL CHECK'],
+    approvedMsg: 'Edge weight raised to 0.90 — recurrence threshold confirmed.',
+    rejectedMsg: 'Declined — weight held despite the recurrence.',
+    hi: { nodes: ['SYM-001', 'DT-HOUSING-INSPECT', 'RC-BEARING-SPALL'], edges: ['SYM-001>DT-HOUSING-INSPECT', 'DT-HOUSING-INSPECT>RC-BEARING-SPALL'] },
+    path: [{ text: 'High bearing vib.', color: NODE_COLORS.Symptom, sep: 'indicates' }, { text: 'Bearing spalling', color: NODE_COLORS.RootCause }],
+    trend: 'up',
+    recurrence: { label: '10th case', count: 10, total: 10 },
+  },
+  {
     // symptoms → TEST connection (reveals temp→weld-NDT dashed + vib→weld-NDT grey support)
     id: 'nk-connection-test', kind: 'add-edge', glyph: '+', badge: 'New connection',
     title: 'High bearing temp → weld NDT',
@@ -52,7 +66,7 @@ const CARDS: NkCardDef[] = [
     approvedMsg: 'Submitted for review — temp + vib now route to the weld-NDT test (provisional).',
     rejectedMsg: 'Declined — connection not added.',
     hi: { nodes: ['BFP-S0', 'SYM-001', 'DT-WELD-NDT'], edges: ['BFP-S0>DT-WELD-NDT', 'SYM-001>DT-WELD-NDT'] },
-    path: [{ text: 'High bearing temp', color: NODE_COLORS.Symptom, sep: '+' }, { text: 'High bearing vib.', color: NODE_COLORS.Symptom }, { text: 'Weld NDT', color: NODE_COLORS.DiagnosticTest }],
+    path: [{ text: 'High bearing temp', color: NODE_COLORS.Symptom, sep: 'and' }, { text: 'High bearing vib.', color: NODE_COLORS.Symptom, sep: 'triggers' }, { text: 'Weld NDT', color: NODE_COLORS.DiagnosticTest }],
   },
   {
     // symptom → ROOT-CAUSE connection (reveals temp→casing-crack dashed)
@@ -67,21 +81,7 @@ const CARDS: NkCardDef[] = [
     approvedMsg: 'Submitted for review — added as a provisional (dashed) link pending fleet validation.',
     rejectedMsg: 'Declined — connection not added.',
     hi: { nodes: ['BFP-S0', 'RC-CASING-CRACK'], edges: ['BFP-S0>RC-CASING-CRACK'] },
-    path: [{ text: 'High bearing temp', color: NODE_COLORS.Symptom, sep: '+' }, { text: 'High bearing vib.', color: NODE_COLORS.Symptom }, { text: 'Casing crack', color: NODE_COLORS.RootCause }],
-  },
-  {
-    // re-weight — runs LAST, after the two new connections
-    id: 'nk-reweight', kind: 'reweight', glyph: '~', badge: 'Re-weight',
-    title: 'Update AI confidence scoring',
-    detail: 'Edge weight raised 0.75 → 0.90',
-    provenance: 'Most recent 10 incidents with similar initial conditions were caused by bearing spalling',
-    sop: ['THRESHOLD CHECK', 'OEM MANUAL CHECK'],
-    approvedMsg: 'Edge weight raised to 0.90 — recurrence threshold confirmed.',
-    rejectedMsg: 'Declined — weight held despite the recurrence.',
-    hi: { nodes: ['SYM-001', 'DT-HOUSING-INSPECT', 'RC-BEARING-SPALL'], edges: ['SYM-001>DT-HOUSING-INSPECT', 'DT-HOUSING-INSPECT>RC-BEARING-SPALL'] },
-    path: [{ text: 'High bearing vib.', color: NODE_COLORS.Symptom }, { text: 'Bearing spalling', color: NODE_COLORS.RootCause }],
-    trend: 'up',
-    recurrence: { label: '10th case', count: 10, total: 10 },
+    path: [{ text: 'High bearing temp', color: NODE_COLORS.Symptom, sep: 'and' }, { text: 'High bearing vib.', color: NODE_COLORS.Symptom, sep: 'signals potential' }, { text: 'Casing crack', color: NODE_COLORS.RootCause }],
   },
 ]
 

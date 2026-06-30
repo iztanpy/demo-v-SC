@@ -274,7 +274,7 @@
 .p-res-flag { color: var(--amber); font-weight: 800; font-size: 12px; flex: 0 0 auto; }
 
 .p-ent-list { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
-.p-ent { display: grid; grid-template-columns: 16px 78px 1fr; align-items: baseline; gap: 7px; font-size: 12px; line-height: 1.35; }
+.p-ent { display: grid; grid-template-columns: 78px 1fr; align-items: baseline; gap: 7px; font-size: 12px; line-height: 1.35; }
 .p-ent-glyph { font-weight: 700; text-align: center; }
 .p-ent-glyph[data-status="match"] { color: var(--green); }
 .p-ent-glyph[data-status="reweight"] { color: var(--amber); }
