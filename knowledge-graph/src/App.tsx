@@ -43,8 +43,7 @@ export default function App() {
       <header id="p2-topbar">
         <span className="p2-brand-dot" />
         <div>
-          <div className="p2-title">Hyperspace OS · Behind the Scenes</div>
-          <div className="p2-sub">A week of BFP NDE-vibration incidents · 3 closed · knowledge graph SYM-001</div>
+          <div className="p2-title">Sembcorp Knowledge Graph</div>
         </div>
         <span className="p2-spacer" />
         <button className="p2-focus-toggle" data-on={focusGraph} onClick={toggleFocus}>

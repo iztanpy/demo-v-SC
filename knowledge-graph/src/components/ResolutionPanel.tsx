@@ -10,7 +10,9 @@ import { useResolution } from '../useResolution'
 //   • re-weight — the graph's high-confidence suggestion was overruled → drop edge confidence
 //   • gap       — no node for the selected diagnosis → new knowledge (Panel 3)
 type EntStatus = 'match' | 'reweight' | 'gap'
-interface ResEntity { label: string; detail: string; status: EntStatus }
+interface ResEntity { label: string; detail: string; status: EntStatus;
+  /** inline detail segments — a part with a `tone` renders as a coloured chip, the rest stays plain text */
+  parts?: { text: string; tone?: 'amber' | 'blue' | 'red' }[] }
 // re-weight rationale shown as a confidence-bar comparison (selected pick vs the overruled AI rec)
 interface ResCompare {
   caption: string
@@ -104,8 +106,12 @@ const CARDS: ResCard[] = [
     // CONNECTION from the temperature spike into that path.
     id: 'c-0537-gap', incident: 'INC-0537', chip: 'conflict', chipKind: 'gap',
     entities: [
-      { label: 'Test', detail: 'Weld NDT (dye-penetrant) test advised as a troubleshooting step ', status: 'match' },
-      { label: 'Root cause', detail: 'Vibration and temperature readings pointed to casing crack', status: 'gap' },
+      { label: 'Symptom', detail: 'High vibration · bearing temp rising', status: 'match',
+        parts: [{ text: 'High vibration', tone: 'amber' }, { text: ' · ' }, { text: 'bearing temp rising', tone: 'amber' }] },
+      { label: 'Test', detail: 'Weld NDT (dye-penetrant) test advised as a troubleshooting step', status: 'match',
+        parts: [{ text: 'Weld NDT (dye-penetrant) test', tone: 'blue' }, { text: ' advised as a troubleshooting step' }] },
+      { label: 'Root cause', detail: 'Vibration and temperature readings pointed to casing crack', status: 'gap',
+        parts: [{ text: 'Vibration and temperature readings pointed to ' }, { text: 'casing crack', tone: 'red' }] },
     ],
     sensors: 'NDE bearing temp 71°C rising · NDE vib RMS 8.4 mm/s',
     matchedNodes: ['RC-CASING-CRACK', 'DT-WELD-NDT', 'BFP-S0'],
@@ -126,6 +132,10 @@ const FOCUS_INCIDENT = 'INC-0537'
 // cascade — so the yellow cards land separately, not all at once.
 const FOCUS_CARDS = CARDS.filter((c) => c.incident === FOCUS_INCIDENT)
 const HERO_STEP_MS = 600 // spacing between successive hero-card reveals
+
+// Panel-2 DISPLAY filter only — hide these cards from the rendered panel WITHOUT touching CARDS,
+// so the graph effects (setMatched / re-weight / amber flash) and Panel-1 Documents stay unchanged.
+const HIDE_CARD_IDS = new Set(['c-0537-rw', 'c-0537-sop']) // first conflict (re-weight) + matched card
 
 // As each "graph-imperfection" hero card resolves (re-weight + the 2 gaps), the graph flashes amber
 // on a representative EXISTING node/edge for ~1s. The gaps' own nodes (casing crack / NDT) aren't on
@@ -226,10 +236,13 @@ export function ResolutionPanel() {
     return phase === 'matching' || (phase === 'resolved' && heroResolved <= idx)
   }
 
-  // group visible incidents (INC-0537 first via INCIDENTS order), each holding its resolution cards
+  // group visible incidents (INC-0537 first via INCIDENTS order), each holding its resolution cards.
+  // Panel-2 trims: hide the grey (reaffirm) incident cards entirely, and hide the first conflict +
+  // matched card from INC-0537 — leaving only the gap card. Display-only; CARDS/graph untouched.
   const groups = INCIDENTS
-    .map((inc) => ({ inc, cards: CARDS.filter((c) => c.incident === inc.id) }))
-    .filter((g) => (phases.get(g.inc.id) ?? 'pending') !== 'pending')
+    .filter((inc) => inc.outcome !== 'reaffirm')
+    .map((inc) => ({ inc, cards: CARDS.filter((c) => c.incident === inc.id && !HIDE_CARD_IDS.has(c.id)) }))
+    .filter((g) => g.cards.length > 0 && (phases.get(g.inc.id) ?? 'pending') !== 'pending')
 
   // keep the hero (INC-0537, sorted to the top) in view — don't follow the stream down
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -325,7 +338,16 @@ export function ResolutionPanel() {
                               {card.entities.map((e, i) => (
                                 <li key={i} className="p-ent" data-status={e.status}>
                                   <span className="p-ent-label">{e.label}</span>
-                                  <span className="p-ent-detail">{e.detail}</span>
+                                  {e.parts ? (
+                                    <span className="p-ent-detail">
+                                      {e.parts.map((p, j) => p.tone
+                                        ? <span key={j} className="p-ent-chip" data-tone={p.tone}>{p.text}</span>
+                                        : <span key={j}>{p.text}</span>
+                                      )}
+                                    </span>
+                                  ) : (
+                                    <span className="p-ent-detail">{e.detail}</span>
+                                  )}
                                 </li>
                               ))}
                             </ul>

@@ -1289,37 +1289,40 @@ function playSOPAnticipationTheater() {
   }, 2000);
 }
 
-// Telemetry Step 1 removed (Faye action steps renumbered to 2). Work-order creation is now the first
-// step and auto-starts after the SOP check. Internal data-step="2"/"3" preserved so unlockActionStep2/3
-// + wireEngineerCardClick selectors keep working; only the visible numbering changes.
-// revealStep1WithAddButton (telemetry path) kept below as dead code per WA #5.
+// "Create work order" step removed — WO auto-created SILENTLY (log + wo-prefill card pulse only, no
+// visible step, no WO card on Faye's screen). WORK_ORDER stays load-bearing downstream (Lim screen,
+// escalation/service report, learning engine). Sole visible step = schedule/assign engineer, rendered
+// as "Step 1" but keeps internal data-step="3" so unlockActionStep3 + wireEngineerCardClick selectors
+// keep working. revealStep1WithAddButton (telemetry path) kept below as dead code per WA #5.
 function revealCreateWorkOrderStep() {
   const slot1 = document.querySelector('.as-step-slot[data-step-slot="1"]');
   const slot2 = document.querySelector('.as-step-slot[data-step-slot="2"]');
   const slot3 = document.querySelector('.as-step-slot[data-step-slot="3"]');
-  if (!slot2 || !slot3) return;
+  if (!slot3) return;
   if (slot1) slot1.innerHTML = '';
-  slot2.innerHTML = `
-    <div class="as-step" data-step="2" data-status="locked">
-      <div class="as-step-head">
-        <span class="as-step-num">○</span>
-        <span class="as-step-title">Step 1 · Create work order</span>
-      </div>
-      <div class="as-step-body">
-        <span class="as-step-msg">Hyperspace OS · preparing work order…</span>
-      </div>
-    </div>`;
+  if (slot2) slot2.innerHTML = '';
+  // WO created silently — log line + agent-card pulse, no visible step.
+  if (window.LOG) {
+    window.LOG.appendLine({
+      ts: currentSGTLog(),
+      source: 'wo-prefill',
+      text: `${WORK_ORDER.id} generated · ${INCIDENT.asset} · initial diagnosis + works to complete attached`,
+      dataSource: 'Hyperspace OS',
+      nodeChain: ['sop-wo-creation', 'sop-bfp-vibration-investigation'],
+    });
+  }
+  fireAgentCardLifecycle('wo-prefill', 2000);
   slot3.innerHTML = `
     <div class="as-step" data-step="3" data-status="locked">
       <div class="as-step-head">
         <span class="as-step-num">○</span>
-        <span class="as-step-title">Step 2 · Schedule optimisation and assignment of engineer <span class="as-step-optional">(optional)</span></span>
+        <span class="as-step-title">Schedule optimisation and assignment of engineer <span class="as-step-optional">(optional)</span></span>
       </div>
       <div class="as-step-body">
-        <span class="as-step-msg">Locked — create the work order first.</span>
+        <span class="as-step-msg">Hyperspace OS · preparing…</span>
       </div>
     </div>`;
-  unlockActionStep2();
+  unlockActionStep3();
 }
 
 function revealStep1WithAddButton() {
@@ -1449,28 +1452,15 @@ function paintActionStepsInitial(actionSlot) {
 }
 
 function paintActionStepsComplete(actionSlot) {
-  // Already actioned (re-render after dispatch). Telemetry Step 1 removed — 2-step flow:
-  // Step 1 = Create work order (internal data-step="2"), Step 2 = assign engineer (data-step="3").
+  // Already actioned (re-render after dispatch). "Create work order" step removed — WO auto-created
+  // silently. Sole visible step = schedule/assign engineer (data-step="3"), shown as "Step 1".
   actionSlot.innerHTML = `
     <div class="action-steps" data-variant="sop-relevant">
       <div class="as-heading">SOP Relevant next best actions</div>
-      <div class="as-step" data-step="2" data-status="done">
-        <div class="as-step-head">
-          <span class="as-step-num">✓</span>
-          <span class="as-step-title">Step 1 · Create work order</span>
-        </div>
-        <div class="as-step-body">${buildWorkOrderCardHTML({
-          id: WORK_ORDER.id,
-          title: 'Work order created',
-          asset: INCIDENT.asset,
-          diagnosisLabel: diagnosisOptionLabel((state.faye && state.faye.selectedOption) || 'primary'),
-          groups: LIM_INSPECTION_CHECKLIST,
-        })}</div>
-      </div>
       <div class="as-step" data-step="3" data-status="selected">
         <div class="as-step-head">
           <span class="as-step-num">✓</span>
-          <span class="as-step-title">Step 2 · Schedule optimisation and assignment of engineer <span class="as-step-optional">(optional)</span></span>
+          <span class="as-step-title">Schedule optimisation and assignment of engineer <span class="as-step-optional">(optional)</span></span>
         </div>
         <div class="as-step-body">
           <span class="as-step-msg">Lim Wei Jie selected</span>
@@ -1646,7 +1636,7 @@ function buildSourcesModalLeft() {
       <span class="prov-card-agent">${s.agent}</span>
       <div class="prov-card-title">${s.label}</div>
       <div class="prov-card-desc">${s.desc}</div>
-      <ul class="prov-card-records">${s.records.map(r => `<li>${r}</li>`).join('')}</ul>
+      <ul class="prov-card-records">${s.records.map(r => `<li>${limCountSub(r)}</li>`).join('')}</ul>
     </div>`).join('');
 }
 
@@ -1829,7 +1819,7 @@ const SERVICE_REPORT_SOURCES = [
   { id: 'sr-human', color: '#DB2777', agent: 'Faye Sit + Lim Wei Jie',
     label: 'Human-in-the-loop decisions',
     desc: 'Ops override rationale and onsite safety + root-cause checks captured in-workflow.',
-    records: ['Faye Sit · diagnosis override + reasoning', 'Lim Wei Jie · safety 5/5 · root-cause 2/5'] },
+    records: ['Faye Sit · diagnosis override + reasoning', 'Lim Wei Jie · safety __SAFETY_CT__ · root-cause __RCI_CT__'] },
   { id: 'sr-call', color: '#00A5A8', agent: 'Audio-transcription Agent',
     label: 'Escalation call transcript',
     desc: 'Diarised Lim ↔ Dr. Ismail call that confirmed the revised failure mode.',
@@ -2425,22 +2415,8 @@ function wireNotesMic() {
 function appendDispatchCaptureFooter() {
   const container = document.getElementById('incident-detail-view');
   if (!container) return;
-  if (container.querySelector('.dispatch-capture-footer')) return;
-  const footer = el('div', 'dispatch-capture-footer');
-  footer.innerHTML = `
-    <div class="dcf-line">
-      <span class="dcf-ic">✓</span>
-      <span class="dcf-txt"><strong>${WORK_ORDER.id}</strong> created · diagnosis + fix checklist attached</span>
-    </div>
-    <div class="dcf-line">
-      <span class="dcf-ic">✓</span>
-      <span class="dcf-txt">Notes sent to <strong>A2A Coordination Agent</strong> for review</span>
-    </div>
-    <div class="dcf-line">
-      <span class="dcf-ic">✓</span>
-      <span class="dcf-txt"><strong>Knowledge-Graph</strong> · team · incident · workflow enriched</span>
-    </div>`;
-  container.appendChild(footer);
+  // Green summary box removed (Faye) — keep only the "dispatched to" text label below it.
+  if (container.querySelector('.dispatched-to-label')) return;
   const lbl = el('div', 'dispatched-to-label');
   const nextName = DISPATCH_LABEL[state.activePersona] || 'next persona';
   lbl.innerHTML = `Dispatched to fix · <span class="dyn-name">${nextName}</span> · 02:47 SGT`;
@@ -2524,6 +2500,23 @@ const LIM_INSPECTION_CHECKLIST = [
 ];
 
 const LIM_CHECKLIST_THRESHOLD = 10;
+
+// Per-group / total checked counts from live state — post-workflow recaps use these so they mirror
+// exactly what the presenter ticked (were hardcoded 5/5 · 2/5 · 10/10 regardless of actual ticks).
+function limGroupCount(groupName) {
+  const g = LIM_INSPECTION_CHECKLIST.find(x => x.group === groupName);
+  if (!g) return { done: 0, total: 0 };
+  return { done: g.items.filter(it => state.lim.checked[it.id]).length, total: g.items.length };
+}
+function limTotalCount() {
+  const total = LIM_INSPECTION_CHECKLIST.reduce((n, g) => n + g.items.length, 0);
+  return { done: LIM_INSPECTION_CHECKLIST.reduce((n, g) => n + g.items.filter(it => state.lim.checked[it.id]).length, 0), total };
+}
+// substitutes __SAFETY_CT__ / __RCI_CT__ markers in a service-report record with live group counts
+function limCountSub(r) {
+  const s = limGroupCount('Safety'), rci = limGroupCount('Root cause isolation');
+  return r.replace('__SAFETY_CT__', `${s.done}/${s.total}`).replace('__RCI_CT__', `${rci.done}/${rci.total}`);
+}
 
 // W4.1 — group theater (HSE for Safety, Instrument Diagnostic, Sensor Anomaly Inspector + Equipment Diag for root-cause)
 const GROUP_THEATER_AGENT = {
@@ -2901,12 +2894,9 @@ function paintLimChecklist() {
 }
 
 function paintLimChecklistComplete() {
-  // W43 — temp-spike path: Lim escalated early (safety + 2 instrument checks, rest superseded).
-  // Do NOT force-complete the checklist — render the real state so progress isn't wrongly 13/13.
-  if (!state.lim.tempSpikeTriggered) {
-    // Legacy/confirm path: all items rendered as checked (post-escalation re-entry)
-    LIM_INSPECTION_CHECKLIST.forEach(g => g.items.forEach(it => { state.lim.checked[it.id] = true; }));
-  }
+  // W48 — always render the ACTUAL ticked state so post-workflow recaps (progress line, escalation
+  // report, service report, log) mirror exactly what the presenter checked. Previously the
+  // non-temp-spike/confirm path force-completed all 10 items here, clobbering live state → wrong 10/10.
   paintLimChecklist();
   // W8 C.5 — re-entry path also shows truncated groups.
   truncateInspectionGroupsToCompleted();
@@ -3136,6 +3126,24 @@ function wireInspectionChecklist() {
       item.dataset.checked = 'true';
       item.querySelector('.ic-check').textContent = '✓';
       logChecklistItem(itemId);
+      // Autofill — clicking any Safety item completes the whole Safety group (presenter taps the top
+      // one, the rest tick automatically). Staggered ~220ms apart so they light up in sequence rather
+      // than all at once. Root cause isolation stays manual, item-by-item.
+      if (group && group.dataset.group === 'Safety') {
+        const pending = [...group.querySelectorAll('.ic-item')]
+          .filter(sib => sib.dataset.checked !== 'true' && sib.dataset.itemId);
+        pending.forEach((sib, i) => {
+          setTimeout(() => {
+            const sid = sib.dataset.itemId;
+            state.lim.checked[sid] = true;
+            sib.dataset.checked = 'true';
+            const chk = sib.querySelector('.ic-check');
+            if (chk) chk.textContent = '✓';
+            logChecklistItem(sid);
+            updateChecklistProgress();   // last tick fires group-complete → Root cause theater
+          }, (i + 1) * 220);
+        });
+      }
       updateChecklistProgress();
     });
   });
@@ -3270,7 +3278,7 @@ function paintDiagnosisVerdict() {
     window.LOG.appendLine({
       ts: currentSGTLog(),
       source: 'workflow',
-      text: 'Inspection workflow complete · 10/10 checks logged · Fault review gated open',
+      text: `Inspection workflow complete · ${limTotalCount().done}/${limTotalCount().total} checks logged · Fault review gated open`,
       dataSource: 'Hyperspace OS',
       nodeChain: ['sop-bfp-vibration-investigation'],
     });
@@ -3480,13 +3488,8 @@ function onVerdictConfirm() {
 function appendConfirmedCaptureFooter() {
   const container = document.getElementById('incident-detail-view');
   if (!container) return;
-  if (container.querySelector('.dispatch-capture-footer')) return;
-  const footer = el('div', 'dispatch-capture-footer');
-  footer.innerHTML = `
-    <div class="dcf-line"><span class="dcf-ic">✓</span><span class="dcf-txt"><strong>Hyperspace OS</strong> · diagnosis confirmed · WO submitted</span></div>
-    <div class="dcf-line"><span class="dcf-ic">✓</span><span class="dcf-txt">Workflow trace routed to <strong>A2A Coordination Agent</strong></span></div>
-    <div class="dcf-line"><span class="dcf-ic">✓</span><span class="dcf-txt"><span class="dyn-name">Faye Sit</span> notified · returned for ops + commercial action</span></div>`;
-  container.appendChild(footer);
+  // Green summary box removed (Wei Jie · confirm path) — keep only the text label below it.
+  if (container.querySelector('.dispatched-to-label')) return;
   const lbl = el('div', 'dispatched-to-label');
   lbl.innerHTML = `WO submitted · returned to <span class="dyn-name">Faye Sit</span> · ${currentSGTLog()}`;
   container.appendChild(lbl);
@@ -3559,66 +3562,55 @@ function onCallEnd() {
   if (label) label.textContent = `Call ended · transcript captured · ${currentSGTLog()}`;
   if (endBtn) endBtn.remove();
 
-  // Stage 1: generating-transcript (3s · Audio-transcription Agent — W8 A.6)
-  spawnPostCallStage('generating-transcript');
+  // Transcript comes up INSTANTLY on End — no "generating transcript" theater/delay.
+  spawnPostCallStage('transcript-attached');
+  state.lim.transcriptAttached = true;
+  // Auto-open the transcript popup the moment End is pressed.
+  openTranscriptModal();
+
+  // W8 D.4 — drop call-ended strip when Transcript attached appears.
+  if (strip) {
+    strip.style.transition = 'opacity 0.3s ease-out';
+    strip.style.opacity = '0';
+    setTimeout(() => strip.remove(), 320);
+  }
+  // W44 — fade the live transcript bubbles once it's captured into the attached transcript.
+  const liveTx = document.querySelector('.call-transcript');
+  if (liveTx) {
+    liveTx.style.transition = 'opacity 0.3s ease-out';
+    liveTx.style.opacity = '0';
+    setTimeout(() => liveTx.remove(), 320);
+  }
+
   if (window.LOG) {
     window.LOG.appendLine({
       ts: currentSGTLog(),
       source: 'audio-transcription',
-      text: 'Audio-transcription Agent · Capturing call audio · generating transcript',
+      text: 'Call transcript generated · 7m 23s · 6 exchanges · auto-attached',
       dataSource: 'Hyperspace OS',
       nodeChain: [],
     });
   }
+  spawnPostCallStage('analyzing-transcript');
+  // Stage 2: analyzing-transcript (3s · Audio-transcription Agent — W8 A.6)
   fireAgentCardLifecycle('audio-transcription', dotsMs(3000));
   setTimeout(() => {
-    swapPostCallStage('generating-transcript', 'transcript-attached');
-    state.lim.transcriptAttached = true;
-
-    // W8 D.4 — drop call-ended strip when Transcript attached appears.
-    if (strip) {
-      strip.style.transition = 'opacity 0.3s ease-out';
-      strip.style.opacity = '0';
-      setTimeout(() => strip.remove(), 320);
-    }
-    // W44 — fade the live transcript bubbles once it's captured into the attached transcript.
-    const liveTx = document.querySelector('.call-transcript');
-    if (liveTx) {
-      liveTx.style.transition = 'opacity 0.3s ease-out';
-      liveTx.style.opacity = '0';
-      setTimeout(() => liveTx.remove(), 320);
-    }
+    // Remove analyzing-transcript loading visual
+    const slot = document.getElementById('lim-ctas-slot');
+    const analyzingEl = slot && slot.querySelector('.post-call-stage[data-stage="analyzing-transcript"]');
+    if (analyzingEl) analyzingEl.remove();
 
     if (window.LOG) {
       window.LOG.appendLine({
         ts: currentSGTLog(),
         source: 'audio-transcription',
-        text: 'Call transcript generated · 7m 23s · 6 exchanges · auto-attached',
+        text: 'Transcript analysis · diarized speakers · revised diagnosis extracted',
         dataSource: 'Hyperspace OS',
-        nodeChain: [],
+        nodeChain: ['pump-casing-crack-pattern'],
       });
     }
-    spawnPostCallStage('analyzing-transcript');
-    // Stage 2: analyzing-transcript (3s · Audio-transcription Agent — W8 A.6)
-    fireAgentCardLifecycle('audio-transcription', dotsMs(3000));
-    setTimeout(() => {
-      // Remove analyzing-transcript loading visual
-      const slot = document.getElementById('lim-ctas-slot');
-      const analyzingEl = slot && slot.querySelector('.post-call-stage[data-stage="analyzing-transcript"]');
-      if (analyzingEl) analyzingEl.remove();
-
-      if (window.LOG) {
-        window.LOG.appendLine({
-          ts: currentSGTLog(),
-          source: 'audio-transcription',
-          text: 'Transcript analysis · diarized speakers · revised diagnosis extracted',
-          dataSource: 'Hyperspace OS',
-          nodeChain: ['pump-casing-crack-pattern'],
-        });
-      }
-      // W8 E.4 — auto-trigger diagnosis morph + Revise diagnosis tile spawn (no user click).
-      onDiagnosisConfirmedClick();
-    }, dotsMs(3000));
+    // W8 E.4 — auto-trigger diagnosis morph + Revise diagnosis tile spawn (no user click).
+    onDiagnosisConfirmedClick();
   }, dotsMs(3000));
 }
 
@@ -3878,13 +3870,8 @@ function advanceToRoutedRevisedDiagnosis() {
 function appendRevisedDiagnosisCaptureFooter() {
   const container = document.getElementById('incident-detail-view');
   if (!container) return;
-  if (container.querySelector('.dispatch-capture-footer')) return;
-  const footer = el('div', 'dispatch-capture-footer');
-  footer.innerHTML = `
-    <div class="dcf-line"><span class="dcf-ic">✓</span><span class="dcf-txt"><strong>Hyperspace OS</strong> · <span class="dyn-name">Faye Sit</span> notified · revised diagnosis routed</span></div>
-    <div class="dcf-line"><span class="dcf-ic">✓</span><span class="dcf-txt">Call transcript + revised diagnosis routed to <strong>A2A Coordination Agent</strong> for chain-of-custody</span></div>
-    <div class="dcf-line"><span class="dcf-ic">✓</span><span class="dcf-txt"><strong>Knowledge-Graph</strong> · revised diagnosis + transcript enriched · routing recorded</span></div>`;
-  container.appendChild(footer);
+  // Green summary box removed (Wei Jie · revised-diagnosis path) — keep only the text label below it.
+  if (container.querySelector('.dispatched-to-label')) return;
   const lbl = el('div', 'dispatched-to-label');
   lbl.innerHTML = `Routed back to <span class="dyn-name">Faye Sit</span> · ${currentSGTLog()}`;
   container.appendChild(lbl);
@@ -4030,13 +4017,8 @@ function paintLimEscalationComplete() {
 function appendEscalationCaptureFooter() {
   const container = document.getElementById('incident-detail-view');
   if (!container) return;
-  if (container.querySelector('.dispatch-capture-footer')) return;
-  const footer = el('div', 'dispatch-capture-footer');
-  footer.innerHTML = `
-    <div class="dcf-line"><span class="dcf-ic">✓</span><span class="dcf-txt"><strong>Hyperspace OS</strong> confirms revised diagnosis SOP followed</span></div>
-    <div class="dcf-line"><span class="dcf-ic">✓</span><span class="dcf-txt">Call transcript routed to <strong>A2A Coordination Agent</strong> for review</span></div>
-    <div class="dcf-line"><span class="dcf-ic">✓</span><span class="dcf-txt"><strong>Knowledge-Graph</strong> · team · incident · revised diagnosis + transcript enriched</span></div>`;
-  container.appendChild(footer);
+  // Green summary box removed (Wei Jie · escalation path) — keep only the text label below it.
+  if (container.querySelector('.dispatched-to-label')) return;
   const lbl = el('div', 'dispatched-to-label');
   lbl.innerHTML = `Escalated to <span class="dyn-name">Dr. A. Ismail</span> · 02:56 SGT`;
   container.appendChild(lbl);
@@ -4349,8 +4331,8 @@ function spawnEscalationReportContent() {
       <div class="oer-section">
         <div class="oer-section-label"><span class="dyn-name">Lim Wei Jie</span>'s completed workflow</div>
         <div class="oer-workflow-list">
-          <div class="oer-wl-item">✓ 5/5 Safety checks</div>
-          <div class="oer-wl-item">✓ 2/5 Root cause isolation checks · escalated to offsite expert</div>
+          <div class="oer-wl-item">✓ ${limGroupCount('Safety').done}/${limGroupCount('Safety').total} Safety checks</div>
+          <div class="oer-wl-item">✓ ${limGroupCount('Root cause isolation').done}/${limGroupCount('Root cause isolation').total} Root cause isolation checks · escalated to offsite expert</div>
           <div class="oer-wl-item">✓ Initial bearing-spalling hypothesis rejected</div>
           <div class="oer-wl-item">✓ Call with <span class="dyn-name">Dr. A. Ismail</span> · 7m 23s · transcript captured</div>
           <div class="oer-wl-item">✓ Transcript captured · <span class="dyn-name">Dr. A. Ismail</span> + <span class="dyn-name">Lim Wei Jie</span> discussed and agreed <button class="oer-tx-inline" type="button">(see transcript)</button></div>
@@ -5961,13 +5943,13 @@ function renderRightPaneFaye() {
   wrap.innerHTML = `
     <div class="pn-header">
       <div class="pn-h-title">Agents at work · 1 capability</div>
-      <div class="pn-h-sub">Stage-gated agentic workflows — triage · action planner · scheduling.</div>
+      <div class="pn-h-sub">Stage-gated agentic workflows — triage · scheduling.</div>
     </div>
     <div class="pn-section ${played ? 'pn-section-played' : ''}" data-section="workflows">
       <div class="pn-s-num">▸</div>
       <div class="pn-s-body">
         <div class="pn-s-title">Agentic workflows for Faye</div>
-        <div class="pn-s-sub">3 stage-gated workflows behind the scenes · click to walk through.</div>
+        <div class="pn-s-sub">Behind the scenes workflows· click to walk through.</div>
       </div>
       <button class="pn-s-play ${played ? 'pn-s-played' : ''}" type="button" data-section="workflows">
         <svg class="pn-s-play-icon" viewBox="0 0 12 12"><path d="M2 1 L10 6 L2 11 Z" fill="currentColor"/></svg>
@@ -6062,7 +6044,7 @@ const P1_WORKFLOWS = {
       num: 1,
       label: 'Agentic triage',
       tagline: 'Sensor anomaly · severity scoring · KG path-trace',
-      durationMs: 24000,   // W14 R1 — 4x slower (was 6000)
+      durationMs: 16000,   // step length / "complete" beat — agent cadence decoupled (fixed 600ms)
       buckets: [
         { name: 'Domain Experts',   agents: ['Sensor Anomaly Inspector', 'Historical Incidents Agent', 'Equipment History Agent', 'Criticality Scoring Agent', 'Incident Summary Synthesizer'], persistent: ['inspection', null, null, null, null] },
         { name: 'Critic',           agents: ['Critic · Power Gen', 'Criticality Standards Critic'],         persistent: ['critic-power-gen', null] },
@@ -6072,22 +6054,9 @@ const P1_WORKFLOWS = {
     },
     {
       num: 2,
-      label: 'Action planner',
-      tagline: 'SOP retrieval · adherence check · telemetry pre-fetch',
-      durationMs: 28000,   // W14 R1 — 4x slower (was 7000)
-      buckets: [
-        { name: 'Domain Experts',   agents: ['SOP Retrieval Agent', 'Sensor Anomaly Inspector', 'Telemetry Snapshot Compiler', 'SOP Compliance Agent'], persistent: [null, 'inspection', null, 'sop-action'] },
-        { name: 'Critic',           agents: ['SOP Adherence Critic'],                                       persistent: [null] },
-        { name: 'Orchestrator',     agents: ['A2A Coordination Agent'],                                     persistent: ['workflow'] },
-      ],
-      outputCaption: 'Action planner · SOP-BFP-VIBR-001 selected · telemetry pre-fetched · awaiting Faye Review',
-      hitlNote: 'Human-in-the-loop · Faye must confirm telemetry (Step 1 Review)',
-    },
-    {
-      num: 3,
       label: 'Scheduling',
       tagline: 'Roster · planned-outage calendar · schedule-optimized dispatch',
-      durationMs: 20000,   // W14 R1 — 4x slower (was 5000)
+      durationMs: 13000,   // step length / "complete" beat — agent cadence decoupled (fixed 600ms)
       buckets: [
         // W42 — Schedule Integration Agent consumes existing crew roster + planned maint/outage calendar to optimize dispatch timing.
         { name: 'Domain Experts',   agents: ['Roster Lookup Agent', 'Expertise Match Agent', 'Schedule Integration Agent', 'Criticality Scoring Agent'], persistent: [null, null, null, null] },
@@ -6258,9 +6227,9 @@ function playWorkflowStep(stepNum) {
     });
   });
 
-  const reveals = Math.max(1, flatAgents.length);
-  // W14 R1 — floor bumped 400 → 1200 (3x) to keep proportional cadence at 4x durationMs
-  const stagger = Math.max(1200, Math.floor((stepDef.durationMs - 6000) / reveals));
+  // Agent-reveal cadence DECOUPLED from durationMs — fixed 600ms so agents always zip in fast
+  // regardless of how long the step runs before declaring "complete" (durationMs controls that).
+  const stagger = 600;
   const dots = document.querySelectorAll('#wf-active-canvas .wf-agent-dot');
 
   dots.forEach((el, i) => {

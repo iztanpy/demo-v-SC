@@ -22,8 +22,7 @@ export default function Demo() {
       <header className="demo-topbar">
         <span className="demo-brand-dot" />
         <div className="demo-titles">
-          <div className="demo-title">Hyperspace OS · Behind the Scenes</div>
-          <div className="demo-sub">A week of incidents at JRG-CCGT-1 — documents in, knowledge out</div>
+          <div className="demo-title">Sembcorp knowledge graph</div>
         </div>
         <span className="demo-spacer" />
         <button className="demo-run" onClick={started ? reset : start}>

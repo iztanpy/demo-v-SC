@@ -690,10 +690,10 @@ export function KGForce3D() {
           <>
             <div className="kg3-legend-sep" />
             {(connectionApplied || connectionTestApplied) && (
-              <div className="kg3-legend-row"><span className="kg3-legend-bar" style={{ background: 'rgb(6,182,212)' }} />New edge</div>
+              <div className="kg3-legend-row"><span className="kg3-legend-bar kg3-legend-bar-dashed" style={{ color: 'rgb(6,182,212)' }} />Under review</div>
             )}
             {reweightApplied && (
-              <div className="kg3-legend-row"><span className="kg3-legend-bar" style={{ background: 'rgb(192,38,211)' }} />Updated edge</div>
+              <div className="kg3-legend-row"><span className="kg3-legend-bar" style={{ background: 'rgb(192,38,211)' }} />Updated</div>
             )}
           </>
         )}

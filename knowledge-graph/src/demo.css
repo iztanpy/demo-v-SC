@@ -92,6 +92,8 @@
 .kg3-legend-row { display: flex; align-items: center; gap: 8px; }
 .kg3-legend-dot { width: 11px; height: 11px; border-radius: 50%; flex: 0 0 auto; }
 .kg3-legend-bar { width: 16px; height: 3px; border-radius: 2px; flex: 0 0 auto; }
+/* dotted swatch — matches the dashed provisional "new edge" line in the graph (color set inline via currentColor) */
+.kg3-legend-bar-dashed { border-radius: 0; background: repeating-linear-gradient(to right, currentColor 0 4px, transparent 4px 7px); }
 .kg3-legend-sep { height: 1px; background: #CBD5E1; margin: 4px 0 2px; }
 
 /* panels — each a full-height column in the row. Dormant ones dim; collapsed ones fold to header. */
@@ -281,6 +283,13 @@
 .p-ent-glyph[data-status="gap"] { color: #DC2626; }
 .p-ent-label { color: var(--slate); font-weight: 600; white-space: nowrap; }
 .p-ent-detail { color: var(--ink); }
+
+/* entity-value chips — inline coloured pills that sit INSIDE the detail sentence, surrounding words
+   stay as plain text (symptom = amber ×2, test = blue, root cause = red) */
+.p-ent-chip { display: inline-block; vertical-align: baseline; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; border: 1px solid; line-height: 1.3; white-space: nowrap; }
+.p-ent-chip[data-tone="amber"] { background: rgba(245,158,11,0.14); color: #92400E; border-color: rgba(245,158,11,0.45); }
+.p-ent-chip[data-tone="blue"]  { background: rgba(37,99,235,0.12); color: #1D4ED8; border-color: rgba(37,99,235,0.40); }
+.p-ent-chip[data-tone="red"]   { background: rgba(220,38,38,0.12); color: #B91C1C; border-color: rgba(220,38,38,0.42); }
 
 /* re-weight rationale — chip comparison (selected pick vs overruled AI rec), gap kept as a bullet */
 .p-res-compare { display: flex; flex-direction: column; gap: 7px; margin-top: 7px; }
