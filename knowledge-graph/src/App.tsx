@@ -43,7 +43,7 @@ export default function App() {
       <header id="p2-topbar">
         <span className="p2-brand-dot" />
         <div>
-          <div className="p2-title">Sembcorp Knowledge Graph</div>
+          <div className="p2-title">PowerCo Knowledge Graph</div>
         </div>
         <span className="p2-spacer" />
         <button className="p2-focus-toggle" data-on={focusGraph} onClick={toggleFocus}>

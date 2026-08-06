@@ -22,7 +22,7 @@ export default function Demo() {
       <header className="demo-topbar">
         <span className="demo-brand-dot" />
         <div className="demo-titles">
-          <div className="demo-title">Sembcorp knowledge graph</div>
+          <div className="demo-title">PowerCo knowledge graph</div>
         </div>
         <span className="demo-spacer" />
         <button className="demo-run" onClick={started ? reset : start}>

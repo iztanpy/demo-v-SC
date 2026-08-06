@@ -52,7 +52,7 @@ export const INCIDENTS: WeekIncident[] = [
   },
   {
     id: 'INC-2026-0488',
-    plant: 'Sakra-CCGT-1',
+    plant: 'Eastbay-CCGT-1',
     asset: 'BFP-2A',
     date: '2026-05-16',
     chips: [
@@ -63,7 +63,7 @@ export const INCIDENTS: WeekIncident[] = [
   },
   {
     id: 'INC-2026-0501',
-    plant: 'Banyan-CHP',
+    plant: 'Westpoint-CHP',
     asset: 'BFP-1A',
     date: '2026-05-18',
     chips: [
