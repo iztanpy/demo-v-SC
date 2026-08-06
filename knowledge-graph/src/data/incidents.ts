@@ -41,7 +41,7 @@ export const DOC_LABEL: Record<DocKind, string> = {
 export const INCIDENTS: WeekIncident[] = [
   {
     id: 'INC-2026-0537',
-    plant: 'JRG-CCGT-1',
+    plant: 'NGT-CCGT-1',
     asset: 'BFP-3A',
     date: '2026-05-20',
     chips: [

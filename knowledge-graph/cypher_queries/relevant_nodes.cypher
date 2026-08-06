@@ -1,7 +1,7 @@
 // =============================================================
 // Neo4j Import — BFP NDE Vibration Incidents (SYM-001)
 // Historical reference incidents for the BFP NDE-vibration symptom class. The live
-// JRG-CCGT-1 · BFP-3A incident (Part 1) attaches to this same symptom at demo time.
+// NGT-CCGT-1 · BFP-3A incident (Part 1) attaches to this same symptom at demo time.
 //
 // Schema:
 //   (Symptom)-[:HAS_INCIDENT]->(Incident)
@@ -28,9 +28,9 @@ MERGE (sym:Symptom {id: "SYM-001"})
       sym.severity    = "Amber",
       sym.urgency     = "Immediate";
 
-// ---- INC-101 (Sakra-CCGT-1 · Block 1 — historical reference case, NOT the live incident) ----
+// ---- INC-101 (Eastbay-CCGT-1 · Block 1 — historical reference case, NOT the live incident) ----
 MERGE (inc:Incident {id: "INC-101"})
-  SET inc.location = "Sakra-CCGT-1 · Block 1",
+  SET inc.location = "Eastbay-CCGT-1 · Block 1",
       inc.datetime = "2026-03-18T01:30:00+08:00",
       inc.asset    = "BFP-2A",
       inc.status   = "Resolved";
@@ -81,9 +81,9 @@ MERGE (tech:Technician {id: "TECH-004"})
 MERGE (work:WorkOrder {id: "WORK-102"})
   SET work.description = "Bearing inspection / replace", work.comments = "No race damage found on inspection";
 
-// ---- INC-102 (Jurong-CCGT-2 — precedent that drove the initial guess) ----
+// ---- INC-102 (Northgate-CCGT-2 — precedent that drove the initial guess) ----
 MERGE (inc:Incident {id: "INC-102"})
-  SET inc.location = "Jurong-CCGT-2",
+  SET inc.location = "Northgate-CCGT-2",
       inc.datetime = "2026-04-12T09:15:00+08:00",
       inc.asset    = "BFP-2B",
       inc.status   = "Resolved";
@@ -104,9 +104,9 @@ MERGE (root:RootCause {id: "ROOT-201"})
 MERGE (out:Outcome {id: "OUT-201"})
   SET out.status = "Success";
 
-// ---- INC-103 (Banyan-CHP — precedent that enabled the correction) ----
+// ---- INC-103 (Westpoint-CHP — precedent that enabled the correction) ----
 MERGE (inc:Incident {id: "INC-103"})
-  SET inc.location = "Banyan-CHP",
+  SET inc.location = "Westpoint-CHP",
       inc.datetime = "2026-02-11T08:05:00+08:00",
       inc.asset    = "BFP-1A",
       inc.status   = "Resolved";

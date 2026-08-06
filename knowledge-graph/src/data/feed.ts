@@ -1,5 +1,5 @@
 // ── Streaming document feed for the 3-panel demo ──
-// A week of 3 closed BFP incidents, ALL at JRG-CCGT-1. Documents stream IN one-by-one and run a
+// A week of 3 closed BFP incidents, ALL at NGT-CCGT-1. Documents stream IN one-by-one and run a
 // parse theater as they land. 2 incidents reaffirm the graph (clean resolutions that match what
 // the KG already knows); 1 is the EXCEPTION — a casing/weld crack the graph can't explain, which
 // becomes the new knowledge. Pure extraction here: each agent pulls a short field·value finding.
@@ -46,11 +46,11 @@ export interface WorkflowStep { label: string; done: number; total: number }
 export const INCIDENTS = [
   // INC-0537 (the exception) keeps the amber accent; the reaffirm incidents are plain grey so the
   // exception is the only coloured card in the stream.
-  { id: 'INC-0537', asset: 'BFP-3A', plant: 'JRG-CCGT-1', outcome: 'exception' as Outcome, color: '#F59E0B' },
-  { id: 'INC-0488', asset: 'BFP-2A', plant: 'JRG-CCGT-1', outcome: 'reaffirm' as Outcome, color: '#64748B' },
-  { id: 'INC-0501', asset: 'BFP-1A', plant: 'JRG-CCGT-1', outcome: 'reaffirm' as Outcome, color: '#64748B' },
-  { id: 'INC-0455', asset: 'BFP-4A', plant: 'JRG-CCGT-1', outcome: 'reaffirm' as Outcome, color: '#64748B' },
-  { id: 'INC-0472', asset: 'BFP-2B', plant: 'JRG-CCGT-1', outcome: 'reaffirm' as Outcome, color: '#64748B' },
+  { id: 'INC-0537', asset: 'BFP-3A', plant: 'NGT-CCGT-1', outcome: 'exception' as Outcome, color: '#F59E0B' },
+  { id: 'INC-0488', asset: 'BFP-2A', plant: 'NGT-CCGT-1', outcome: 'reaffirm' as Outcome, color: '#64748B' },
+  { id: 'INC-0501', asset: 'BFP-1A', plant: 'NGT-CCGT-1', outcome: 'reaffirm' as Outcome, color: '#64748B' },
+  { id: 'INC-0455', asset: 'BFP-4A', plant: 'NGT-CCGT-1', outcome: 'reaffirm' as Outcome, color: '#64748B' },
+  { id: 'INC-0472', asset: 'BFP-2B', plant: 'NGT-CCGT-1', outcome: 'reaffirm' as Outcome, color: '#64748B' },
 ]
 export const INCIDENT_COLOR: Record<string, string> = Object.fromEntries(INCIDENTS.map((i) => [i.id, i.color]))
 

@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────
-// Hyperspace OS — PowerCo Demo · Wave 1.5
+// Nexus OS — PowerCo Demo · Wave 1.5
 // LIGHT THEME · personas panel external above tablet · Ops Control Tower view.
 // render() is PURE PAINT — no timers, no animation kickoffs.
 // ─────────────────────────────────────────────
@@ -152,27 +152,27 @@ const PERSONA_INITIALS = {
 
 const BANNER_COPY = {
   ops: {
-    label: 'NEW INCIDENT · Hyperspace OS',
-    body:  'JRG-CCGT-1 · Block 2 · BFP-3A · vibration anomaly · 02:47 SGT',
+    label: 'NEW INCIDENT · Nexus OS',
+    body:  'NGT-CCGT-1 · Block 2 · BFP-3A · vibration anomaly · 02:47 SGT',
   },
   opsRouteBack: {
-    label: 'ROUTED BACK · Hyperspace OS',
+    label: 'ROUTED BACK · Nexus OS',
     body:  'INC-2026-0537 · Returned from <span class="dyn-name">Lim Wei Jie</span> · diagnosis revised via expert call · ops + commercial action required',
   },
   opsConfirmedReturn: {
-    label: 'WO SUBMITTED · Hyperspace OS',
+    label: 'WO SUBMITTED · Nexus OS',
     body:  'INC-2026-0537 · Returned from <span class="dyn-name">Lim Wei Jie</span> · diagnosis confirmed · WO submitted · ops review required',
   },
   onsite: {
-    label: 'INCOMING HANDOFF · Hyperspace OS',
+    label: 'INCOMING HANDOFF · Nexus OS',
     body:  'INC-2026-0537 · Routed from <span class="dyn-name">Faye Sit</span> · onsite fix dispatch · WO-2026-1190 attached',
   },
   offsite: {
-    label: 'INCOMING HANDOFF · Hyperspace OS',
+    label: 'INCOMING HANDOFF · Nexus OS',
     body:  'INC-2026-0537 · Routed from <span class="dyn-name">Lim Wei Jie</span> · diagnosis revision + escalation pending sign-off',
   },
   analyst: {
-    label: 'INCOMING ESCALATION · Hyperspace OS',
+    label: 'INCOMING ESCALATION · Nexus OS',
     body:  'INC-2026-0537 · Routed from <span class="dyn-name">Faye Sit</span> · trading desk decision required',
   },
 };
@@ -252,7 +252,7 @@ const SHAFT_MISALIGN_RATIONALE = [
 // ── Hardcoded incident data (Northgate-CCGT-1 BFP-3A) — W3.9 pivot ──
 const INCIDENT = {
   id: 'INC-2026-0537',
-  asset: 'JRG-CCGT-1 · Block 2 · BFP-3A',
+  asset: 'NGT-CCGT-1 · Block 2 · BFP-3A',
   title: 'BFP-3A vibration RMS drift · NDE bearing housing',
   timestamp: '02:47 SGT · 2026-05-20',
   severity: 'AMBER',
@@ -296,7 +296,7 @@ const INCIDENT = {
 
 // ── Part 3 — "after learning" rationale rows for the now-recommended casing-crack diagnosis ──
 const CASING_CRACK_RATIONALE = [
-  { text: 'Discharge-weld-toe fatigue signature — matches the resolved JRG-CCGT-1 BFP-3A casing crack (INC-2026-0537)',
+  { text: 'Discharge-weld-toe fatigue signature — matches the resolved NGT-CCGT-1 BFP-3A casing crack (INC-2026-0537)',
     strength: 'met',     badgeLabel: 'fully met' },
   { text: 'NDE bearing vibration + temperature rise consistent with secondary damage from a propagating casing crack',
     strength: 'met',     badgeLabel: 'fully met' },
@@ -317,7 +317,7 @@ const CASING_CRACK_MACHINE_HISTORY = [
 // when state.part3 is on; the recommended option is casing crack.
 const ACT3_INCIDENT = {
   id: 'INC-2026-0612',
-  asset: 'JRG-CCGT-1 · Block 2 · BFP-2B',
+  asset: 'NGT-CCGT-1 · Block 2 · BFP-2B',
   title: 'BFP-2B vibration RMS drift · NDE bearing housing',
   timestamp: '03:14 SGT · 2026-06-18',
   severity: 'AMBER',
@@ -326,7 +326,7 @@ const ACT3_INCIDENT = {
   metrics: INCIDENT.metrics,   // same readings as INC-0537 — the whole point of the contrast
   options: [
     { id: 'casing-crack', name: 'Pump casing crack / weld-toe fatigue', conf: 91, recommended: true,
-      rationale: 'Discharge weld-toe fatigue — same failure mode the system confirmed on JRG-CCGT-1 BFP-3A (INC-2026-0537); weld-NDT step now standard',
+      rationale: 'Discharge weld-toe fatigue — same failure mode the system confirmed on NGT-CCGT-1 BFP-3A (INC-2026-0537); weld-NDT step now standard',
       details: CASING_CRACK_RATIONALE, machineHistory: CASING_CRACK_MACHINE_HISTORY, detailLabel: 'Full reasoning' },
     { id: 'shaft-misalign', name: 'Shaft misalignment', conf: 77, recommended: false,
       rationale: 'Elevated 2×RPM + ~180° NDE-DE phase shift — misalignment signature · down-weighted after the prior over-weight was corrected',
@@ -417,7 +417,7 @@ const WO_GROUP_SOURCE = { 'Safety': 's-sop', 'Instrument': 's-manual', 'Root cau
 // W41b — richer machine detail for the WO "Machine" block (attributed to Machine history).
 // Duty/age figures illustrative; HPcp is Sulzer's barrel-casing boiler-feed-pump line.
 const MACHINE_DETAIL = {
-  asset: INCIDENT.asset,   // JRG-CCGT-1 · Block 2 · BFP-3A
+  asset: INCIDENT.asset,   // NGT-CCGT-1 · Block 2 · BFP-3A
   specs: [
     ['Equipment', 'Sulzer multi-stage barrel-casing boiler feed pump (HPcp series)'],
     ['Driver', 'ABB ACS variable-speed drive · 6.6 kV induction motor'],
@@ -565,7 +565,7 @@ const PERSONA_OWN_TASKS = {
   onsite: [
     {
       id: 'WO-2026-1182',
-      asset: 'JRG-CCGT-1 · GT-2',
+      asset: 'NGT-CCGT-1 · GT-2',
       body: 'GT-2 borescope inspection · stage 1 compressor',
       severity: 'INFO', state: 'SCHEDULED 09:00 SGT', stateClass: 'info',
       age: '—', owner: 'Lim Wei Jie', ownerInitials: 'LWJ',
@@ -573,7 +573,7 @@ const PERSONA_OWN_TASKS = {
     },
     {
       id: 'WO-2026-1156',
-      asset: 'JRG-CCGT-1 · BFP-2B',
+      asset: 'NGT-CCGT-1 · BFP-2B',
       body: 'BFP-2B coupling re-greasing',
       severity: 'INFO', state: 'IN PROGRESS', stateClass: 'info',
       age: '—', owner: 'Lim Wei Jie', ownerInitials: 'LWJ',
@@ -581,7 +581,7 @@ const PERSONA_OWN_TASKS = {
     },
     {
       id: 'WO-2026-1173',
-      asset: 'JRG-CCGT-1 · HRSG-2',
+      asset: 'NGT-CCGT-1 · HRSG-2',
       body: 'HRSG-2 hand valve overhaul · awaiting parts',
       severity: 'INFO', state: 'BLOCKED · PARTS ETA 4D', stateClass: 'info',
       age: '—', owner: 'Lim Wei Jie', ownerInitials: 'LWJ',
@@ -653,10 +653,10 @@ function el(tag, cls) {
   return e;
 }
 
-// W3.6 — multi-source caption helpers (3 source styles: hyperspace / knowledge-graph / netzero-os)
-function buildHyperspaceCaption(extraClass) {
-  const cap = el('div', 'hyperspace-source' + (extraClass ? ' ' + extraClass : ''));
-  cap.innerHTML = `<span class="hyperspace-source-icon">✦</span> hyperspace.live`;
+// W3.6 — multi-source caption helpers (3 source styles: nexus / knowledge-graph / netzero-os)
+function buildNexusCaption(extraClass) {
+  const cap = el('div', 'nexus-source' + (extraClass ? ' ' + extraClass : ''));
+  cap.innerHTML = `<span class="nexus-source-icon">✦</span> nexus.live`;
   return cap;
 }
 function buildKGSourceCaption() {
@@ -1272,7 +1272,7 @@ function playSOPAnticipationTheater() {
       ts: currentSGTLog(),
       source: 'sop-action',
       text: 'SOP Compliance Agent · confirming SOP-BFP-VIBR-001 specific steps · checking pre-conditions',
-      dataSource: 'Hyperspace OS',
+      dataSource: 'Nexus OS',
       nodeChain: ['sop-bfp-vibration-investigation'],
     });
   }
@@ -1307,7 +1307,7 @@ function revealCreateWorkOrderStep() {
       ts: currentSGTLog(),
       source: 'wo-prefill',
       text: `${WORK_ORDER.id} generated · ${INCIDENT.asset} · initial diagnosis + works to complete attached`,
-      dataSource: 'Hyperspace OS',
+      dataSource: 'Nexus OS',
       nodeChain: ['sop-wo-creation', 'sop-bfp-vibration-investigation'],
     });
   }
@@ -1319,7 +1319,7 @@ function revealCreateWorkOrderStep() {
         <span class="as-step-title">Schedule optimisation and assignment of engineer <span class="as-step-optional">(optional)</span></span>
       </div>
       <div class="as-step-body">
-        <span class="as-step-msg">Hyperspace OS · preparing…</span>
+        <span class="as-step-msg">Nexus OS · preparing…</span>
       </div>
     </div>`;
   unlockActionStep3();
@@ -1337,7 +1337,7 @@ function revealStep1WithAddButton() {
         <span class="as-step-title">Step 1 · Inspect and confirm telemetry</span>
       </div>
       <div class="as-step-body">
-        <span class="as-step-msg">Telemetry snapshot pre-fetched by Hyperspace OS · pending operator confirmation</span>
+        <span class="as-step-msg">Telemetry snapshot pre-fetched by Nexus OS · pending operator confirmation</span>
         <button class="as-step-add-btn" type="button">Review</button>
       </div>
     </div>`;
@@ -1510,7 +1510,7 @@ function unlockActionStep2() {
       ts: currentSGTLog(),
       source: 'wo-prefill',
       text: `${WORK_ORDER.id} generated · ${INCIDENT.asset} · initial diagnosis + works to complete attached`,
-      dataSource: 'Hyperspace OS',
+      dataSource: 'Nexus OS',
       nodeChain: ['sop-wo-creation', 'sop-bfp-vibration-investigation'],
     });
   }
@@ -1537,7 +1537,7 @@ function unlockActionStep3() {
   state.actionSteps.step2.status = 'finding';
   step3.querySelector('.as-step-body').innerHTML = `
     <span class="as-step-spinner"><span class="reveal-dots"><span></span><span></span><span></span></span></span>
-    <span class="as-step-msg">Hyperspace OS · finding on-duty engineers…</span>`;
+    <span class="as-step-msg">Nexus OS · finding on-duty engineers…</span>`;
   // W6 — fire Workflow Agent card synced with the find step (5s)
   fireAgentCardLifecycle('workflow', 5000);
   pushReveal(() => {
@@ -1815,7 +1815,7 @@ const SERVICE_REPORT_SOURCES = [
   { id: 'sr-diag', color: '#D97706', agent: 'Equipment Diagnostic Agent + Power Gen Critic',
     label: 'Diagnostic reasoning + fleet cases',
     desc: 'Ranked diagnoses with confidence, pattern-matched against prior BFP failures.',
-    records: ['Hyperspace KG · differential diagnosis', 'RCA · Northgate-CCGT-2 / Eastbay-CCGT-1 / Westpoint-CHP'] },
+    records: ['Nexus KG · differential diagnosis', 'RCA · Northgate-CCGT-2 / Eastbay-CCGT-1 / Westpoint-CHP'] },
   { id: 'sr-human', color: '#DB2777', agent: 'Faye Sit + Lim Wei Jie',
     label: 'Human-in-the-loop decisions',
     desc: 'Ops override rationale and onsite safety + root-cause checks captured in-workflow.',
@@ -1885,7 +1885,7 @@ function buildScreenDSourceLegend() {
       <svg class="source-ic" viewBox="0 0 24 24" width="18" height="18" fill="#3B82F6" aria-hidden="true">
         <path d="M12 2l1.6 6.4L20 10l-6.4 1.6L12 18l-1.6-6.4L4 10l6.4-1.6L12 2z"/>
       </svg>
-      <span>Hyperspace OS</span>
+      <span>Nexus OS</span>
     </span>
     <span class="source-chip">
       <svg class="source-ic" viewBox="0 0 24 24" width="18" height="18" fill="#00A651" aria-hidden="true">
@@ -2181,7 +2181,7 @@ function fireRevealBlock2Agents() {
   const agentId = 'pl';
   setAgentActive(agentId, 'Revenue Commitment Exposure', 3);
   const lines = [
-    { ts: '02:47:16', source: 'pl', text: 'pulling PSO commitment window 09:00–18:00 SGT',         dataSource: 'Hyperspace OS', nodeChain: ['esc-pso','pred-mw-derate'] },
+    { ts: '02:47:16', source: 'pl', text: 'pulling PSO commitment window 09:00–18:00 SGT',         dataSource: 'Nexus OS', nodeChain: ['esc-pso','pred-mw-derate'] },
     { ts: '02:47:17', source: 'pl', text: 'revenue at risk · 50MW × 4h × SGD 120/MWh peak tariff', dataSource: 'NetZeroOS',     nodeChain: ['pred-mw-derate'] },
     { ts: '02:47:18', source: 'pl', text: 'exposure ~SGD 2.4M · forward Q3 capacity hedge eligible', dataSource: 'NetZeroOS',   nodeChain: ['pred-mw-derate','roi-wash'] },
   ];
@@ -2201,11 +2201,11 @@ function fireRevealBlock3Agents() {
   activateAgentParallel('critic-power-gen', 1);
 
   const lines = [
-    { ts: '02:47:19', source: 'triage',           text: 'pattern-match · 3 prior RCAs · compressor fouling humidity-correlated', dataSource: 'Hyperspace KG', nodeChain: ['rca-2025-014-eastbay','rca-2024-093-northgate','rca-2025-031-northgate2','pat-comp-fouling'] },
-    { ts: '02:47:20', source: 'triage',           text: 'diagnosis hypothesis · 78% confidence',                                  dataSource: 'Hyperspace OS', nodeChain: ['pat-comp-fouling'] },
+    { ts: '02:47:19', source: 'triage',           text: 'pattern-match · 3 prior RCAs · compressor fouling humidity-correlated', dataSource: 'Nexus KG', nodeChain: ['rca-2025-014-eastbay','rca-2024-093-northgate','rca-2025-031-northgate2','pat-comp-fouling'] },
+    { ts: '02:47:20', source: 'triage',           text: 'diagnosis hypothesis · 78% confidence',                                  dataSource: 'Nexus OS', nodeChain: ['pat-comp-fouling'] },
     { ts: '02:47:21', source: 'playbook',         text: 'OEM procedure · GE 9HA compressor offline wash · est 6h',                dataSource: 'Maximo',         nodeChain: ['oem-ge-9ha-manual','rec-oem-playbook'] },
-    { ts: '02:47:22', source: 'critic-power-gen', text: 'KG path validated · humidity-fouling matches GE 9HA degradation curve ✓', dataSource: 'Hyperspace KG', nodeChain: ['pat-comp-fouling','mdl-humidity-v3','oem-ge-9ha-manual'] },
-    { ts: '02:47:23', source: 'orchestrator',     text: 'recommendation ready · SOP-WASH-001 · awaiting dispatch',                 dataSource: 'Hyperspace OS', nodeChain: ['rec-oem-playbook'] },
+    { ts: '02:47:22', source: 'critic-power-gen', text: 'KG path validated · humidity-fouling matches GE 9HA degradation curve ✓', dataSource: 'Nexus KG', nodeChain: ['pat-comp-fouling','mdl-humidity-v3','oem-ge-9ha-manual'] },
+    { ts: '02:47:23', source: 'orchestrator',     text: 'recommendation ready · SOP-WASH-001 · awaiting dispatch',                 dataSource: 'Nexus OS', nodeChain: ['rec-oem-playbook'] },
   ];
   lines.forEach((line, idx) => {
     pushReveal(() => {
@@ -2287,7 +2287,7 @@ function onInitialDiagnosisConfirmClick() {
       ts: currentSGTLog(),
       source: 'orchestrator',
       text: `Diagnosis captured by Faye Sit · ${diagnosisOptionLabel(selectedId)}${overrideNote} · workflow handoff to SOP-relevant next-best actions`,
-      dataSource: 'Hyperspace OS',
+      dataSource: 'Nexus OS',
       nodeChain: ['bearing-spalling-pattern', 'sop-bfp-vibration-investigation'],
     });
   }
@@ -2708,7 +2708,7 @@ function paintLimSummaryComplete(revised) {
   if (revised) {
     tileHtml = buildRevisedDiagnosisTileHTML();
   } else {
-    // W8 C.1 — confirmation pill: Faye already passed this through Hyperspace OS · pending onsite verification.
+    // W8 C.1 — confirmation pill: Faye already passed this through Nexus OS · pending onsite verification.
     tileHtml = `
       <div class="sr-hypothesis">
         <div class="sr-hyp-row">
@@ -3175,7 +3175,7 @@ function triggerGroupTheater(targetGroupName, opts = {}) {
       ts: currentSGTLog(),
       source: meta.source,
       text: `${meta.displayName} · ${meta.loadingText}`,
-      dataSource: 'Hyperspace OS',
+      dataSource: 'Nexus OS',
       nodeChain: meta.nodeChain,
     });
   }
@@ -3208,7 +3208,7 @@ function logChecklistItem(itemId) {
     ts: currentSGTLog(),
     source: 'workflow',
     text: `Inspection check · ${itemId} · confirmed by Lim Wei Jie`,
-    dataSource: 'Hyperspace OS',
+    dataSource: 'Nexus OS',
     nodeChain: ['sop-bfp-vibration-investigation'],
   });
 }
@@ -3279,7 +3279,7 @@ function paintDiagnosisVerdict() {
       ts: currentSGTLog(),
       source: 'workflow',
       text: `Inspection workflow complete · ${limTotalCount().done}/${limTotalCount().total} checks logged · Fault review gated open`,
-      dataSource: 'Hyperspace OS',
+      dataSource: 'Nexus OS',
       nodeChain: ['sop-bfp-vibration-investigation'],
     });
   }
@@ -3431,7 +3431,7 @@ function onSOPSuggestCallClick() {
       ts: currentSGTLog(),
       source: 'workflow',
       text: `Deviation logged by Lim Wei Jie · escalating to offsite expert · rationale: "${state.lim.deviationRationale.trim()}"`,
-      dataSource: 'Hyperspace OS',
+      dataSource: 'Nexus OS',
       nodeChain: ['sop-bfp-vibration-investigation'],
     });
   }
@@ -3450,7 +3450,7 @@ function onSOPSuggestCallClick() {
       ts: currentSGTLog(),
       source: 'sop-action',
       text: 'SOP Action Agent · Connecting to Dr. A. Ismail via call · routing through escalation playbook',
-      dataSource: 'Hyperspace OS',
+      dataSource: 'Nexus OS',
       nodeChain: ['dr-ismail', 'sop-bfp-vibration-investigation'],
     });
   }
@@ -3478,8 +3478,8 @@ function onVerdictConfirm() {
   appendConfirmedCaptureFooter();
 
   if (window.LOG) {
-    window.LOG.appendLine({ ts: currentSGTLog(), source: 'workflow', text: 'Hyperspace OS hypothesis confirmed by Lim Wei Jie · WO submitted', dataSource: 'Hyperspace OS', nodeChain: ['sop-bfp-vibration-investigation'] });
-    window.LOG.appendLine({ ts: currentSGTLog(), source: 'workflow', text: 'Workflow trace · P2 Onsite → P1 Ops Tower · WO chain enriched · Faye Sit notified', dataSource: 'Hyperspace OS', nodeChain: ['r-kumar'] });
+    window.LOG.appendLine({ ts: currentSGTLog(), source: 'workflow', text: 'Nexus OS hypothesis confirmed by Lim Wei Jie · WO submitted', dataSource: 'Nexus OS', nodeChain: ['sop-bfp-vibration-investigation'] });
+    window.LOG.appendLine({ ts: currentSGTLog(), source: 'workflow', text: 'Workflow trace · P2 Onsite → P1 Ops Tower · WO chain enriched · Faye Sit notified', dataSource: 'Nexus OS', nodeChain: ['r-kumar'] });
   }
   fireAgentCardLifecycle('workflow', 2000);
   render();
@@ -3587,7 +3587,7 @@ function onCallEnd() {
       ts: currentSGTLog(),
       source: 'audio-transcription',
       text: 'Call transcript generated · 7m 23s · 6 exchanges · auto-attached',
-      dataSource: 'Hyperspace OS',
+      dataSource: 'Nexus OS',
       nodeChain: [],
     });
   }
@@ -3605,7 +3605,7 @@ function onCallEnd() {
         ts: currentSGTLog(),
         source: 'audio-transcription',
         text: 'Transcript analysis · diarized speakers · revised diagnosis extracted',
-        dataSource: 'Hyperspace OS',
+        dataSource: 'Nexus OS',
         nodeChain: ['pump-casing-crack-pattern'],
       });
     }
@@ -3688,8 +3688,8 @@ function onDiagnosisConfirmedClick() {
       ts: currentSGTLog(),
       source: 'workflow',
       text: `Diagnosis revised at ${state.lim.revisionTimestamp} · pump casing crack confirmed via call + targeted inspection`,
-      dataSource: 'Hyperspace OS',
-      nodeChain: ['pump-casing-crack-pattern', 'casing-bfp-3a', 'casing-rca-jrg-2023'],
+      dataSource: 'Nexus OS',
+      nodeChain: ['pump-casing-crack-pattern', 'casing-bfp-3a', 'casing-rca-ngt-2023'],
     });
   }
   // W6 — KG growth animation fires 10s later
@@ -3705,7 +3705,7 @@ function triggerKGGrowth() {
       ts: currentSGTLog(),
       source: 'workflow',
       text: "Tacit knowledge captured from Dr. A. Ismail's expert collaboration · 3 KG nodes refreshed · BFP casing patterns codified",
-      dataSource: 'Hyperspace OS',
+      dataSource: 'Nexus OS',
       nodeChain: ['casing-tacit-knowledge', 'ismail-field-experience-2023', 'bfp-casing-inspection-protocol'],
     });
   }
@@ -3749,7 +3749,7 @@ function spawnDeviationNotice() {
       <span class="dn-icon">⚠</span>
       <div class="dn-body">
         <div class="dn-heading">Workflow deviation detected</div>
-        <div class="dn-text">Onsite findings diverge from <strong>${WORK_ORDER.id}</strong> (bearing fix). Logged by <strong>Hyperspace OS</strong> · re-diagnosis triggered.</div>
+        <div class="dn-text">Onsite findings diverge from <strong>${WORK_ORDER.id}</strong> (bearing fix). Logged by <strong>Nexus OS</strong> · re-diagnosis triggered.</div>
       </div>
     </div>`);
   if (window.LOG) {
@@ -3757,7 +3757,7 @@ function spawnDeviationNotice() {
       ts: currentSGTLog(),
       source: 'workflow',
       text: `Workflow deviation logged · ${WORK_ORDER.id} · onsite findings ≠ planned bearing fix · re-diagnosis triggered`,
-      dataSource: 'Hyperspace OS',
+      dataSource: 'Nexus OS',
       nodeChain: ['sop-bfp-vibration-investigation', 'pump-casing-crack-pattern'],
     });
   }
@@ -3781,7 +3781,7 @@ function spawnReviseDiagnosisTile() {
       <div class="rdt-body">
         <div class="rdt-heading">REVISED FAULT</div>
         <div class="rdt-text">
-          Hyperspace OS detected that in addition to the bearings the main reason for this was actually a <span class="dyn-name">crack in pump casing on BFP-3A</span> based on call with <span class="dyn-name">Dr. A. Ismail</span>.
+          Nexus OS detected that in addition to the bearings the main reason for this was actually a <span class="dyn-name">crack in pump casing on BFP-3A</span> based on call with <span class="dyn-name">Dr. A. Ismail</span>.
         </div>
       </div>
       <button class="rdt-confirm-btn" type="button">Add review finding</button>
@@ -3830,7 +3830,7 @@ function onConfirmRevisedDiagnosisClick() {
       ts: currentSGTLog(),
       source: 'sop-action',
       text: 'SOP Action Agent · Reviewing SOP-BFP-VIBR-001 + cross-checking revised diagnosis · routing to Ops',
-      dataSource: 'Hyperspace OS',
+      dataSource: 'Nexus OS',
       nodeChain: ['sop-bfp-vibration-investigation', 'pump-casing-crack-pattern'],
     });
   }
@@ -3857,10 +3857,10 @@ function advanceToRoutedRevisedDiagnosis() {
   appendRevisedDiagnosisCaptureFooter();
 
   if (window.LOG) {
-    window.LOG.appendLine({ ts: currentSGTLog(), source: 'workflow', text: 'State advance · REVISED_DIAGNOSIS_ROUTED · routed to Faye Sit for ops + commercial impact', dataSource: 'Hyperspace OS', nodeChain: ['r-kumar'] });
-    window.LOG.appendLine({ ts: currentSGTLog(), source: 'wo-prefill', text: `${WORK_ORDER.id} superseded · ${WORK_ORDER_REVISED.id} regenerated · revised diagnosis + updated works · surfaced to Faye Sit`, dataSource: 'Hyperspace OS', nodeChain: ['sop-wo-creation', 'pump-casing-crack-pattern'] });
-    window.LOG.appendLine({ ts: currentSGTLog(), source: 'workflow', text: 'KG enriched · revised diagnosis + call transcript attached to incident', dataSource: 'Hyperspace OS', nodeChain: ['pump-casing-crack-pattern'] });
-    window.LOG.appendLine({ ts: currentSGTLog(), source: 'learning', text: 'Learning Engine · service report compiled from full incident knowledge (telemetry · diagnoses · override · onsite checks · Dr. Ismail transcript · revised failure mode · remediation) · ready for Lim Wei Jie review', dataSource: 'Hyperspace OS', nodeChain: ['pump-casing-crack-pattern', 'sop-bfp-vibration-investigation'] });
+    window.LOG.appendLine({ ts: currentSGTLog(), source: 'workflow', text: 'State advance · REVISED_DIAGNOSIS_ROUTED · routed to Faye Sit for ops + commercial impact', dataSource: 'Nexus OS', nodeChain: ['r-kumar'] });
+    window.LOG.appendLine({ ts: currentSGTLog(), source: 'wo-prefill', text: `${WORK_ORDER.id} superseded · ${WORK_ORDER_REVISED.id} regenerated · revised diagnosis + updated works · surfaced to Faye Sit`, dataSource: 'Nexus OS', nodeChain: ['sop-wo-creation', 'pump-casing-crack-pattern'] });
+    window.LOG.appendLine({ ts: currentSGTLog(), source: 'workflow', text: 'KG enriched · revised diagnosis + call transcript attached to incident', dataSource: 'Nexus OS', nodeChain: ['pump-casing-crack-pattern'] });
+    window.LOG.appendLine({ ts: currentSGTLog(), source: 'learning', text: 'Learning Engine · service report compiled from full incident knowledge (telemetry · diagnoses · override · onsite checks · Dr. Ismail transcript · revised failure mode · remediation) · ready for Lim Wei Jie review', dataSource: 'Nexus OS', nodeChain: ['pump-casing-crack-pattern', 'sop-bfp-vibration-investigation'] });
   }
   fireAgentCardLifecycle('workflow', 2000);
   fireAgentCardLifecycle('learning', 2500);
@@ -3982,7 +3982,7 @@ function buildServiceReportHTML() {
       <div class="svr-head">
         <div>
           <div class="svr-title">Service Report</div>
-          <div class="svr-sub">INC-2026-0537 · JRG-CCGT-1 · Block 2 · BFP-3A</div>
+          <div class="svr-sub">INC-2026-0537 · NGT-CCGT-1 · Block 2 · BFP-3A</div>
         </div>
         <div class="svr-head-right">
           <span class="svr-gen">Compiled by Learning Engine</span>
@@ -4030,9 +4030,9 @@ function fireWorkflowAgentArcEscalate() {
   setAgentActive(agentId, 'Escalation Capture', 3);
   fireAgentCardLifecycle(agentId, 3000);
   const lines = [
-    { delay: 200,  line: { ts: '02:56:10', source: 'workflow', text: 'Lim Wei Jie · escalation captured · revised diagnosis pump casing crack', dataSource: 'Hyperspace OS', nodeChain: ['lim-wei-jie', 'pump-casing-crack-pattern', 'casing-bfp-3a'] } },
-    { delay: 900,  line: { ts: '02:56:11', source: 'workflow', text: 'handoff sequence recorded · P2 Onsite → P3 Offsite · approval pending', dataSource: 'Hyperspace OS', nodeChain: ['lim-wei-jie', 'dr-ismail'] } },
-    { delay: 900,  line: { ts: '02:56:12', source: 'workflow', text: 'SOP-BFP-VIBR-001 · revised diagnosis + call transcript attached to KG', dataSource: 'Hyperspace OS', nodeChain: ['sop-bfp-vibration-investigation', 'pump-casing-crack-pattern'] } },
+    { delay: 200,  line: { ts: '02:56:10', source: 'workflow', text: 'Lim Wei Jie · escalation captured · revised diagnosis pump casing crack', dataSource: 'Nexus OS', nodeChain: ['lim-wei-jie', 'pump-casing-crack-pattern', 'casing-bfp-3a'] } },
+    { delay: 900,  line: { ts: '02:56:11', source: 'workflow', text: 'handoff sequence recorded · P2 Onsite → P3 Offsite · approval pending', dataSource: 'Nexus OS', nodeChain: ['lim-wei-jie', 'dr-ismail'] } },
+    { delay: 900,  line: { ts: '02:56:12', source: 'workflow', text: 'SOP-BFP-VIBR-001 · revised diagnosis + call transcript attached to KG', dataSource: 'Nexus OS', nodeChain: ['sop-bfp-vibration-investigation', 'pump-casing-crack-pattern'] } },
   ];
   let t = 0;
   lines.forEach((entry, idx) => {
@@ -4124,8 +4124,8 @@ function startIsmailScreenDReveal() {
       ts: currentSGTLog(),
       source: 'triage',
       text: 'Equipment Diagnostic Agent · pulling Ismail\'s 2023 Northgate-2 BFP casing field-experience pattern + prior RCA traversal',
-      dataSource: 'Hyperspace OS',
-      nodeChain: ['casing-rca-jrg-2023', 'pump-casing-crack-pattern', 'dr-ismail'],
+      dataSource: 'Nexus OS',
+      nodeChain: ['casing-rca-ngt-2023', 'pump-casing-crack-pattern', 'dr-ismail'],
     });
   }
   pushReveal(() => {
@@ -4218,7 +4218,7 @@ function appendIsmailApprovalCaptureFooter() {
   if (container.querySelector('.dispatch-capture-footer')) return;
   const footer = el('div', 'dispatch-capture-footer');
   footer.innerHTML = `
-    <div class="dcf-line"><span class="dcf-ic">✓</span><span class="dcf-txt"><strong>Hyperspace OS</strong> · escalation approval sign-off recorded</span></div>
+    <div class="dcf-line"><span class="dcf-ic">✓</span><span class="dcf-txt"><strong>Nexus OS</strong> · escalation approval sign-off recorded</span></div>
     <div class="dcf-line"><span class="dcf-ic">✓</span><span class="dcf-txt">Approval + transcript routed to <strong>A2A Coordination Agent</strong> for chain-of-custody</span></div>
     <div class="dcf-line"><span class="dcf-ic">✓</span><span class="dcf-txt"><strong>Knowledge-Graph</strong> · sign-off attached to incident · routed back to Site Operations Manager</span></div>`;
   container.appendChild(footer);
@@ -4232,9 +4232,9 @@ function fireWorkflowAgentArcApprove() {
   setAgentActive(agentId, 'Approval Sign-off Capture', 3);
   fireAgentCardLifecycle(agentId, 3000);
   const lines = [
-    { delay: 200, line: { ts: '02:58:05', source: 'workflow', text: 'Sign-off recorded · revised diagnosis confirmed · escalation approved', dataSource: 'Hyperspace OS', nodeChain: ['dr-ismail', 'pump-casing-crack-pattern'] } },
-    { delay: 900, line: { ts: '02:58:06', source: 'workflow', text: 'Workflow trace · P3 Offsite → P1 Ops Tower · route-back for ops + commercial impact action', dataSource: 'Hyperspace OS', nodeChain: ['dr-ismail', 'r-kumar'] } },
-    { delay: 900, line: { ts: '02:58:07', source: 'workflow', text: 'KG enriched · sign-off attached · routed back to Faye Sit · ops manager action queued', dataSource: 'Hyperspace OS', nodeChain: ['sop-bfp-vibration-investigation', 'r-kumar'] } },
+    { delay: 200, line: { ts: '02:58:05', source: 'workflow', text: 'Sign-off recorded · revised diagnosis confirmed · escalation approved', dataSource: 'Nexus OS', nodeChain: ['dr-ismail', 'pump-casing-crack-pattern'] } },
+    { delay: 900, line: { ts: '02:58:06', source: 'workflow', text: 'Workflow trace · P3 Offsite → P1 Ops Tower · route-back for ops + commercial impact action', dataSource: 'Nexus OS', nodeChain: ['dr-ismail', 'r-kumar'] } },
+    { delay: 900, line: { ts: '02:58:07', source: 'workflow', text: 'KG enriched · sign-off attached · routed back to Faye Sit · ops manager action queued', dataSource: 'Nexus OS', nodeChain: ['sop-bfp-vibration-investigation', 'r-kumar'] } },
   ];
   let t = 0;
   lines.forEach((entry, idx) => {
@@ -4446,7 +4446,7 @@ function onReassignWOClick() {
       ts: currentSGTLog(),
       source: 'wo-prefill',
       text: `${WORK_ORDER_REVISED.id} reassignment · Faye Sit · finding on-call technicians for casing crack repair`,
-      dataSource: 'Hyperspace OS',
+      dataSource: 'Nexus OS',
       nodeChain: ['sop-wo-creation', 'pump-casing-crack-pattern'],
     });
   }
@@ -4487,7 +4487,7 @@ function onReassignTechSelect(name) {
       ts: currentSGTLog(),
       source: 'wo-prefill',
       text: `${WORK_ORDER_REVISED.id} reassigned · ${name} dispatched for casing crack repair · routed by Faye Sit`,
-      dataSource: 'Hyperspace OS',
+      dataSource: 'Nexus OS',
       nodeChain: ['sop-wo-creation', 'pump-casing-crack-pattern'],
     });
   }
@@ -4521,15 +4521,15 @@ function onFastForwardComplete() {
       ts: currentSGTLog(),
       source: 'workflow',
       text: `Repair complete · BFP-3A casing crack rectified by ${state.faye.woReassignedTo || 'technician'} · ${WORK_ORDER_REVISED.id} closed`,
-      dataSource: 'Hyperspace OS',
+      dataSource: 'Nexus OS',
       nodeChain: ['pump-casing-crack-pattern', 'casing-bfp-3a'],
     });
     window.LOG.appendLine({
       ts: currentSGTLog(),
       source: 'workflow',
       text: `Learning Engine · RCA + service report generated from ${WORK_ORDER.id} + ${WORK_ORDER_REVISED.id} · ready for review`,
-      dataSource: 'Hyperspace OS',
-      nodeChain: ['casing-rca-jrg-2023', 'pump-casing-crack-pattern'],
+      dataSource: 'Nexus OS',
+      nodeChain: ['casing-rca-ngt-2023', 'pump-casing-crack-pattern'],
     });
   }
   fireAgentCardLifecycle('workflow', 2500);
@@ -4604,7 +4604,7 @@ function appendNotifyTradingDeskCaptureFooter() {
   if (container.querySelector('.dispatch-capture-footer')) return;
   const footer = el('div', 'dispatch-capture-footer');
   footer.innerHTML = `
-    <div class="dcf-line"><span class="dcf-ic">✓</span><span class="dcf-txt"><strong>Hyperspace OS</strong> · ops escalation logged · trading desk notification queued</span></div>
+    <div class="dcf-line"><span class="dcf-ic">✓</span><span class="dcf-txt"><strong>Nexus OS</strong> · ops escalation logged · trading desk notification queued</span></div>
     <div class="dcf-line"><span class="dcf-ic">✓</span><span class="dcf-txt">Escalation packet routed to <strong>A2A Coordination Agent</strong> for trading-desk chain</span></div>
     <div class="dcf-line"><span class="dcf-ic">✓</span><span class="dcf-txt"><strong>Knowledge-Graph</strong> · commercial-impact context attached · routed to Trader</span></div>`;
   container.appendChild(footer);
@@ -4618,9 +4618,9 @@ function fireWorkflowAgentArcNotify() {
   setAgentActive(agentId, 'Trading Desk Notification', 3);
   fireAgentCardLifecycle(agentId, 3000);
   const lines = [
-    { delay: 200, line: { ts: '02:59:02', source: 'workflow', text: 'Faye Sit · trading desk notification queued · commercial impact context attached', dataSource: 'Hyperspace OS', nodeChain: ['r-kumar', 'pred-mw-derate'] } },
-    { delay: 900, line: { ts: '02:59:03', source: 'workflow', text: 'Handoff sequence recorded · P1 Ops Tower → P4 Asset Perf · trading desk action queued', dataSource: 'Hyperspace OS', nodeChain: ['r-kumar', 'p-sundaram'] } },
-    { delay: 900, line: { ts: '02:59:04', source: 'workflow', text: 'KG enriched · ~SGD 2.4M revenue exposure attached · Trader desk routing complete', dataSource: 'Hyperspace OS', nodeChain: ['pred-mw-derate', 'p-sundaram'] } },
+    { delay: 200, line: { ts: '02:59:02', source: 'workflow', text: 'Faye Sit · trading desk notification queued · commercial impact context attached', dataSource: 'Nexus OS', nodeChain: ['r-kumar', 'pred-mw-derate'] } },
+    { delay: 900, line: { ts: '02:59:03', source: 'workflow', text: 'Handoff sequence recorded · P1 Ops Tower → P4 Asset Perf · trading desk action queued', dataSource: 'Nexus OS', nodeChain: ['r-kumar', 'p-sundaram'] } },
+    { delay: 900, line: { ts: '02:59:04', source: 'workflow', text: 'KG enriched · ~SGD 2.4M revenue exposure attached · Trader desk routing complete', dataSource: 'Nexus OS', nodeChain: ['pred-mw-derate', 'p-sundaram'] } },
   ];
   let t = 0;
   lines.forEach((entry, idx) => {
@@ -4806,7 +4806,7 @@ function spawnAnalystScreenContent() {
       </div>
     </div>
     <button class="ac-lock-cta" type="button" disabled>
-      Lock decision · Hyperspace OS confirms revenue exposure neutralized
+      Lock decision · Nexus OS confirms revenue exposure neutralized
     </button>`;
   card.insertAdjacentHTML('beforeend', contentHTML);
 }
@@ -4910,7 +4910,7 @@ function appendLockDecisionCaptureFooter() {
   if (container.querySelector('.dispatch-capture-footer')) return;
   const footer = el('div', 'dispatch-capture-footer');
   footer.innerHTML = `
-    <div class="dcf-line"><span class="dcf-ic">✓</span><span class="dcf-txt"><strong>Hyperspace OS</strong> · trading decision locked · commercial close</span></div>
+    <div class="dcf-line"><span class="dcf-ic">✓</span><span class="dcf-txt"><strong>Nexus OS</strong> · trading decision locked · commercial close</span></div>
     <div class="dcf-line"><span class="dcf-ic">✓</span><span class="dcf-txt">Decision audit + lineage routed to <strong>A2A Coordination Agent</strong></span></div>
     <div class="dcf-line"><span class="dcf-ic">✓</span><span class="dcf-txt"><strong>Knowledge-Graph</strong> · trading outcome attached · cycle complete</span></div>`;
   container.appendChild(footer);
@@ -4926,9 +4926,9 @@ function fireWorkflowAgentArcLock() {
   fireAgentCardLifecycle(agentId, 3000);
   const optionLabel = state.priya.selectedOption ? PRIYA_OPTION_LABEL[state.priya.selectedOption] : '—';
   const lines = [
-    { delay: 200, line: { ts: '03:01:11', source: 'workflow', text: `Priya Sundaram · trading decision locked · ${optionLabel}`, dataSource: 'Hyperspace OS', nodeChain: ['p-sundaram', 'pred-mw-derate'] } },
-    { delay: 900, line: { ts: '03:01:12', source: 'workflow', text: 'Decision audit + market position lineage recorded · cycle close', dataSource: 'Hyperspace OS', nodeChain: ['p-sundaram'] } },
-    { delay: 900, line: { ts: '03:01:13', source: 'workflow', text: 'KG · trading outcome attached to INC-2026-0537 · revenue exposure neutralized', dataSource: 'Hyperspace OS', nodeChain: ['pred-mw-derate', 'sop-bfp-vibration-investigation'] } },
+    { delay: 200, line: { ts: '03:01:11', source: 'workflow', text: `Priya Sundaram · trading decision locked · ${optionLabel}`, dataSource: 'Nexus OS', nodeChain: ['p-sundaram', 'pred-mw-derate'] } },
+    { delay: 900, line: { ts: '03:01:12', source: 'workflow', text: 'Decision audit + market position lineage recorded · cycle close', dataSource: 'Nexus OS', nodeChain: ['p-sundaram'] } },
+    { delay: 900, line: { ts: '03:01:13', source: 'workflow', text: 'KG · trading outcome attached to INC-2026-0537 · revenue exposure neutralized', dataSource: 'Nexus OS', nodeChain: ['pred-mw-derate', 'sop-bfp-vibration-investigation'] } },
   ];
   let t = 0;
   lines.forEach((entry, idx) => {
@@ -5026,7 +5026,7 @@ function buildLandedIncidentRow() {
   return {
     id: INCIDENT.id,
     asset: INCIDENT.asset,
-    body: 'BFP-3A NDE bearing housing vibration RMS exceeds ISO 10816-7 Zone C threshold. Hyperspace OS hypothesis: NDE bearing race spalling (early-stage). Pending onsite verification.',
+    body: 'BFP-3A NDE bearing housing vibration RMS exceeds ISO 10816-7 Zone C threshold. Nexus OS hypothesis: NDE bearing race spalling (early-stage). Pending onsite verification.',
     severity: INCIDENT.severity,
     state: stateText,
     stateClass: stateClass,
@@ -5048,7 +5048,7 @@ function renderMonitoringView(root) {
   const persona = PERSONA_INITIALS[state.activePersona] || PERSONA_INITIALS.ops;
   hdr.innerHTML = `
     <div class="mon-hdr-left">
-      <div class="mon-hdr-brand">Hyperspace OS</div>
+      <div class="mon-hdr-brand">Nexus OS</div>
       ${persona.workspace ? `<div class="mon-hdr-workspace">${persona.workspace}</div>` : ''}
     </div>
     <div class="mon-hdr-right">
@@ -5589,7 +5589,7 @@ function updateLaptopActiveTasks() {
       <div class="td-task-tile td-task-urgent" data-tile="inc">
         <div class="td-task-urgent-badge">URGENT</div>
         <div class="td-task-what">Buy USEP forward · Jul-26 · 50 MW · Q3 peak window</div>
-        <div class="td-task-why">JRG-CCGT-1 BFP-3A unplanned shutdown · 4hrs · ~200 MWh at risk · PSO 09:00–18:00 SGT</div>
+        <div class="td-task-why">NGT-CCGT-1 BFP-3A unplanned shutdown · 4hrs · ~200 MWh at risk · PSO 09:00–18:00 SGT</div>
         <div class="td-task-meta">
           <span class="td-task-money">~SGD 2.4M at risk</span>
           <span class="td-task-timer">⏱ 28 min</span>
@@ -5899,14 +5899,14 @@ const P1_NARRATIVE_SECTIONS = [
   {
     num: '1',
     title: 'Criticality · Diagnosis · Summary',
-    sub: 'Agents pull the right Hyperspace OS metrics + run pattern-match against prior incidents to land a single criticality + diagnosis summary card.',
-    meta: '4 domain experts · 2 critics · sources: Hyperspace · Netscope · Org Knowledge',
+    sub: 'Agents pull the right Nexus OS metrics + run pattern-match against prior incidents to land a single criticality + diagnosis summary card.',
+    meta: '4 domain experts · 2 critics · sources: Nexus · Netscope · Org Knowledge',
   },
   {
     num: '2',
     title: 'SOP-driven telemetry confirmation',
     sub: 'SOP says operator must confirm metrics. Agents fetch the snapshot and bundle it for Faye.',
-    meta: '3 domain experts · 2 critics · sources: Hyperspace · SOP store',
+    meta: '3 domain experts · 2 critics · sources: Nexus · SOP store',
   },
   {
     num: '3',
@@ -5979,10 +5979,10 @@ function wireFayeRightPanePlayButtons() {
 const P1_SECTION_1 = {
   num: 1, title: 'Criticality · Diagnosis · Summary',
   domain: [
-    { name: 'Sensor Anomaly Inspector',      persistent: 'inspection', dataSource: 'Hyperspace' },
+    { name: 'Sensor Anomaly Inspector',      persistent: 'inspection', dataSource: 'Nexus' },
     { name: 'Equipment Diagnostic Agent',      persistent: 'triage',     dataSource: 'Org Knowledge' },
     { name: 'Criticality Scoring Agent',     persistent: null,         dataSource: 'Netscope' },
-    { name: 'Incident Summary Synthesizer',  persistent: null,         dataSource: 'Hyperspace' },
+    { name: 'Incident Summary Synthesizer',  persistent: null,         dataSource: 'Nexus' },
   ],
   orch: [
     { name: 'Orchestrator',           persistent: 'orchestrator' },
@@ -5992,11 +5992,11 @@ const P1_SECTION_1 = {
     { name: 'Critic · Power Gen',           persistent: 'critic-power-gen' },
     { name: 'Criticality Standards Critic', persistent: null },
   ],
-  sources: ['Hyperspace · telemetry', 'Netscope · analytics', 'Org Knowledge · SOPs + RCA'],
+  sources: ['Nexus · telemetry', 'Netscope · analytics', 'Org Knowledge · SOPs + RCA'],
   narration: [
-    'Domain experts pull vibration RMS from Hyperspace and pattern-match against prior BFP failures.',
+    'Domain experts pull vibration RMS from Nexus and pattern-match against prior BFP failures.',
     'Criticality Scoring Agent uses Netscope analytics to confirm severity classification.',
-    'Incident Summary Synthesizer hands Faye a single Hyperspace-OS-sourced summary card.',
+    'Incident Summary Synthesizer hands Faye a single Nexus-OS-sourced summary card.',
   ],
 };
 
@@ -7041,10 +7041,10 @@ const KG_NODES = [
   // L3 Historical State (amber) — y = -30
   { id: 'vib-rms-90d',         label: 'BFP-3A · 90d vib RMS',           layer: 'L3', x: -60, y: -30, z:   0 },
   { id: 'bearing-temp-30d',    label: 'NDE bearing · 30d temp',         layer: 'L3', x: -45, y: -30, z:  20 },
-  { id: 'rca-bfp-jrg-2025',    label: 'RCA · Northgate-2 BFP · 2025-08',   layer: 'L3', x: -15, y: -30, z:  10 },
-  { id: 'rca-bfp-skr-2024',    label: 'RCA · Eastbay-1 BFP · 2024-11',    layer: 'L3', x:  15, y: -30, z:  10 },
+  { id: 'rca-bfp-ngt-2025',    label: 'RCA · Northgate-2 BFP · 2025-08',   layer: 'L3', x: -15, y: -30, z:  10 },
+  { id: 'rca-bfp-eby-2024',    label: 'RCA · Eastbay-1 BFP · 2024-11',    layer: 'L3', x:  15, y: -30, z:  10 },
   { id: 'rca-bfp-westpoint-2024', label: 'RCA · Westpoint BFP · 2024-05',     layer: 'L3', x:  45, y: -30, z:  10 },
-  { id: 'casing-rca-jrg-2023', label: 'RCA · Northgate-2 BFP casing · 2023-08', layer: 'L3', x:  30, y: -30, z:  -10 },
+  { id: 'casing-rca-ngt-2023', label: 'RCA · Northgate-2 BFP casing · 2023-08', layer: 'L3', x:  30, y: -30, z:  -10 },
   { id: 'wo-log-47',           label: 'WO log · 47 prior',              layer: 'L3', x:  60, y: -30, z:   0 },
   { id: 'pi-18mo',             label: 'PI · 18mo telemetry',            layer: 'L3', x: -15, y: -30, z: -30 },
   { id: 'audit-iso50001',      label: 'Audit · ISO 50001',              layer: 'L3', x:  15, y: -30, z: -30 },
@@ -7099,8 +7099,8 @@ const KG_EDGES = [
   { source: 'audit-iso50001', target: 'bfp-3a' },
 
   // L3 RCA → L4 pattern
-  { source: 'rca-bfp-jrg-2025',    target: 'bearing-spalling-pattern' },
-  { source: 'rca-bfp-skr-2024',    target: 'bearing-spalling-pattern' },
+  { source: 'rca-bfp-ngt-2025',    target: 'bearing-spalling-pattern' },
+  { source: 'rca-bfp-eby-2024',    target: 'bearing-spalling-pattern' },
   { source: 'rca-bfp-westpoint-2024', target: 'bearing-spalling-pattern' },
   { source: 'vib-rms-90d',         target: 'bearing-spalling-pattern' },
 
@@ -7112,7 +7112,7 @@ const KG_EDGES = [
   { source: 'pump-casing-crack-pattern',       target: 'shaft-bfp-3a' },
   // W4.1 — pump casing crack narrative
   { source: 'casing-bfp-3a',            target: 'bfp-3a' },
-  { source: 'casing-rca-jrg-2023',      target: 'pump-casing-crack-pattern' },
+  { source: 'casing-rca-ngt-2023',      target: 'pump-casing-crack-pattern' },
   { source: 'pump-casing-crack-pattern', target: 'sop-bfp-vibration-investigation' },
 
   // L4 standard → L2 sensors (ISO 10816-7 governs sensor alarm thresholds)
@@ -7316,7 +7316,7 @@ const KG_CLUSTER_FLOW_EDGES = [
   { source: 'ismail-field-experience-2023',     target: 'kg-auditor-agent',      canonical: false, cluster: 'tk-to-auditor' },
   { source: 'bfp-casing-inspection-protocol', target: 'workflow-rewire-agent', canonical: false, cluster: 'tk-to-auditor' },
   { source: 'kg-auditor-agent',               target: 'pump-casing-crack-pattern',          canonical: false, cluster: 'auditor-to-main' },
-  { source: 'kg-updater-agent',               target: 'casing-rca-jrg-2023',                canonical: false, cluster: 'auditor-to-main' },
+  { source: 'kg-updater-agent',               target: 'casing-rca-ngt-2023',                canonical: false, cluster: 'auditor-to-main' },
   { source: 'workflow-rewire-agent',          target: 'sop-bfp-vibration-investigation',    canonical: false, cluster: 'auditor-to-main' },
   { source: 'kg-auditor-agent',               target: 'kg-updater-agent',                   canonical: false, cluster: 'auditor-internal' },
 ];
@@ -7503,9 +7503,9 @@ const KG_W14R3_EDGES = [
   { source: 'bearing-bfp-3a-nde',           target: 'telemetry-bearing-temp-live', canonical: false, cluster: 'w14r3-l3' },
 
   // Failure modes → L4 historical RCA evidence
-  { source: 'failure-mode-race-spalling',   target: 'rca-bfp-jrg-2025',           canonical: false, cluster: 'w14r3-l3' },
-  { source: 'failure-mode-race-spalling',   target: 'rca-bfp-skr-2024',           canonical: false, cluster: 'w14r3-l3' },
-  { source: 'failure-mode-casing-crack',    target: 'casing-rca-jrg-2023',        canonical: false, cluster: 'w14r3-l3' },
+  { source: 'failure-mode-race-spalling',   target: 'rca-bfp-ngt-2025',           canonical: false, cluster: 'w14r3-l3' },
+  { source: 'failure-mode-race-spalling',   target: 'rca-bfp-eby-2024',           canonical: false, cluster: 'w14r3-l3' },
+  { source: 'failure-mode-casing-crack',    target: 'casing-rca-ngt-2023',        canonical: false, cluster: 'w14r3-l3' },
 
   // Failure modes → L5 predictive patterns (bridge L3→L5)
   { source: 'failure-mode-race-spalling',   target: 'bearing-spalling-pattern',   canonical: false, cluster: 'w14r3-l3' },
@@ -8231,7 +8231,7 @@ const INSPECTION_AGENT_SCRIPT = {
       delayMs: 800,
     },
     {
-      log: { ts: '02:47:15', source: 'inspection', text: 'asset chain assembled · 6 nodes · BFP-3A → HRSG-3 → ST-3 cascade', dataSource: 'Hyperspace KG', nodeChain: ['bfp-3a','hrsg-3','st-3','generator-3','transformer-3','switchyard-a'] },
+      log: { ts: '02:47:15', source: 'inspection', text: 'asset chain assembled · 6 nodes · BFP-3A → HRSG-3 → ST-3 cascade', dataSource: 'Nexus KG', nodeChain: ['bfp-3a','hrsg-3','st-3','generator-3','transformer-3','switchyard-a'] },
       treeLabel: 'Assemble asset chain',
       delayMs: 800,
     },
@@ -8248,22 +8248,22 @@ const TRIAGE_AGENT_SCRIPT = {
   taskTreeLabel: 'Misalignment Hypothesis · Spectral Match',
   steps: [
     {
-      log: { ts: '02:47:19', source: 'triage', text: 'spectral analysis · elevated 2×RPM harmonic + ~180° NDE-DE phase shift across coupling', dataSource: 'Hyperspace KG', nodeChain: ['shaft-bfp-3a','coupling-bfp-3a','failure-mode-misalignment'] },
+      log: { ts: '02:47:19', source: 'triage', text: 'spectral analysis · elevated 2×RPM harmonic + ~180° NDE-DE phase shift across coupling', dataSource: 'Nexus KG', nodeChain: ['shaft-bfp-3a','coupling-bfp-3a','failure-mode-misalignment'] },
       treeLabel: 'Analyze vibration spectrum',
       delayMs: 200,
     },
     {
-      log: { ts: '02:47:20', source: 'triage', text: 'diagnosis hypothesis · shaft misalignment · 85% confidence', dataSource: 'Hyperspace OS', nodeChain: ['failure-mode-misalignment','shaft-bfp-3a'] },
+      log: { ts: '02:47:20', source: 'triage', text: 'diagnosis hypothesis · shaft misalignment · 85% confidence', dataSource: 'Nexus OS', nodeChain: ['failure-mode-misalignment','shaft-bfp-3a'] },
       treeLabel: 'Form hypothesis',
       delayMs: 900,
     },
     {
-      log: { ts: '02:47:21', source: 'triage', text: 'alternatives considered · NDE bearing race spalling 78% · coupling wear 31% · impeller imbalance 19%', dataSource: 'Hyperspace OS', nodeChain: ['bearing-spalling-pattern','coupling-bfp-3a'] },
+      log: { ts: '02:47:21', source: 'triage', text: 'alternatives considered · NDE bearing race spalling 78% · coupling wear 31% · impeller imbalance 19%', dataSource: 'Nexus OS', nodeChain: ['bearing-spalling-pattern','coupling-bfp-3a'] },
       treeLabel: 'Consider alternatives',
       delayMs: 900,
     },
     {
-      log: { ts: '02:47:22', source: 'triage', text: 'synthesis · 85% confidence · passing to Power Gen Critic', dataSource: 'Hyperspace OS', nodeChain: ['failure-mode-misalignment'] },
+      log: { ts: '02:47:22', source: 'triage', text: 'synthesis · 85% confidence · passing to Power Gen Critic', dataSource: 'Nexus OS', nodeChain: ['failure-mode-misalignment'] },
       treeLabel: 'Pass to critic',
       delayMs: 800,
     },
@@ -8276,12 +8276,12 @@ const POWER_GEN_CRITIC_SCRIPT = {
   taskTreeLabel: 'Validate Misalignment Hypothesis',
   steps: [
     {
-      log: { ts: '02:47:22', source: 'critic-power-gen', text: 'KG path validated · failure-mode-misalignment within Sulzer BFP coupling-alignment tolerance ✓', dataSource: 'Hyperspace KG', nodeChain: ['failure-mode-misalignment','sulzer-bfp-manual'] },
+      log: { ts: '02:47:22', source: 'critic-power-gen', text: 'KG path validated · failure-mode-misalignment within Sulzer BFP coupling-alignment tolerance ✓', dataSource: 'Nexus KG', nodeChain: ['failure-mode-misalignment','sulzer-bfp-manual'] },
       treeLabel: 'Walk KG path backwards',
       delayMs: 200,
     },
     {
-      log: { ts: '02:47:23', source: 'critic-power-gen', text: 'cross-check ISO 10816-7 alarm zone C threshold ✓ · onsite verification recommended', dataSource: 'Hyperspace KG', nodeChain: ['iso-10816-7-spec','sop-bfp-vibration-investigation'] },
+      log: { ts: '02:47:23', source: 'critic-power-gen', text: 'cross-check ISO 10816-7 alarm zone C threshold ✓ · onsite verification recommended', dataSource: 'Nexus KG', nodeChain: ['iso-10816-7-spec','sop-bfp-vibration-investigation'] },
       treeLabel: 'Cross-check standard',
       delayMs: 1000,
     },
@@ -8498,7 +8498,7 @@ function seedLogLines() {
   appendLogLine({
     ts: '02:47:08',
     source: 'orchestrator',
-    text: 'received INC-2026-0537 · JRG-CCGT-1 · Block 2 · BFP-3A',
+    text: 'received INC-2026-0537 · NGT-CCGT-1 · Block 2 · BFP-3A',
     nodeChain: ['bfp-3a', 'r-kumar'],
   });
   appendLogLine({
@@ -8786,11 +8786,11 @@ const P2_KG_NODES_DEF = [
   { id: 'manual-abb',         label: 'Manual · ABB drives',         layer: 'L3', x: 1020, y: 410 },
 
   // L4 row 1 (y=510) — WOs + RCAs (7 nodes · x spacing ~157px)
-  { id: 'wo-jrg-2025',        label: 'WO · Northgate 2025',            layer: 'L4', x: 80,   y: 510 },
-  { id: 'wo-skr-2024',        label: 'WO · Eastbay 2024',             layer: 'L4', x: 237,  y: 510 },
+  { id: 'wo-ngt-2025',        label: 'WO · Northgate 2025',            layer: 'L4', x: 80,   y: 510 },
+  { id: 'wo-eby-2024',        label: 'WO · Eastbay 2024',             layer: 'L4', x: 237,  y: 510 },
   { id: 'wo-westpoint-2024',     label: 'WO · Westpoint 2024',            layer: 'L4', x: 393,  y: 510 },
   { id: 'wo-southport-2023',       label: 'WO · Southport 2023',              layer: 'L4', x: 550,  y: 510 },
-  { id: 'rca-jrg-2025',       label: 'RCA · Northgate 2025',           layer: 'L4', x: 707,  y: 510 },
+  { id: 'rca-ngt-2025',       label: 'RCA · Northgate 2025',           layer: 'L4', x: 707,  y: 510 },
   { id: 'rca-westpoint-2024',    label: 'RCA · Westpoint 2024',           layer: 'L4', x: 863,  y: 510 },
   { id: 'rca-eastbay-coupling', label: 'RCA · Eastbay coupling 2025',   layer: 'L4', x: 1020, y: 510 },
 
@@ -8864,14 +8864,14 @@ const P2_KG_EDGES_DEF = [
   ['bfp-3a', 'maint-log'], ['hrsg-3', 'maint-log'],
 
   // L4 intra (9 edges)
-  ['wo-jrg-2025', 'rca-jrg-2025'], ['wo-skr-2024', 'rca-westpoint-2024'],
+  ['wo-ngt-2025', 'rca-ngt-2025'], ['wo-eby-2024', 'rca-westpoint-2024'],
   ['wo-westpoint-2024', 'rca-westpoint-2024'], ['wo-southport-2023', 'rca-eastbay-coupling'],
   ['vib-90d', 'trend-90d'], ['temp-30d', 'trend-90d'],
   ['trend-90d', 'spec-compliance'], ['maint-log', 'align-history'],
   ['brg-replace-log', 'maint-log'],
 
   // L4 → L5 (11 edges)
-  ['rca-jrg-2025', 'pattern-race'], ['rca-westpoint-2024', 'pattern-crack'],
+  ['rca-ngt-2025', 'pattern-race'], ['rca-westpoint-2024', 'pattern-crack'],
   ['vib-90d', 'pattern-race'], ['temp-30d', 'pattern-race'],
   ['rca-eastbay-coupling', 'pattern-misalign'], ['align-history', 'pattern-misalign'],
   ['brg-replace-log', 'pattern-race'],
@@ -8889,7 +8889,7 @@ const P2_KG_EDGES_DEF = [
 
   // W18 Section D — L4 RCAs/telemetry → L4.5 tacit bytes → L5 patterns (8 edges · narrative:
   // tacit knowledge captured from past incidents now feeds predictive pattern recognition).
-  ['rca-jrg-2025', 'tacit-1'], ['rca-westpoint-2024', 'tacit-2'],
+  ['rca-ngt-2025', 'tacit-1'], ['rca-westpoint-2024', 'tacit-2'],
   ['vib-90d', 'tacit-3'], ['temp-30d', 'tacit-4'],
   ['tacit-1', 'pattern-race'], ['tacit-2', 'pattern-crack'],
   ['tacit-3', 'pattern-race'], ['tacit-5', 'pattern-crack'],

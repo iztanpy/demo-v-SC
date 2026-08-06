@@ -24,7 +24,7 @@ export const STEPS: StepCopy[] = [
     n: 2,
     title: 'Zoom in — the week’s incidents',
     goal: 'focus + three incidents',
-    body: 'Zooming into the BFP NDE-vibration corner. Three incidents closed this week — JRG-CCGT-1 · BFP-3A and two more across the fleet — arrive as documents in the inbox, not as nodes.',
+    body: 'Zooming into the BFP NDE-vibration corner. Three incidents closed this week — NGT-CCGT-1 · BFP-3A and two more across the fleet — arrive as documents in the inbox, not as nodes.',
     sequence: [{ skills: [{ id: 'intake-report', durMs: 900 }] }],
     handoffs: [{ from: 'docs', to: 'intake', label: '3 closed incidents' }],
     live: 'Focusing on SYM-001 · three incidents received and queued for Intake.',

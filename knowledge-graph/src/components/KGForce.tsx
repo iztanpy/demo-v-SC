@@ -38,7 +38,7 @@ const FULL_Z = 0.82
 const FULL_TRANSFORM = centerTransform(W / 2, H / 2, FULL_Z)
 
 // reaffirm view — once resolution starts, zoom INTO the relevant (BFP) region where every
-// JRG-CCGT-1 incident lives. Commit pushes in further; uncommit returns to whatever base applies.
+// NGT-CCGT-1 incident lives. Commit pushes in further; uncommit returns to whatever base applies.
 const REST_Z = 1.5
 const REST_TRANSFORM = (() => {
   const b = CENTERS['BFP'] ?? { x: W / 2, y: H / 2 }
